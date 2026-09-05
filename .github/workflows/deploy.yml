@@ -27,6 +27,15 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
+      - name: Pruebas E2E Cypress
+        uses: cypress-io/github-action@v5
+        with:
+          start: npm run preview
+          wait-on: 'http://localhost:4173'
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
