@@ -217,7 +217,7 @@ h1 {
           <input v-model="form.nombre" type="text" placeholder="Si se deja vacío, será Anónimo" />
 
           <label>Teléfono</label>
-          <input v-model="form.telefono" type="tel" placeholder="10 dígitos" :class="{ 'input-error': errores.telefono }" />
+          <input v-model="form.telefono" type="tel" maxlength="10" minlength="10" placeholder="10 dígitos" :class="{ 'input-error': errores.telefono }" />
           <span v-if="errores.telefono" class="msg-error">{{ errores.telefono }}</span>
 
           <label>Domicilio del incidente</label>
@@ -379,244 +379,253 @@ h1 {
     window.removeEventListener('resize', onResize);
   });
 
-const obtenerDireccionCentro = async () => {
-  if (!map.value) return;
-  const centro = map.value.getCenter();
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${centro.lat}&lon=${centro.lng}`,
-      { headers: { Accept: 'application/json' } }
-    );
-    const data = await res.json();
-    if (data?.display_name) form.value.domicilio = data.display_name;
-    form.value.latitud  = centro.lat;
-    form.value.longitud = centro.lng;
-  } catch (e) { console.error(e); }
-};
+  const obtenerDireccionCentro = async () => {
+    if (!map.value) return;
+    const centro = map.value.getCenter();
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${centro.lat}&lon=${centro.lng}`,
+        { headers: { Accept: 'application/json' } }
+      );
+      const data = await res.json();
+      if (data?.display_name) form.value.domicilio = data.display_name;
+      form.value.latitud  = centro.lat;
+      form.value.longitud = centro.lng;
+    } catch (e) { console.error(e); }
+  };
 
-const abrirModoMapa = () => {
-  modoMapa.value = true;
-  setTimeout(() => map.value?.invalidateSize(), 400);
-};
+  const abrirModoMapa = () => {
+    modoMapa.value = true;
+    setTimeout(() => map.value?.invalidateSize(), 400);
+  };
 
-const cancelarModoMapa = () => {
-  modoMapa.value = false;
-  setTimeout(() => map.value?.invalidateSize(), 400);
-};
-
-const confirmarDireccion = async () => {
-  if (!map.value) return;
-  const centro = map.value.getCenter();
-  if (!dentroDeculiacan(centro.lat, centro.lng)) {
-    alert('La ubicación seleccionada está fuera de Culiacán. Por favor selecciona un punto dentro del municipio.');
-    return;
-  }
-  await obtenerDireccionCentro();
-  modoMapa.value = false;
-  setTimeout(() => map.value?.invalidateSize(), 400);
-};
-
-const irAUbicacionActual = () => {
-  if (!navigator.geolocation) {
-    alert('Tu navegador no soporta geolocalización');
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      const { latitude, longitude } = pos.coords;
-      volandoAUbicacion.value = true;
-      map.value?.flyTo([latitude, longitude], 16, { duration: 1 });
-
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-          { headers: { Accept: 'application/json' } }
-        );
-        const data = await res.json();
-        if (data?.address) {
-          const a = data.address;
-          const direccion = [
-            a.road,
-            a.house_number,
-            a.neighbourhood || a.suburb || a.quarter,
-            a.city || a.town
-          ].filter(Boolean).join(', ');
-          queryZona.value = direccion;
-        }
-      } catch { }
-    },
-    () => {
-      alert('No se pudo obtener tu ubicación');
-    },
-    {
-      enableHighAccuracy: true,  // <-- esto
-      timeout: 10000,
-      maximumAge: 0
-    }
-  );
-};
-const zoomIn  = () => map.value?.zoomIn();
-const zoomOut = () => map.value?.zoomOut();
-
-// const abrirPanel = () => {
-//   panelAbierto.value = !panelAbierto.value;
-//   if (panelAbierto.value) {
-//     if (queryZona.value) form.value.domicilio = queryZona.value;
-//     modoMapa.value = false;
-//     setTimeout(() => map.value?.invalidateSize(), 400);
-//   }
-// };
-
-// const seleccionarFoto = (e: Event) => {
-//   const input = e.target as HTMLInputElement;
-//   if (input.files?.[0]) form.value.foto = input.files[0];
-// };
-
-const abrirPanel = () => {
-  panelAbierto.value = !panelAbierto.value;
-  if (panelAbierto.value) {
-    if (queryZona.value) form.value.domicilio = queryZona.value;
+  const cancelarModoMapa = () => {
     modoMapa.value = false;
     setTimeout(() => map.value?.invalidateSize(), 400);
-  }
-};
-
-const seleccionarFoto = (e: Event) => {
-  const input = e.target as HTMLInputElement;
-  if (input.files?.[0]) {
-    form.value.foto = input.files[0];
-    errores.value.foto = ''; // Quitar alerta si selecciona
-  }
-};
-
-const limpiarFormulario = () => {
-  form.value = {
-    departamento_id: '', problema_id: '', descripcion: '', nombre: '',
-    telefono: '', domicilio: '', referencias: '',
-    foto: null, latitud: 0, longitud: 0,
   };
-  problemas.value = [];
-  errores.value = {};
-  if (inputFoto.value) inputFoto.value.value = '';
-};
 
-const enviarReporte = async () => {
-  if (enviando.value) return;
+  const confirmarDireccion = async () => {
+    if (!map.value) return;
+    const centro = map.value.getCenter();
+    if (!dentroDeculiacan(centro.lat, centro.lng)) {
+      alert('La ubicación seleccionada está fuera de Culiacán. Por favor selecciona un punto dentro del municipio.');
+      return;
+    }
+    await obtenerDireccionCentro();
+    modoMapa.value = false;
+    setTimeout(() => map.value?.invalidateSize(), 400);
+  };
 
-  errores.value = {};
-  let esValido = true;
+  const irAUbicacionActual = () => {
+    if (!navigator.geolocation) {
+      alert('Tu navegador no soporta geolocalización');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        volandoAUbicacion.value = true;
+        map.value?.flyTo([latitude, longitude], 16, { duration: 1 });
 
-  // Validaciones obligatorias
-  if (!form.value.departamento_id) { errores.value.departamento_id = 'Selecciona el departamento'; esValido = false; }
-  if (!form.value.problema_id) { errores.value.problema_id = 'Selecciona el problema'; esValido = false; }
-  if (!form.value.descripcion.trim()) { errores.value.descripcion = 'La descripción es obligatoria'; esValido = false; }
-
-  if (!form.value.telefono) {
-    errores.value.telefono = 'El teléfono es obligatorio'; esValido = false;
-  } else if (!/^\d{10}$/.test(form.value.telefono)) {
-    errores.value.telefono = 'Ingresa un número válido de 10 dígitos'; esValido = false;
-  }
-
-  if (!form.value.latitud || !form.value.longitud || !form.value.domicilio.trim()) {
-    errores.value.domicilio = 'Por favor selecciona una ubicación en el mapa'; esValido = false;
-  } else if (!dentroDeculiacan(form.value.latitud, form.value.longitud)) {
-    errores.value.domicilio = 'La ubicación está fuera de Culiacán'; esValido = false;
-  }
-
-  if (!form.value.foto) { errores.value.foto = 'Debes adjuntar una foto de evidencia'; esValido = false; }
-
-  if (!esValido) return;
-
-  enviando.value = true;
-  try {
-    const formData = new FormData();
-    Object.entries(form.value).forEach(([k, v]) => {
-      if (k === 'foto') {
-        if (v) formData.append('foto', v as File);
-      } else if (k === 'nombre') {
-        // Enviar "Anónimo" si el usuario dejó el campo vacío
-        formData.append('nombre', v ? String(v).trim() : 'Anónimo');
-      } else if (v) {
-        formData.append(k, String(v));
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+            { headers: { Accept: 'application/json' } }
+          );
+          const data = await res.json();
+          if (data?.address) {
+            const a = data.address;
+            const direccion = [
+              a.road,
+              a.house_number,
+              a.neighbourhood || a.suburb || a.quarter,
+              a.city || a.town
+            ].filter(Boolean).join(', ');
+            queryZona.value = direccion;
+          }
+        } catch { }
+      },
+      () => {
+        alert('No se pudo obtener tu ubicación');
+      },
+      {
+        enableHighAccuracy: true,  // <-- esto
+        timeout: 10000,
+        maximumAge: 0
       }
-    });
-
-    // Petición a tu API backend que procesa el multipart/form-data
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/reportes`, {
-      method: 'POST', body: formData,
-    });
-
-    const data = await response.json();
-    if (!response.ok) { alert(data.mensaje || 'Error al enviar el reporte'); return; }
-
-    alert('¡Reporte enviado exitosamente!');
-    limpiarFormulario();
-    panelAbierto.value = false;
-  } catch (error) {
-    alert('Error de conexión al enviar el reporte');
-  } finally {
-    enviando.value = false;
-  }
-};
-
-const abrirBusqueda = () => {
-  panelBusqueda.value     = true;
-  reporteEncontrado.value = null;
-  buscado.value           = false;
-  buscando.value          = false;
-  folioBusqueda.value     = '';
-};
-
-const buscarReporte = async () => {
-  if (!folioBusqueda.value) return;
-  buscando.value          = true;
-  reporteEncontrado.value = null;
-  buscado.value           = false;
-  try {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/reportes/${folioBusqueda.value}`);
-    if (!res.ok) { buscado.value = true; return; }
-    reporteEncontrado.value = await res.json();
-    buscado.value = true;
-  } catch {
-    buscado.value = true;
-  } finally {
-    buscando.value = false;
-  }
-};
-
-// ── Buscador de zona ──────────────────────────────────
-const queryZona       = ref('');
-const sugerenciasZona = ref<any[]>([]);
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-const onInputZona = () => {
-  if (debounceTimer) clearTimeout(debounceTimer);
-  if (!queryZona.value.trim()) { sugerenciasZona.value = []; return; }
-  debounceTimer = setTimeout(buscarZona, 400);
-};
-
-const buscarZona = async () => {
-  if (!queryZona.value.trim()) return;
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryZona.value)}&limit=6&countrycodes=mx`,
-      { headers: { Accept: 'application/json' } }
     );
-    sugerenciasZona.value = await res.json();
-  } catch { sugerenciasZona.value = []; }
-};
+  };
+  const zoomIn  = () => map.value?.zoomIn();
+  const zoomOut = () => map.value?.zoomOut();
 
-const irASugerencia = (s: any) => {
-  sugerenciasZona.value = [];
-  queryZona.value       = s.display_name;
-  map.value?.flyTo([parseFloat(s.lat), parseFloat(s.lon)], 16, { duration: 1 });
+  const abrirPanel = () => {
+    panelAbierto.value = !panelAbierto.value;
+    if (panelAbierto.value) {
+      if (queryZona.value) form.value.domicilio = queryZona.value;
+      modoMapa.value = false;
+      setTimeout(() => map.value?.invalidateSize(), 400);
+    }
+  };
 
-};
+  const seleccionarFoto = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    if (input.files?.[0]) {
+      form.value.foto = input.files[0];
+      errores.value.foto = ''; // Quitar alerta si selecciona
+    }
+  };
 
-const limpiarBusquedaZona = () => {
-  queryZona.value       = '';
-  sugerenciasZona.value = [];
-};
+  const limpiarFormulario = () => {
+    form.value = {
+      departamento_id: '', problema_id: '', descripcion: '', nombre: '',
+      telefono: '', domicilio: '', referencias: '',
+      foto: null, latitud: 0, longitud: 0,
+    };
+    problemas.value = [];
+    errores.value = {};
+    if (inputFoto.value) inputFoto.value.value = '';
+  };
 
-const formatFecha = (f: string) => f ? new Date(f).toLocaleDateString('es-MX') : '';
+  const enviarReporte = async () => {
+    if (enviando.value) return;
+
+    errores.value = {};
+    let esValido = true;
+
+    // --- Validaciones Obligatorias ---
+    if (!form.value.departamento_id) { errores.value.departamento_id = 'Selecciona el departamento'; esValido = false; }
+    if (!form.value.problema_id) { errores.value.problema_id = 'Selecciona el problema'; esValido = false; }
+    if (!form.value.descripcion.trim()) { errores.value.descripcion = 'La descripción es obligatoria'; esValido = false; }
+
+    if (!form.value.telefono) {
+      errores.value.telefono = 'El teléfono es obligatorio'; esValido = false;
+    } else if (!/^\d{10}$/.test(form.value.telefono)) {
+      errores.value.telefono = 'Ingresa un número válido de 10 dígitos'; esValido = false;
+    }
+
+    if (!form.value.latitud || !form.value.longitud || !form.value.domicilio.trim()) {
+      errores.value.domicilio = 'Por favor selecciona una ubicación en el mapa'; esValido = false;
+    } else if (!dentroDeculiacan(form.value.latitud, form.value.longitud)) {
+      errores.value.domicilio = 'La ubicación está fuera de Culiacán'; esValido = false;
+    }
+
+    if (!form.value.foto) { errores.value.foto = 'Debes adjuntar una foto de evidencia'; esValido = false; }
+
+    if (!esValido) return;
+
+    enviando.value = true;
+
+    try {
+      let fotoUrlFinal = '';
+
+      // 1. Subir la foto a Supabase Storage
+      if (form.value.foto) {
+        const file = form.value.foto;
+        const fileExt = file.name.split('.').pop();
+        // Generamos un nombre único para evitar que fotos con el mismo nombre se sobreescriban
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `evidencias/${fileName}`; // Se guardará dentro de una carpeta "evidencias"
+
+        const { error: uploadError } = await supabase.storage
+          .from('fotos')
+          .upload(filePath, file);
+
+        if (uploadError) throw new Error('No se pudo subir la imagen: ' + uploadError.message);
+
+        // Obtener la URL pública de la foto recién subida
+        const { data: publicUrlData } = supabase.storage
+          .from('fotos')
+          .getPublicUrl(filePath);
+
+        fotoUrlFinal = publicUrlData.publicUrl;
+      }
+
+      // 2. Insertar los datos en la tabla 'reportes'
+      const { error: insertError } = await supabase
+        .from('reportes')
+        .insert({
+          departamento_id: form.value.departamento_id,
+          problema_id: form.value.problema_id,
+          descripcion: form.value.descripcion.trim(),
+          nombre: form.value.nombre ? form.value.nombre.trim() : 'Anónimo',
+          telefono: form.value.telefono,
+          domicilio: form.value.domicilio.trim(),
+          referencias: form.value.referencias ? form.value.referencias.trim() : null,
+          foto_url: fotoUrlFinal
+        });
+
+      if (insertError) throw new Error('Error al guardar en base de datos: ' + insertError.message);
+
+      alert('¡Reporte enviado exitosamente!');
+      limpiarFormulario();
+      panelAbierto.value = false;
+
+    } catch (error: any) {
+      console.error("Error detallado:", error);
+      alert(error.message || 'Error de conexión al enviar el reporte');
+    } finally {
+      enviando.value = false;
+    }
+  };
+
+  const abrirBusqueda = () => {
+    panelBusqueda.value     = true;
+    reporteEncontrado.value = null;
+    buscado.value           = false;
+    buscando.value          = false;
+    folioBusqueda.value     = '';
+  };
+
+  const buscarReporte = async () => {
+    if (!folioBusqueda.value) return;
+    buscando.value          = true;
+    reporteEncontrado.value = null;
+    buscado.value           = false;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/reportes/${folioBusqueda.value}`);
+      if (!res.ok) { buscado.value = true; return; }
+      reporteEncontrado.value = await res.json();
+      buscado.value = true;
+    } catch {
+      buscado.value = true;
+    } finally {
+      buscando.value = false;
+    }
+  };
+
+  // ── Buscador de zona ──────────────────────────────────
+  const queryZona       = ref('');
+  const sugerenciasZona = ref<any[]>([]);
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const onInputZona = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (!queryZona.value.trim()) { sugerenciasZona.value = []; return; }
+    debounceTimer = setTimeout(buscarZona, 400);
+  };
+
+  const buscarZona = async () => {
+    if (!queryZona.value.trim()) return;
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryZona.value)}&limit=6&countrycodes=mx`,
+        { headers: { Accept: 'application/json' } }
+      );
+      sugerenciasZona.value = await res.json();
+    } catch { sugerenciasZona.value = []; }
+  };
+
+  const irASugerencia = (s: any) => {
+    sugerenciasZona.value = [];
+    queryZona.value       = s.display_name;
+    map.value?.flyTo([parseFloat(s.lat), parseFloat(s.lon)], 16, { duration: 1 });
+
+  };
+
+  const limpiarBusquedaZona = () => {
+    queryZona.value       = '';
+    sugerenciasZona.value = [];
+  };
+
+  const formatFecha = (f: string) => f ? new Date(f).toLocaleDateString('es-MX') : '';
 </script>
