@@ -556,10 +556,10 @@ const enviarReporte = async () => {
   if (!esValido) return
 
   // Generar el folio del reporte
-  const depTresLetras = departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombreamigable
+  const depTresLetras = departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombre
     .substring(0, 3)
     .toUpperCase()
-  const probTresLetras = problemas.value.find((p) => p.id === form.value.problema_id)?.nombreamigable.substring(0, 3).toUpperCase()
+  const probTresLetras = problemas.value.find((p) => p.id === form.value.problema_id)?.nombre.substring(0, 3).toUpperCase()
   const fechaCuatroDigitosYear = new Date().getFullYear().toString().slice(-4)
   const fechaMes = (new Date().getMonth() + 1).toString().padStart(2, '0')
   const fechaDia = (new Date().getDate()).toString().padStart(2, '0')
@@ -1047,5 +1047,17 @@ const formatFecha = (f: string) => (f ? new Date(f).toLocaleDateString('es-MX') 
   };
 
   const formatFecha = (f: string) => f ? new Date(f).toLocaleDateString('es-MX') : '';
+<<<<<<< HEAD
 >>>>>>> 541ae4b (KAN-11 Desarrollo del Modulo 1 (Ciudadano))
+=======
+
+  //Necesario para las pruebas unitarias
+  defineExpose({
+  form, errores, enviando, departamentos, problemas,
+  map, modoMapa, queryZona, folioBusqueda, reporteEncontrado,
+  panelAbierto,
+  dentroDeculiacan, enviarReporte, confirmarDireccion,
+  seleccionarFoto, onDepartamentoSeleccionado, buscarReporte,
+  });
+>>>>>>> 4458c1d (Pruebas de software del modulo ciudadano terminadas)
 </script>
