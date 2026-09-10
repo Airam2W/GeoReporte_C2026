@@ -1,0 +1,5 @@
+[
+  { "id": 1, "nombre": "Deficiencia en la cobertura de recolección", "departamento_id": 1 },
+  { "id": 6, "nombre": "Falta de mantenimiento preventivo a áreas verdes", "departamento_id": 2 },
+  { "id": 11, "nombre": "Luminarias fuera de servicio", "departamento_id": 3 }
+]
