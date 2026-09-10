@@ -5,4 +5,3 @@ const supabaseKey: string = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as str
 
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
-
