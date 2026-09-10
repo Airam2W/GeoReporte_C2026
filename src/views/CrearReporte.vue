@@ -551,10 +551,10 @@ const enviarReporte = async () => {
   if (!esValido) return
 
   // Generar el folio del reporte
-  const depTresLetras = departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombreamigable
+  const depTresLetras = departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombre
     .substring(0, 3)
     .toUpperCase()
-  const probTresLetras = problemas.value.find((p) => p.id === form.value.problema_id)?.nombreamigable.substring(0, 3).toUpperCase()
+  const probTresLetras = problemas.value.find((p) => p.id === form.value.problema_id)?.nombre.substring(0, 3).toUpperCase()
   const fechaCuatroDigitosYear = new Date().getFullYear().toString().slice(-4)
   const fechaMes = (new Date().getMonth() + 1).toString().padStart(2, '0')
   const fechaDia = (new Date().getDate()).toString().padStart(2, '0')
@@ -663,28 +663,10 @@ const validarTelefono = (e: Event) => {
   }
 }
 
-const buscarReporte = async () => {
-  if (!folioBusqueda.value) return
-  buscando.value = true
-  reporteEncontrado.value = null
-  buscado.value = false
-  try {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/reportes/${folioBusqueda.value}`)
-    if (!res.ok) {
-      buscado.value = true
-      return
-    }
-    reporteEncontrado.value = await res.json()
-    buscado.value = true
-  } catch {
-    buscado.value = true
-  } finally {
-    buscando.value = false
-  }
-}
-
 // ── Buscador de zona ──────────────────────────────────
 const queryZona = ref('')
+const folioBusqueda = ref('')
+const reporteEncontrado = ref<any | null>(null)
 const sugerenciasZona = ref<any[]>([])
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -714,12 +696,62 @@ const irASugerencia = (s: any) => {
   sugerenciasZona.value = []
   queryZona.value = s.display_name
   map.value?.flyTo([parseFloat(s.lat), parseFloat(s.lon)], 16, { duration: 1 })
-}
+};
 
 const limpiarBusquedaZona = () => {
   queryZona.value = ''
   sugerenciasZona.value = []
-}
+};
 
-const formatFecha = (f: string) => (f ? new Date(f).toLocaleDateString('es-MX') : '')
+
+
+
+
+  onMounted(() => {
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.style.height   = '100%';
+    document.body.style.overflow = 'hidden';
+    document.body.style.height   = '100%';
+    document.body.style.margin   = '0';
+    document.body.style.padding  = '0';
+
+    window.addEventListener('resize', onResize);
+
+    // Cargar catálogos de base de datos
+    cargarDepartamentos();
+
+    if (!mapContainer.value) return;
+    map.value = L.map(mapContainer.value, { zoomControl: false }).setView([24.8091, -107.3940], 15);
+
+    map.value.on('moveend', () => {
+      if (!volandoAUbicacion.value) queryZona.value = '';
+      volandoAUbicacion.value = false;
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(map.value);
+
+    setTimeout(() => map.value?.invalidateSize(), 100);
+  });
+
+  onUnmounted(() => {
+    document.documentElement.style.overflow = '';
+    document.documentElement.style.height   = '';
+    document.body.style.overflow = '';
+    document.body.style.height   = '';
+    window.removeEventListener('resize', onResize);
+  });
+
+  const formatFecha = (f: string) => f ? new Date(f).toLocaleDateString('es-MX') : '';
+
+
+  //Necesario para las pruebas unitarias
+  defineExpose({
+  form, errores, enviando, departamentos, problemas,
+  map, modoMapa, queryZona, folioBusqueda, reporteEncontrado,
+  panelAbierto,
+  dentroDeculiacan, enviarReporte, confirmarDireccion,
+  seleccionarFoto, onDepartamentoSeleccionado,
+  });
 </script>
