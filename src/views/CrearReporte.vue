@@ -716,10 +716,10 @@ const irASugerencia = (s: any) => {
   map.value?.flyTo([parseFloat(s.lat), parseFloat(s.lon)], 16, { duration: 1 })
 }
 
-const limpiarBusquedaZona = () => {
-  queryZona.value = ''
-  sugerenciasZona.value = []
-}
+  const limpiarBusquedaZona = () => {
+    queryZona.value       = '';
+    sugerenciasZona.value = [];
+  };
 
-const formatFecha = (f: string) => (f ? new Date(f).toLocaleDateString('es-MX') : '')
+  const formatFecha = (f: string) => f ? new Date(f).toLocaleDateString('es-MX') : '';
 </script>
