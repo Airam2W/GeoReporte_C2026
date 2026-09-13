@@ -628,4 +628,16 @@ h1 {
   };
 
   const formatFecha = (f: string) => f ? new Date(f).toLocaleDateString('es-MX') : '';
+<<<<<<< HEAD
+=======
+
+  //Necesario para las pruebas unitarias
+  defineExpose({
+  form, errores, enviando, departamentos, problemas,
+  map, modoMapa, queryZona, folioBusqueda, reporteEncontrado,
+  panelAbierto,
+  dentroDeculiacan, enviarReporte, confirmarDireccion,
+  seleccionarFoto, onDepartamentoSeleccionado, buscarReporte,
+  });
+>>>>>>> 4458c1d9e72f3f7c0d07ed14162320a717fa7d57
 </script>
