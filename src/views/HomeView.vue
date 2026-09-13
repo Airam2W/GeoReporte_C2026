@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { verEstadoReporte, mostrarEstadoReporte } from '../logic/home'
+import { verEstadoReporte, mostrarEstadoReporte, iniciarSesionAdmin, handleClickOutside, menuAbierto, menuRef } from '../logic/home'
 const router = useRouter()
 
 const irAReporte = () => {
   router.push('/reporte')
 }
-
 </script>
-
 <template>
   <div class="home">
     <header class="home-header">
@@ -17,6 +15,14 @@ const irAReporte = () => {
       <p class="descripcion">
         Plataforma ciudadana del Ayuntamiento de Culiacán para gestionar reportes de servicios públicos.
       </p>
+
+      <!-- Menú desplegable arriba a la derecha -->
+      <nav class="menu" ref="menuRef">
+        <button class="menu-btn" @click="menuAbierto = !menuAbierto">☰</button>
+        <ul v-if="menuAbierto" class="menu-list">
+          <li @click="iniciarSesionAdmin">Iniciar sesión</li>
+        </ul>
+      </nav>
     </header>
 
     <main class="home-main">
