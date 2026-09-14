@@ -152,7 +152,7 @@
               {{ prob.nombreamigable }}
             </option>
           </select>
-          <label>Problema al que corresponde:</label> 
+          <label>Problema al que corresponde:</label>
           <input
             type="text"
             :value="problemas.find((d) => d.id === form.problema_id)?.nombre || ''"
@@ -702,49 +702,6 @@ const limpiarBusquedaZona = () => {
   queryZona.value = ''
   sugerenciasZona.value = []
 };
-
-
-
-
-
-  onMounted(() => {
-    document.documentElement.style.overflow = 'hidden';
-    document.documentElement.style.height   = '100%';
-    document.body.style.overflow = 'hidden';
-    document.body.style.height   = '100%';
-    document.body.style.margin   = '0';
-    document.body.style.padding  = '0';
-
-    window.addEventListener('resize', onResize);
-
-    // Cargar catálogos de base de datos
-    cargarDepartamentos();
-
-    if (!mapContainer.value) return;
-    map.value = L.map(mapContainer.value, { zoomControl: false }).setView([24.8091, -107.3940], 15);
-
-    map.value.on('moveend', () => {
-      if (!volandoAUbicacion.value) queryZona.value = '';
-      volandoAUbicacion.value = false;
-    });
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-    }).addTo(map.value);
-
-    setTimeout(() => map.value?.invalidateSize(), 100);
-  });
-
-  onUnmounted(() => {
-    document.documentElement.style.overflow = '';
-    document.documentElement.style.height   = '';
-    document.body.style.overflow = '';
-    document.body.style.height   = '';
-    window.removeEventListener('resize', onResize);
-  });
-
-  const formatFecha = (f: string) => f ? new Date(f).toLocaleDateString('es-MX') : '';
-
 
   //Necesario para las pruebas unitarias
   defineExpose({
