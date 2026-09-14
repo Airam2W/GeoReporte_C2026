@@ -12,7 +12,7 @@
       <div class="topbar-user" v-if="admin">
         <div class="user-info">
           <span class="user-name">{{ admin.nombre }}</span>
-          <span class="user-dept">Depto. {{ admin.departamento_id }}</span>
+          <span class="user-dept">¡Bienvenido!</span>
         </div>
         <button class="btn-logout" @click="cerrarSesion">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
@@ -26,9 +26,10 @@
 
     <!-- Contenido Principal -->
     <main class="dashboard-content">
-      <header class="content-header">
+      <header class="content-header" v-if="admin">
         <h2>Reportes del Departamento</h2>
-        <p>Gestiona, asigna y da seguimiento a las solicitudes ciudadanas.</p>
+        <!-- Cambiar por nombre del departamento -->
+        <p>{{ admin.departamento }}</p>
       </header>
 
       <!-- Panel de Filtros -->
@@ -48,7 +49,7 @@
           <select v-model="filtros.problema">
             <option value="">Todos los problemas</option>
             <option v-for="prob in problemasOpciones" :key="prob.id" :value="prob.id">
-              {{ prob.nombreamigable }}
+              {{ prob.nombreamigable  }}
             </option>
           </select>
         </div>
@@ -149,9 +150,20 @@ onMounted(async () => {
 const cargarCatalogos = async () => {
   const { data } = await supabase
     .from('problemas')
-    .select('id, nombreamigable')
+    .select(`id,
+      nombreamigable,
+      departamento (nombre)
+      `)
     .eq('departamento_id', admin.value.departamento_id)
   if (data) problemasOpciones.value = data
+
+  const { data: deptData } = await supabase
+    .from('departamentos')
+    .select(`id, nombre`)
+    .eq('id', admin.value.departamento_id)
+  if (deptData && deptData.length > 0) {
+    admin.value.departamento = deptData[0].nombre
+  }
 }
 
 

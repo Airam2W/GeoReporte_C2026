@@ -93,7 +93,6 @@ import { Toast } from '../utils/alertas'
 //   }
 // }
 import { ref } from 'vue'
-import Swal from 'sweetalert2'
 export const menuAbierto = ref(false)
 export const menuRef = ref<HTMLElement | null>(null)
 
@@ -233,11 +232,11 @@ export const iniciarSesionAdmin = () => {
   })
 
   // Cerrar modal al hacer click fuera
-  modal.addEventListener('click', (event) => {
-    if (event.target === modal) {
-      document.body.removeChild(modal)
-    }
-  })
+  // modal.addEventListener('click', (event) => {
+  //   if (event.target === modal) {
+  //     document.body.removeChild(modal)
+  //   }
+  // })
 }
 
 // Detectar click fuera del menú

@@ -1,6 +1,6 @@
 <template>
   <transition name="fade">
-    <div v-if="visible" class="modal-overlay" @click.self="cerrar">
+    <div v-if="visible" class="modal-overlay">
       <div class="modal-card">
 
         <div class="modal-header">
@@ -70,7 +70,14 @@
         <div class="modal-footer">
           <button class="btn-secundario" @click="cerrar">Cerrar</button>
 
-          <!-- Botón exclusivo para administradores -->
+          <button
+            v-if="!esAdmin"
+            class="btn-primario"
+            @click="buscarReporte"
+          >
+            Buscar Otro Reporte
+          </button>
+
           <button
             v-if="esAdmin"
             class="btn-primario"
@@ -107,6 +114,10 @@ const emit = defineEmits(['close', 'asignar'])
 
 const cerrar = () => {
   emit('close')
+}
+
+const buscarReporte = () => {
+  emit('buscar')
 }
 
 const obtenerClaseEstado = (estado: string) => {

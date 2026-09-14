@@ -104,15 +104,16 @@ const ejecutarBusqueda = async () => {
       :reporte="reporteEncontrado"
       :esAdmin="false"
       @close="modalVisible = false"
+      @buscar="abrirModalBusqueda"
     />
 
     <transition name="fade">
-      <div v-if="modalBusquedaVisible" class="modal-overlay" @click.self="modalBusquedaVisible = false">
+      <div v-if="modalBusquedaVisible" class="modal-overlay">
         <div class="modal-busqueda">
           <div class="modal-busqueda-header">
             <h3>Consultar Reporte</h3>
             <button class="btn-cerrar-delgado" @click="modalBusquedaVisible = false">
-              <!-- SVG de la "X" delgada -->
+
               <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
