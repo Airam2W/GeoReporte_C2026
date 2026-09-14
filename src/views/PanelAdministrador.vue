@@ -53,6 +53,15 @@
             </option>
           </select>
         </div>
+
+        <div class="filtro-grupo">
+          <select name="estado" id="estado" v-model="filtros.estado" :class="['badge', obtenerClaseEstado(filtros.estado.toLowerCase())]">
+            <option value="Llegado" class="badge-azul" selected>Llegado</option>
+            <option value="En Proceso" class="badge-amarillo">En Proceso</option>
+            <option value="Finalizado" class="badge-verde">Finalizado</option>
+            <option value="Rechazado" class="badge-rojo">Rechazado</option>
+          </select>
+        </div>
       </section>
 
       <!-- Tabla de Datos -->
@@ -64,7 +73,6 @@
               <th>PROBLEMA</th>
               <th>DOMICILIO</th>
               <th>CIUDADANO</th>
-              <th>ESTADO</th>
               <th class="text-center">ACCIONES</th>
             </tr>
           </thead>
@@ -85,11 +93,6 @@
                   <small>{{ reporte.telefono }}</small>
                 </div>
               </td>
-              <td>
-                <span :class="['badge', obtenerClaseEstado(reporte.estado.toLowerCase())]">
-                  {{ reporte.estado }}
-                </span>
-              </td>
               <td class="acciones-celda">
                 <button class="btn-accion btn-ver" title="Ver detalle" @click="abrirModalVer(reporte)">👁️</button>
                 <button class="btn-accion btn-asignar" title="Asignar supervisor" @click="asignarReporte(reporte.folio)">👤</button>
@@ -107,6 +110,7 @@
       :esAdmin="true"
       @close="cerrarModalVer"
       @asignar="asignarReporte"
+      @rechazar="rechazarReporte"
     />
 
   </div>
@@ -132,7 +136,8 @@ const reporteActivo = ref<any>(null)
 const filtros = ref({
   busqueda: '',
   fecha: '',
-  problema: ''
+  problema: '',
+  estado: 'Llegado'
 })
 
 onMounted(async () => {
@@ -205,6 +210,8 @@ const reportesFiltrados = computed(() => {
 
     const coincideProblema = filtros.value.problema === '' || r.problemas?.id == filtros.value.problema
 
+    const coincideEstado = filtros.value.estado === '' || r.estado === filtros.value.estado
+
     let coincideFecha = true
     if (filtros.value.fecha) {
       const fechaUtc = r.created_at.endsWith('Z') ? r.created_at : `${r.created_at}Z`
@@ -220,7 +227,7 @@ const reportesFiltrados = computed(() => {
       coincideFecha = fechaFormateadaLocal === filtros.value.fecha
     }
 
-    return coincideBusqueda && coincideProblema && coincideFecha
+    return coincideBusqueda && coincideProblema && coincideEstado && coincideFecha
   })
 })
 

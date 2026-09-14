@@ -85,6 +85,15 @@
           >
             Asignar Supervisor
           </button>
+
+          <button
+            v-if="esAdmin"
+            class="btn-peligroso"
+            @click="$emit('rechazar', reporte?.folio)"
+          >
+            Rechazar Reporte
+          </button>
+
         </div>
 
       </div>
@@ -110,7 +119,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'asignar'])
+const emit = defineEmits(['close', 'asignar', 'rechazar', 'buscar'])
 
 const cerrar = () => {
   emit('close')
@@ -187,13 +196,15 @@ const formatearFechaLocal = (fechaString: string) => {
   padding: 16px 24px; border-top: 1px solid #eee; display: flex;
   justify-content: flex-end; gap: 12px; background: #fafafa;
 }
-.btn-secundario, .btn-primario {
+.btn-secundario, .btn-primario, .btn-peligroso {
   padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s;
 }
 .btn-secundario { background: #e0e0e0; color: #333; }
 .btn-secundario:hover { background: #d0d0d0; }
 .btn-primario { background: #1a6b2f; color: white; }
 .btn-primario:hover { background: #145524; }
+.btn-peligroso { background: #c62828; color: white; }
+.btn-peligroso:hover { background: #b71c1c; }
 
 /* Badges */
 .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-block; }
