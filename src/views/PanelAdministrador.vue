@@ -116,6 +116,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase' // Ajusta la ruta a tu supabase.ts
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const admin = ref<any>(null)
@@ -229,29 +230,59 @@ const abrirModalVer = (reporte: any) => {
 
 const cerrarModalVer = () => {
   modalVisible.value = false
-  setTimeout(() => { reporteActivo.value = null }, 300) // Limpiar después de animación
+  setTimeout(() => { reporteActivo.value = null }, 300)
+}
+
+const rechazarReporte = async (folio: string) => {
+  const result = await Swal.fire({
+    title: '¿Rechazar reporte?',
+    text: `¿Estás seguro de que deseas rechazar el folio ${folio}? Esta acción lo marcará como cerrado.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#888',
+    confirmButtonText: 'Sí, rechazar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true
+  })
+
+  if (result.isConfirmed) {
+    const { error } = await supabase
+      .from('reportesexistentes')
+      .update({ estado: 'Rechazado' })
+      .eq('folio', folio)
+
+    if (!error) {
+      const index = reportes.value.findIndex(r => r.folio === folio)
+      if (index !== -1) reportes.value[index].estado = 'Rechazado'
+
+      Swal.fire({
+        title: '¡Rechazado!',
+        text: 'El reporte ha sido rechazado correctamente.',
+        icon: 'success',
+        confirmButtonColor: '#1a6b2f'
+      })
+    } else {
+      // Alerta de error
+      Swal.fire({
+        title: 'Error',
+        text: 'Hubo un error al rechazar el reporte en la base de datos.',
+        icon: 'error',
+        confirmButtonColor: '#1a6b2f'
+      })
+    }
+  }
 }
 
 const asignarReporte = (folio: string | undefined) => {
   if(!folio) return
-  alert(`Abrir modal de asignación de supervisores para el folio: ${folio}`)
+  Swal.fire({
+    title: 'Asignar Supervisor',
+    text: `Aquí iría la lógica para asignar el folio ${folio}`,
+    icon: 'info',
+    confirmButtonColor: '#1a6b2f'
+  })
 
-}
-
-const rechazarReporte = async (folio: string) => {
-  if(!confirm('¿Estás seguro de que deseas rechazar este reporte? Esta acción lo marcará como cerrado.')) return
-
-  const { error } = await supabase
-    .from('reportesExistentes')
-    .update({ estado: 'Rechazado' })
-    .eq('folio', folio)
-
-  if (!error) {
-    const index = reportes.value.findIndex(r => r.folio === folio)
-    if (index !== -1) reportes.value[index].estado = 'Rechazado'
-  } else {
-    alert('Hubo un error al rechazar el reporte.')
-  }
 }
 
 const cerrarSesion = () => {

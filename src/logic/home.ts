@@ -1,5 +1,6 @@
 import router from '@/router'
 import { supabase } from '../lib/supabase'
+import { Toast } from '../utils/alertas'
 
 // export const verEstadoReporte = () => {
 //   const modal = document.createElement('div')
@@ -92,6 +93,7 @@ import { supabase } from '../lib/supabase'
 //   }
 // }
 import { ref } from 'vue'
+import Swal from 'sweetalert2'
 export const menuAbierto = ref(false)
 export const menuRef = ref<HTMLElement | null>(null)
 
@@ -206,7 +208,13 @@ export const iniciarSesionAdmin = () => {
       const admin = data[0]
       localStorage.setItem('adminSession', JSON.stringify(admin))
 
-      alert(`Bienvenido de vuelta, ${admin.nombre}`)
+      // Para éxito
+      Toast.fire({
+        icon: 'success',
+        title: `¡Bienvenido de vuelta, ${admin.nombre}!`
+      }).then(() => {
+        router.push('/dashboard')
+      })
       document.body.removeChild(modal)
 
       router.push('/dashboard')
