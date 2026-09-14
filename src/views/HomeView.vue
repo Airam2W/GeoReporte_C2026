@@ -18,10 +18,19 @@ const irAReporte = () => {
 
       <!-- Menú desplegable arriba a la derecha -->
       <nav class="menu" ref="menuRef">
-        <button class="menu-btn" @click="menuAbierto = !menuAbierto">☰</button>
-        <ul v-if="menuAbierto" class="menu-list">
-          <li @click="iniciarSesionAdmin">Iniciar sesión</li>
-        </ul>
+        <button
+          class="menu-btn"
+          @click="menuAbierto = !menuAbierto"
+          aria-haspopup="true"
+          :aria-expanded="menuAbierto"
+        >
+          ☰
+        </button>
+        <transition name="fade">
+          <ul v-if="menuAbierto" class="menu-list">
+            <li @click="iniciarSesionAdmin">Iniciar sesión</li>
+          </ul>
+        </transition>
       </nav>
     </header>
 
