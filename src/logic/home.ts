@@ -1,158 +1,222 @@
+import router from '@/router'
 import { supabase } from '../lib/supabase'
 
-export const verEstadoReporte = () => {
-  const modal = document.createElement('div')
-  modal.classList.add('modal')
-  document.body.appendChild(modal)
+// export const verEstadoReporte = () => {
+//   const modal = document.createElement('div')
+//   modal.classList.add('modal')
+//   document.body.appendChild(modal)
 
-  modal.innerHTML = `
-    <div class="modal-contenido">
-      <h2>Ver Estado del Reporte</h2>
-      <p>Ingrese el Folio del reporte:</p>
-      <input id="folio-input" type="text" placeholder="Folio" />
-      <button id="buscar-btn">Buscar</button>
-      <div id="resultado-reporte" style="margin-top:20px; text-align:left;"></div>
-      <button id="cerrar-btn" style="margin-top:20px; background:#dc3545; color:#fff; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">
-        Cerrar
-      </button>
-    </div>
-  `
+//   modal.innerHTML = `
+//     <div class="modal-contenido">
+//       <h2>Ver Estado del Reporte</h2>
+//       <p>Ingrese el Folio del reporte:</p>
+//       <input id="folio-input" type="text" placeholder="Folio" />
+//       <button id="buscar-btn">Buscar</button>
+//       <div id="resultado-reporte" style="margin-top:20px; text-align:left;"></div>
+//       <button id="cerrar-btn" style="margin-top:20px; background:#dc3545; color:#fff; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">
+//         Cerrar
+//       </button>
+//     </div>
+//   `
 
-  const buscarBtn = modal.querySelector('#buscar-btn') as HTMLButtonElement
-  const folioInput = modal.querySelector('#folio-input') as HTMLInputElement
-  const resultadoDiv = modal.querySelector('#resultado-reporte') as HTMLDivElement
-  const cerrarBtn = modal.querySelector('#cerrar-btn') as HTMLButtonElement
+//   const buscarBtn = modal.querySelector('#buscar-btn') as HTMLButtonElement
+//   const folioInput = modal.querySelector('#folio-input') as HTMLInputElement
+//   const resultadoDiv = modal.querySelector('#resultado-reporte') as HTMLDivElement
+//   const cerrarBtn = modal.querySelector('#cerrar-btn') as HTMLButtonElement
 
-  buscarBtn.addEventListener('click', async () => {
-    const folio = folioInput.value.trim()
-    if (!folio) {
-      resultadoDiv.innerHTML = `<p style="color:red;">Por favor ingrese un folio válido.</p>`
-      return
-    }
+//   buscarBtn.addEventListener('click', async () => {
+//     const folio = folioInput.value.trim()
+//     if (!folio) {
+//       resultadoDiv.innerHTML = `<p style="color:red;">Por favor ingrese un folio válido.</p>`
+//       return
+//     }
 
-    const resultado = await mostrarEstadoReporte(folio)
-    if (resultado) {
-      resultadoDiv.innerHTML = `
-        <h3>Información del reporte</h3>
-        <p><strong>Folio:</strong> ${resultado.folio}</p>
-        <p><strong>Estado:</strong> ${resultado.estado}</p>
-        <p><strong>Departamento actual:</strong> ${resultado.departamentoActual}</p>
-        <p><strong>Problema:</strong> ${resultado.problema}</p>
-        <p><strong>Domicilio:</strong> ${resultado.domicilio}</p>
-      `
-    } else {
-      resultadoDiv.innerHTML = `<p style="color:red;">No se encontró información para el folio ingresado.</p>`
-    }
-  })
+//     const resultado = await mostrarEstadoReporte(folio)
+//     if (resultado) {
+//       resultadoDiv.innerHTML = `
+//         <h3>Información del reporte</h3>
+//         <p><strong>Folio:</strong> ${resultado.folio}</p>
+//         <p><strong>Estado:</strong> ${resultado.estado}</p>
+//         <p><strong>Departamento actual:</strong> ${resultado.departamentoActual}</p>
+//         <p><strong>Problema:</strong> ${resultado.problema}</p>
+//         <p><strong>Domicilio:</strong> ${resultado.domicilio}</p>
+//       `
+//     } else {
+//       resultadoDiv.innerHTML = `<p style="color:red;">No se encontró información para el folio ingresado.</p>`
+//     }
+//   })
 
-  cerrarBtn.addEventListener('click', () => {
-    document.body.removeChild(modal)
-  })
-}
+//   cerrarBtn.addEventListener('click', () => {
+//     document.body.removeChild(modal)
+//   })
+// }
 
 
-export const mostrarEstadoReporte = async (folio: string) => {
-  try {
-    // 1. Buscar estado y departamentoactual en reportesexistentes con join a departamentos
-    const { data: estadoData, error: estadoError } = await supabase
-      .from('reportesexistentes')
-      .select(`
-        estado,
-        departamentos:departamentoactual ( nombre )
-      `)
-      .eq('folio', folio)
-      .single()
+// export const mostrarEstadoReporte = async (folio: string) => {
+//   try {
+//     // 1. Buscar estado y departamentoactual en reportesexistentes con join a departamentos
+//     const { data: estadoData, error: estadoError } = await supabase
+//       .from('reportesexistentes')
+//       .select(`
+//         estado,
+//         departamentos:departamentoactual ( nombre )
+//       `)
+//       .eq('folio', folio)
+//       .single()
 
-    if (estadoError) throw estadoError
+//     if (estadoError) throw estadoError
 
-    // 2. Buscar problema y domicilio en reportes, con joins a departamentos y problemas
-    const { data: reporteData, error: reporteError } = await supabase
-      .from('reportes')
-      .select(`
-        domicilio,
-        departamentos ( nombre ),
-        problemas ( nombre )
-      `)
-      .eq('folio', folio)
-      .single()
+//     // 2. Buscar problema y domicilio en reportes, con joins a departamentos y problemas
+//     const { data: reporteData, error: reporteError } = await supabase
+//       .from('reportes')
+//       .select(`
+//         domicilio,
+//         departamentos ( nombre ),
+//         problemas ( nombre )
+//       `)
+//       .eq('folio', folio)
+//       .single()
 
-    if (reporteError) throw reporteError
+//     if (reporteError) throw reporteError
 
-    return {
-      folio,
-      estado: estadoData?.estado,
-      departamentoActual: estadoData?.departamentos?.nombre, // nombre del departamento actual
-      problema: reporteData?.problemas?.nombre,              // nombre del problema
-      domicilio: reporteData?.domicilio
-    }
-  } catch (error: any) {
-    console.error('Error al consultar estado del reporte:', error.message)
-    return null
-  }
-}
+//     return {
+//       folio,
+//       estado: estadoData?.estado,
+//       departamentoActual: estadoData?.departamentos?.nombre, // nombre del departamento actual
+//       problema: reporteData?.problemas?.nombre,              // nombre del problema
+//       domicilio: reporteData?.domicilio
+//     }
+//   } catch (error: any) {
+//     console.error('Error al consultar estado del reporte:', error.message)
+//     return null
+//   }
+// }
 import { ref } from 'vue'
 export const menuAbierto = ref(false)
 export const menuRef = ref<HTMLElement | null>(null)
 
 export const iniciarSesionAdmin = () => {
-  // Cerrar menú si estaba abierto
-  menuAbierto.value = false
+  // menuAbierto.value = false // Descomenta si tienes acceso a esta variable aquí
 
-  // Crear contenedor del modal
   const modal = document.createElement('div')
   modal.className = 'modal'
 
-  // Contenido del modal
+  // Estructura actualizada con los spans de error individuales
   modal.innerHTML = `
     <div class="modal-contenido">
       <h2>Iniciar sesión</h2>
       <p>Ingresa tus credenciales</p>
-      <input type="text" id="login-email" placeholder="Correo electrónico" />
-      <input type="password" id="login-password" placeholder="Contraseña" />
-      <p id="login-error" style="color:red; display:none;"></p>
-      <button id="login-submit">Iniciar sesión</button>
-      <button id="login-cancel" style="margin-top:10px; background:#ccc; color:#000;">Cancelar</button>
+
+      <div style="margin-bottom: 12px; text-align: left;">
+        <input type="email" id="login-email" placeholder="Correo electrónico" style="width: 100%;" />
+        <span id="error-email" class="msg-error" style="display: none; color: #e74c3c; font-size: 0.75rem; font-weight: 600; margin-top: 4px;"></span>
+      </div>
+
+      <div style="margin-bottom: 12px; text-align: left;">
+        <input type="password" id="login-password" placeholder="Contraseña" style="width: 100%;" />
+        <span id="error-password" class="msg-error" style="display: none; color: #e74c3c; font-size: 0.75rem; font-weight: 600; margin-top: 4px;"></span>
+      </div>
+
+      <p id="login-error-global" class="msg-error" style="display: none; color: #e74c3c; font-size: 0.85rem; font-weight: 600; text-align: center;"></p>
+
+      <button id="login-submit" type="submit" style="width: 100%; margin-top: 10px;">Iniciar sesión</button>
+      <button id="login-cancel" style="width: 100%; margin-top: 10px; background: #ccc; color: #000;">Cancelar</button>
     </div>
   `
 
-  // Agregar modal al body
   document.body.appendChild(modal)
 
-  // Referencias a los elementos
+  // Referencias al DOM
   const emailInput = modal.querySelector('#login-email') as HTMLInputElement
   const passwordInput = modal.querySelector('#login-password') as HTMLInputElement
-  const errorMsg = modal.querySelector('#login-error') as HTMLParagraphElement
+  const errorEmail = modal.querySelector('#error-email') as HTMLSpanElement
+  const errorPassword = modal.querySelector('#error-password') as HTMLSpanElement
+  const errorGlobal = modal.querySelector('#login-error-global') as HTMLParagraphElement
   const submitBtn = modal.querySelector('#login-submit') as HTMLButtonElement
   const cancelBtn = modal.querySelector('#login-cancel') as HTMLButtonElement
 
-  // Validación al enviar
-  submitBtn.addEventListener('click', () => {
+  // Función auxiliar para limpiar errores visuales antes de validar
+  const limpiarErrores = () => {
+    emailInput.classList.remove('input-error')
+    passwordInput.classList.remove('input-error')
+    errorEmail.style.display = 'none'
+    errorPassword.style.display = 'none'
+    errorGlobal.style.display = 'none'
+  }
+
+  submitBtn.addEventListener('click', async () => {
     const email = emailInput.value.trim()
     const password = passwordInput.value.trim()
+    let esValido = true
 
-    if (!email || !password) {
-      errorMsg.textContent = 'Por favor ingresa correo y contraseña'
-      errorMsg.style.display = 'block'
-      return
+    limpiarErrores()
+
+    // Validación de Correo
+    if (!email) {
+      errorEmail.textContent = 'El correo es obligatorio'
+      errorEmail.style.display = 'block'
+      emailInput.classList.add('input-error')
+      esValido = false
+    } else {
+      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!regexEmail.test(email)) {
+        errorEmail.textContent = 'Ingresa un correo válido'
+        errorEmail.style.display = 'block'
+        emailInput.classList.add('input-error')
+        esValido = false
+      }
     }
 
-    const regexEmail = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/
-    if (!regexEmail.test(email)) {
-      errorMsg.textContent = 'Correo inválido'
-      errorMsg.style.display = 'block'
-      return
+    // Validación de Contraseña
+    if (!password) {
+      errorPassword.textContent = 'La contraseña es obligatoria'
+      errorPassword.style.display = 'block'
+      passwordInput.classList.add('input-error')
+      esValido = false
+    } else if (password.length < 6) {
+      errorPassword.textContent = 'Debe tener al menos 6 caracteres'
+      errorPassword.style.display = 'block'
+      passwordInput.classList.add('input-error')
+      esValido = false
     }
 
-    if (password.length < 6) {
-      errorMsg.textContent = 'La contraseña debe tener al menos 6 caracteres'
-      errorMsg.style.display = 'block'
-      return
+    if (!esValido) return
+
+    // --- Petición a Supabase ---
+    submitBtn.disabled = true
+    submitBtn.textContent = 'Iniciando...'
+
+    try {
+      const { data, error } = await supabase.rpc('login_admin', {
+        p_correo: email,
+        p_contrasena: password
+      })
+
+      if (error || !data || data.length === 0) {
+        errorGlobal.textContent = 'Correo o contraseña incorrectos'
+        errorGlobal.style.display = 'block'
+        emailInput.classList.add('input-error')
+        passwordInput.classList.add('input-error')
+
+        submitBtn.disabled = false
+        submitBtn.textContent = 'Iniciar sesión'
+        return
+      }
+
+      const admin = data[0]
+      localStorage.setItem('adminSession', JSON.stringify(admin))
+
+      alert(`Bienvenido de vuelta, ${admin.nombre}`)
+      document.body.removeChild(modal)
+
+      router.push('/dashboard')
+
+    } catch (err) {
+      errorGlobal.textContent = 'Error al conectar con el servidor'
+      errorGlobal.style.display = 'block'
+      submitBtn.disabled = false
+      submitBtn.textContent = 'Iniciar sesión'
     }
-
-    // Aquí va tu lógica real de login
-    alert(`Login correcto: ${email}`)
-
-    document.body.removeChild(modal)
   })
 
   // Cancelar y cerrar modal
@@ -160,14 +224,13 @@ export const iniciarSesionAdmin = () => {
     document.body.removeChild(modal)
   })
 
-  // Cerrar modal si se hace click fuera del contenido
+  // Cerrar modal al hacer click fuera
   modal.addEventListener('click', (event) => {
     if (event.target === modal) {
       document.body.removeChild(modal)
     }
   })
 }
-
 
 // Detectar click fuera del menú
 export const handleClickOutside = (event: MouseEvent) => {

@@ -213,6 +213,13 @@
 }
 
 .modal-contenido input[type="text"],
+.modal-contenido input[type="email"] {
+  width: 100%;
+  padding: 10px;
+  margin: 15px 0 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
 .modal-contenido input[type="password"] {
   width: 100%;
   padding: 10px;
@@ -234,4 +241,91 @@
 
 .modal-contenido button:hover {
   background-color: #1b5e20;
+}
+
+/* Asegúrate de tener esto en tu CSS global para que el modal lo detecte */
+.input-error {
+  border-color: #e74c3c !important;
+  outline: none;
+}
+.input-error:focus {
+  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2);
+}
+/* ==========================================
+   MODAL DE BÚSQUEDA (Estilo Exacto)
+========================================== */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.55); /* Fondo oscuro semitransparente idéntico */
+  display: flex; justify-content: center; align-items: center; z-index: 9999;
+}
+
+.modal-busqueda {
+  background: white; width: 90%; max-width: 500px; border-radius: 8px;
+  overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.modal-busqueda-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 20px; border-bottom: 1px solid #e5e5e5; /* Línea gris muy sutil */
+}
+
+.modal-busqueda-header h3 {
+  margin: 0; color: #333; font-size: 1.15rem; font-weight: 700;
+}
+
+.btn-cerrar-delgado {
+  background: none; border: none; color: #777; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  transition: color 0.2s;
+}
+
+.btn-cerrar-delgado:hover { color: #111; }
+
+.modal-busqueda-body {
+  padding: 20px; text-align: left;
+}
+
+.label-folio {
+  display: block; font-weight: 700; color: #444; margin-bottom: 10px; font-size: 0.95rem;
+}
+
+/* Alineación perfecta de altura entre input y botón */
+.input-grupo {
+  display: flex; gap: 12px; height: 42px;
+}
+
+.input-grupo input {
+  flex: 1; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px;
+  font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+  color: #333;
+}
+
+.input-grupo input::placeholder {
+  color: #999;
+}
+
+.input-grupo input:focus {
+  border-color: #318236;
+}
+
+.btn-buscar-verde {
+  background-color: #318236; /* Verde exacto de la captura */
+  color: white; border: none; padding: 0 32px; border-radius: 4px;
+  font-weight: 500; font-size: 0.95rem; cursor: pointer; transition: background-color 0.2s;
+}
+
+.btn-buscar-verde:hover {
+  background-color: #256629;
+}
+
+.msg-error-modal {
+  color: #d32f2f; font-size: 0.85rem; margin-top: 8px;
+}
+
+/* Adaptación para pantallas muy pequeñas (celulares) */
+@media (max-width: 480px) {
+  .input-grupo { flex-direction: column; height: auto; }
+  .input-grupo input { height: 42px; }
+  .btn-buscar-verde { height: 42px; width: 100%; }
 }
