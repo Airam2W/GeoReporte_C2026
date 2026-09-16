@@ -429,6 +429,14 @@ const cerrarSesion = () => {
   localStorage.removeItem('adminSession')
   router.push('/')
 }
+
+defineExpose({
+  admin,cargando,reportes,problemasOpciones,
+  filtros,reportesFiltrados,modalVisible,reporteActivo,
+  abrirModalVer,cerrarModalVer,
+  rechazarReporte,devolverReporte,
+  asignarReporte,cerrarSesion,
+})
 </script>
 
 <style scoped>
