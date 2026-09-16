@@ -23,6 +23,16 @@ vi.mock('@/logic/home', async () => {
     };
 });
 
+vi.mock('@/lib/supabase', () => ({
+    supabase: {
+        from: vi.fn(),
+        rpc: vi.fn(),
+        storage: {
+            from: vi.fn(),
+        },
+    },
+}));
+
 describe('Pruebas Unitarias del Módulo Home', () => {
     let wrapper: VueWrapper<any>;
     let singleMock: any;

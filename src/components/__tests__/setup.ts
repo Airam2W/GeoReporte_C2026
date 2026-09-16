@@ -22,6 +22,7 @@ vi.mock('leaflet', () => ({
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: vi.fn(),
+    rpc: vi.fn(),
     storage: {
       from: vi.fn(),
     },
