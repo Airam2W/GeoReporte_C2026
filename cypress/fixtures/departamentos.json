@@ -1,5 +1,5 @@
 [
-  { "id": 1, "nombre": "Limpia, Recolección, Tratamiento y Disposición Final de Residuos" },
-  { "id": 2, "nombre": "Parques y Jardines" },
-  { "id": 3, "nombre": "Alumbrado Público y Eficiencia Energética" }
+  { "id": 1, "nombre": "Limpia y Recolección", "nombreamigable": "Limpia, Recolección, Tratamiento y Disposición Final de Residuos" },
+  { "id": 2, "nombre": "Parques y Jardines", "nombreamigable": "Parques y Jardines" },
+  { "id": 3, "nombre": "Alumbrado Público", "nombreamigable": "Alumbrado Público y Eficiencia Energética" }
 ]

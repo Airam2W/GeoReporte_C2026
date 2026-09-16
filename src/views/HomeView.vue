@@ -58,6 +58,11 @@ const ejecutarBusqueda = async () => {
   }
   modalVisible.value = true
 }
+defineExpose({
+  folioInput, errorBusqueda, modalBusquedaVisible,
+  reporteEncontrado, modalVisible, ejecutarBusqueda,
+  irAReporte, abrirModalBusqueda
+})
 </script>
 
 <template>
@@ -137,6 +142,6 @@ const ejecutarBusqueda = async () => {
       </div>
     </transition>
   </div>
-</template>
+</template> 
 
 <style src="../assets/home.css"></style>

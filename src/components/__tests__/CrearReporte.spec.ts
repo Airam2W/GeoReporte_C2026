@@ -7,6 +7,7 @@ import './setup'
 describe('Pruebas Unitarias del Módulo CrearReporte', () => {
     let wrapper: VueWrapper<any>;
     let insertMock: any;
+    let insertReporteExistenteMock:any;
     const mockDepartamentos = [
         { id: 1, nombre: 'Alumbrado Público' },
         { id: 2, nombre: 'Parques y Jardines' },
@@ -19,6 +20,7 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         insertMock = vi.fn().mockResolvedValue({error: null});
+        insertReporteExistenteMock = vi.fn().mockResolvedValue({error: null});
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'departamentos') {
                 return {
@@ -32,10 +34,15 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
                     eq: vi.fn().mockReturnThis(),
                     order: vi.fn().mockResolvedValue({ data: mockProblemas, error: null }),
                 };
-            }
+            } 
             if (table === 'reportes') {
                 return {
                     insert: insertMock,
+                };
+            }
+            if (table == 'reportesexistentes'){
+                return{
+                    insert: insertReporteExistenteMock,
                 };
             }
             return{};
@@ -154,7 +161,8 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
         await wrapper.vm.enviarReporte();
         expect(supabase.storage.from).toHaveBeenCalledWith('fotos');
         expect(supabase.from).toHaveBeenCalledWith('reportes');
-        expect(window.alert).toHaveBeenCalledWith('¡Reporte enviado exitosamente!');
+        expect(supabase.from).toHaveBeenCalledWith('reportesexistentes');
+        expect(document.querySelector('.modal-reporte-exitoso')).not.toBeNull();
         expect(wrapper.vm.form.descripcion).toBe('');
     });
 
@@ -176,32 +184,4 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
         }))
     });
 
-    it('PU-13: Mostrar la información de los folios existentes', async () =>{
-        const mockReporte = {
-            folio: 10,
-            gestionnombre: 'Alumbrado Público',
-            estadonombre: 'En Proceso',
-            descripcion: 'Prueba de consulta de folio'
-        };
-        (global.fetch as any).mockResolvedValueOnce({
-            ok: true,
-            json: async () => mockReporte
-        })
-
-        wrapper.vm.folioBusqueda = '10';
-        await wrapper.vm.buscarReporte();
-
-        expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/reportes/10'));
-        expect(wrapper.vm.reporteEncontrado).toEqual(mockReporte);
-    })
-
-    it('PU-14: Mostrar folio no existente o no encontrado', async () =>{
-        (global.fetch as any).mockResolvedValueOnce({
-                ok:false,
-                status: 404
-        });
-        wrapper.vm.folioBusqueda = '99999';
-        await wrapper.vm.buscarReporte();
-        expect(wrapper.vm.reporteEncontrado).toBeNull();
-    });
 });
