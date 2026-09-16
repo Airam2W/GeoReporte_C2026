@@ -281,7 +281,7 @@ describe('Pruebas del panel de filtros del administrador', () => {
 		)
 		expect(reporte.estado).toBe('En Proceso')
 	})
-	/*it('PU-PA-15: doble clic en rechazar dispara dos actualizaciones a la BD', async () => {
+	it('PU-PA-15: doble clic en rechazar dispara dos actualizaciones a la BD', async () => {
   		const Swal = (await import('sweetalert2')).default
 
   		const p1 = wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
@@ -306,5 +306,4 @@ describe('Pruebas del panel de filtros del administrador', () => {
 		expect.objectContaining({ title: '¿Devolver a "Llegado"?' }),)
 		expect(updateMock).toHaveBeenCalledTimes(1)
 	})
-	*/
 })
