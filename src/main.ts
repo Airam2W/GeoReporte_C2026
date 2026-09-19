@@ -13,3 +13,9 @@ app.use(createPinia())
 app.use(router)
 
 app.mount('#app')
+
+const adminSession = localStorage.getItem('adminSession')
+if (adminSession) {
+  router.push('/dashboard')
+}
+

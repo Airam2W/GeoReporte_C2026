@@ -6,13 +6,25 @@ import PanelAdministrador from '../views/PanelAdministrador.vue'
 const routes = [
   { path: '/', component: HomeView },
   { path: '/reporte', component: CrearReporte },
-  { path: '/dashboard', component: PanelAdministrador }
+  { path: '/dashboard', component: PanelAdministrador },
+  { path: '/inicio', component: HomeView },
 ]
 
 const router = createRouter({
   history: createWebHashHistory('/GeoReporte_C2026/'),
   routes,
 })
+
+router.beforeEach((to, from, next) => {
+  const adminSession = localStorage.getItem('adminSession')
+
+  if (to.path === '/dashboard' && !adminSession) {
+    next('/') // no hay sesión → redirige al home
+  } else {
+    next() // hay sesión → deja pasar
+  }
+})
+
 
 
 export default router

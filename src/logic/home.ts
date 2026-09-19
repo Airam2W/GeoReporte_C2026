@@ -52,7 +52,6 @@ import { Toast } from '../utils/alertas'
 //   })
 // }
 
-
 // export const mostrarEstadoReporte = async (folio: string) => {
 //   try {
 //     // 1. Buscar estado y departamentoactual en reportesexistentes con join a departamentos
@@ -113,9 +112,10 @@ export const iniciarSesionAdmin = () => {
         <span id="error-email" class="msg-error" style="display: none; color: #e74c3c; font-size: 0.75rem; font-weight: 600; margin-top: 4px;"></span>
       </div>
 
-      <div style="margin-bottom: 12px; text-align: left;">
-        <input type="password" id="login-password" placeholder="Contraseña" style="width: 100%;" />
-        <span id="error-password" class="msg-error" style="display: none; color: #e74c3c; font-size: 0.75rem; font-weight: 600; margin-top: 4px;"></span>
+      <div class="password-container">
+        <input type="password" id="login-password" placeholder="Contraseña" />
+        <span id="toggle-password" class="toggle-password">👁</span>
+        <span id="error-password" class="msg-error"></span>
       </div>
 
       <p id="login-error-global" class="msg-error" style="display: none; color: #e74c3c; font-size: 0.85rem; font-weight: 600; text-align: center;"></p>
@@ -135,6 +135,29 @@ export const iniciarSesionAdmin = () => {
   const errorGlobal = modal.querySelector('#login-error-global') as HTMLParagraphElement
   const submitBtn = modal.querySelector('#login-submit') as HTMLButtonElement
   const cancelBtn = modal.querySelector('#login-cancel') as HTMLButtonElement
+
+  const togglePassword = modal.querySelector('#toggle-password') as HTMLSpanElement
+
+  togglePassword.addEventListener('click', () => {
+    if (passwordInput.type === 'password') {
+      passwordInput.type = 'text'
+      togglePassword.textContent = '⌣' // cambia el icono cuando se muestra
+    } else {
+      passwordInput.type = 'password'
+      togglePassword.textContent = '👁' // vuelve al ojo cuando se oculta
+    }
+  })
+
+  // Después de definir emailInput, passwordInput y submitBtn
+  const handleEnter = (event: KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      submitBtn.click() // dispara el mismo flujo que el botón
+    }
+  }
+
+  emailInput.addEventListener('keydown', handleEnter)
+  passwordInput.addEventListener('keydown', handleEnter)
 
   // Función auxiliar para limpiar errores visuales antes de validar
   const limpiarErrores = () => {
@@ -188,9 +211,10 @@ export const iniciarSesionAdmin = () => {
     submitBtn.textContent = 'Iniciando...'
 
     try {
+      // Tu RPC actual
       const { data, error } = await supabase.rpc('login_admin', {
         p_correo: email,
-        p_contrasena: password
+        p_contrasena: password,
       })
 
       if (error || !data || data.length === 0) {
@@ -210,14 +234,13 @@ export const iniciarSesionAdmin = () => {
       // Para éxito
       Toast.fire({
         icon: 'success',
-        title: `¡Bienvenido de vuelta, ${admin.nombre}!`
+        title: `¡Bienvenido de vuelta, ${admin.nombre}!`,
       }).then(() => {
         router.push('/dashboard')
       })
       document.body.removeChild(modal)
 
       router.push('/dashboard')
-
     } catch (err) {
       errorGlobal.textContent = 'Error al conectar con el servidor'
       errorGlobal.style.display = 'block'

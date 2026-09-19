@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { supabase } from '../lib/supabase' // Asegúrate de que la ruta sea correcta
+import { supabase } from '../lib/supabase'
 import { iniciarSesionAdmin, menuAbierto, menuRef } from '../logic/home'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 

@@ -88,6 +88,7 @@
       <div class="pin-sombra"></div>
     </figure>
 
+    <button v-show="!panelAbierto" class="btn-regresar" @click="irA('/')">↩</button>
     <button v-show="!panelAbierto" class="btn-agregar" @click="abrirPanel">+</button>
 
     <!-- Panel formulario / modo mapa -->
@@ -269,6 +270,7 @@
 </template>
 
 <script setup lang="ts">
+
 import { onMounted, onUnmounted, ref } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -428,6 +430,13 @@ const confirmarDireccion = async () => {
   setTimeout(() => map.value?.invalidateSize(), 400)
 }
 
+import { useRouter } from 'vue-router'
+const router = useRouter()
+
+const irA = (ruta: string) => {
+  router.push(ruta)
+}
+
 const irAUbicacionActual = () => {
   if (!navigator.geolocation) {
     alert('Tu navegador no soporta geolocalización')
@@ -508,6 +517,7 @@ const limpiarFormulario = () => {
 }
 
 const enviarReporte = async () => {
+
   if (enviando.value) return
 
   errores.value = {}
@@ -549,6 +559,10 @@ const enviarReporte = async () => {
   }
 
   if (!esValido) return
+
+  //Desactivar el botón de enviar mientras se procesa la solicitud
+  const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
+  if (submitBtn) submitBtn.disabled = true
 
   // Generar el folio del reporte
   const depTresLetras = departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombre
@@ -624,6 +638,8 @@ const enviarReporte = async () => {
     alert(error.message || 'Error de conexión al enviar el reporte')
   } finally {
     enviando.value = false
+    const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
+    if (submitBtn) submitBtn.disabled = false
   }
 }
 

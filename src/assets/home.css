@@ -223,7 +223,7 @@
 .modal-contenido input[type="password"] {
   width: 100%;
   padding: 10px;
-  margin-bottom: 15px;
+  margin: 15px 0 10px 0;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
@@ -322,6 +322,41 @@
 .msg-error-modal {
   color: #d32f2f; font-size: 0.85rem; margin-top: 8px;
 }
+
+.password-container {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.password-container input {
+  width: 100%;
+  padding-right: 40px; /* espacio reservado para el icono */
+}
+
+.toggle-password {
+  position: absolute;
+  right: 10px;              /* pegado al borde derecho */
+  top: 50%;                 /* centrado verticalmente */
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 1.2rem;        /* tamaño fijo para el emoji */
+  line-height: 1;           /* evita que se desplace raro */
+  color: #555;
+}
+
+.toggle-password:hover {
+  color: #000;
+}
+
+.msg-error {
+  display: none;
+  color: #e74c3c;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+
 
 /* Adaptación para pantallas muy pequeñas (celulares) */
 @media (max-width: 480px) {
