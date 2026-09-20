@@ -91,6 +91,7 @@
             <option value="En Proceso" class="badge-amarillo">En Proceso</option>
             <option value="Finalizado" class="badge-verde">Finalizado</option>
             <option value="Rechazado" class="badge-rojo">Rechazado</option>
+            <option value="Turnado" class="badge-purpura">Turnado</option>
           </select>
         </div>
       </section>
@@ -161,7 +162,7 @@
                 </button>
 
                 <button
-                  v-if="reporte.estado !== 'Rechazado'"
+                  v-if="reporte.estado !== 'Rechazado' && reporte.estado !== 'Turnado'"
                   class="btn-accion btn-rechazar"
                   title="Rechazar reporte"
                   @click="rechazarReporte(reporte.folio)"
@@ -258,16 +259,20 @@ const cargarReportes = async () => {
       `
       folio, descripcion, nombre, telefono, domicilio, referencias, foto_url, created_at,
       problemas (id, nombre),
-      reportesexistentes (estado)
+      detalle_reporte (
+        estado_id,
+        estadoreporte (estado)
+      )
     `,
     )
     .eq('departamento_id', admin.value.departamento_id)
     .order('created_at', { ascending: false })
 
   if (!error && data) {
+    console.log(data)
     reportes.value = data.map((r) => ({
       ...r,
-      estado: r.reportesexistentes?.[0]?.estado || 'Llegado',
+      estado: r.detalle_reporte?.estadoreporte?.estado || 'Llegado',
     }))
   }
   cargando.value = false
@@ -335,8 +340,8 @@ const rechazarReporte = async (folio: string) => {
 
   if (result.isConfirmed) {
     const { error } = await supabase
-      .from('reportesexistentes')
-      .update({ estado: 'Rechazado' })
+      .from('detalle_reporte')
+      .update({ estado_id: 3 })
       .eq('folio', folio)
 
     if (!error) {

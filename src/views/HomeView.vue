@@ -40,15 +40,20 @@ const ejecutarBusqueda = async () => {
     .select(`
       folio, descripcion, nombre, telefono, domicilio, referencias, foto_url, created_at,
       problemas (nombreamigable),
-      reportesexistentes (estado)
+      detalle_reporte (
+        estado_id,
+        estadoreporte (estado)
+      )
     `)
     .eq('folio', folioInput.value.trim())
     .single()
+
 
   if (error || !data) {
     errorBusqueda.value = 'No se encontró ningún reporte con ese folio.'
     return
   }
+
 
   // Si tiene éxito, cerramos este modal y abrimos el de los detalles
   modalBusquedaVisible.value = false
@@ -142,6 +147,6 @@ defineExpose({
       </div>
     </transition>
   </div>
-</template> 
+</template>
 
 <style src="../assets/home.css"></style>

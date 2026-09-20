@@ -274,7 +274,6 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-// Importamos la instancia de supabase que encontraste
 import { supabase } from '../lib/supabase'
 
 const mapContainer = ref<HTMLElement | null>(null)
@@ -617,10 +616,9 @@ const enviarReporte = async () => {
     })
 
     // 3. Insertar los datos en la tabla 'reportesExistentes'
-    const { error: insertReporteExistenteError } = await supabase.from('reportesexistentes').insert({
+    const { error: insertReporteExistenteError } = await supabase.from('detalle_reporte').insert({
       folio: folioGenerado,
-      estado: 'Llegado',
-      departamentoactual: form.value.departamento_id,
+      estado_id: 1
     })
 
     if (insertReporteError) throw new Error('Error al guardar en base de datos: ' + insertReporteError.message)
