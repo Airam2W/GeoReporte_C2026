@@ -269,7 +269,6 @@ const cargarReportes = async () => {
     .order('created_at', { ascending: false })
 
   if (!error && data) {
-    console.log(data)
     reportes.value = data.map((r) => ({
       ...r,
       estado: r.detalle_reporte?.estadoreporte?.estado || 'Llegado',

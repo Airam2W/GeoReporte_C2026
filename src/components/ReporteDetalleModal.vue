@@ -144,4 +144,4 @@ const props = defineProps({
 
 </script>
 
-<style src="../assets/reporteDetalle.css"></style>
+<style src="../assets/reporteDetalle.css"/>

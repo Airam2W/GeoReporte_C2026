@@ -95,7 +95,7 @@ import { ref } from 'vue'
 export const menuAbierto = ref(false)
 export const menuRef = ref<HTMLElement | null>(null)
 
-export const iniciarSesionAdmin = () => {
+export const iniciarSesion = () => {
   // menuAbierto.value = false // Descomenta si tienes acceso a esta variable aquí
 
   const modal = document.createElement('div')
@@ -211,8 +211,7 @@ export const iniciarSesionAdmin = () => {
     submitBtn.textContent = 'Iniciando...'
 
     try {
-      // Tu RPC actual
-      const { data, error } = await supabase.rpc('login_admin', {
+      const { data, error } = await supabase.rpc('login_usuario', {
         p_correo: email,
         p_contrasena: password,
       })
@@ -228,19 +227,38 @@ export const iniciarSesionAdmin = () => {
         return
       }
 
-      const admin = data[0]
-      localStorage.setItem('adminSession', JSON.stringify(admin))
+      const usuario = data[0]
+
+      if (usuario.estado !== 'Alta' && usuario.estado !== 'Activo') {
+        errorGlobal.textContent = 'Esta cuenta ha sido dada de baja. Porfavor, contacta con el Director General'
+        errorGlobal.style.display = 'block'
+        submitBtn.disabled = false
+        submitBtn.textContent = 'Iniciar sesión'
+        return
+      }
+
+      localStorage.setItem('adminSession', JSON.stringify(usuario))
 
       // Para éxito
       Toast.fire({
         icon: 'success',
-        title: `¡Bienvenido de vuelta, ${admin.nombre}!`,
-      }).then(() => {
-        router.push('/dashboard')
+        title: `¡Bienvenido de vuelta, ${usuario.nombre}!`,
       })
+
       document.body.removeChild(modal)
 
-      router.push('/dashboard')
+      switch (usuario.tipo_id) {
+        case 1:
+          router.push('/management')
+          break;
+        case 2:
+          router.push('/dashboard')
+          break;
+        default:
+          router.push('/dashboard')
+          break;
+        }
+
     } catch (err) {
       errorGlobal.textContent = 'Error al conectar con el servidor'
       errorGlobal.style.display = 'block'

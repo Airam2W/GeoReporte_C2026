@@ -10,7 +10,7 @@ INSERT INTO tipoUsuario (id, nombre) VALUES
 (3, 'Supervisor'),
 (4, 'Jefe'),
 (5, 'Trabajador'),
-(6, 'PersonalExterno');
+(6, 'Personal Externo');
 
 CREATE TABLE IF NOT EXISTS estadoReporte(
     id SERIAL PRIMARY KEY,
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     apellido_m TEXT NULL,
     correo TEXT NOT NULL UNIQUE,
     contrasena TEXT NOT NULL,
-    estadoAdministrativo TEXT DEFAULT 'Activo',
+    estadoAdministrativo TEXT DEFAULT 'Alta',
     tipoUsuario_id INTEGER REFERENCES tipoUsuario(id) ON DELETE SET NULL
 );
 
