@@ -1,6 +1,6 @@
 <template>
   <transition name="fade">
-    <div v-if="visible" class="modal-overlay" @click.self="cerrar">
+    <div v-if="visible" class="modal-overlay">
       <div class="modal-card modal-usuario">
 
         <div class="modal-header">
@@ -25,12 +25,23 @@
               </div>
               <div class="info-item">
                 <label>Tipo de Usuario</label>
-                <p>{{ usuario.tipoUsuario?.nombre || 'No asignado' }}</p>
+                <p :class="['badge badge-verde']" style="font-weight:lighter" >{{ usuario.tipousuario?.nombre || 'No asignado' }}</p>
+              </div>
+            </div>
+
+            <div class="info-grupo-doble" style="margin-top: 16px;">
+              <div class="info-item">
+                <label>Departamento</label>
+                <p>{{ usuario.departamentoNombre || 'No asignado / Externo' }}</p>
+              </div>
+              <div class="info-item">
+                <label>Fecha de Alta</label>
+                <p>{{ formatearFechaLocal(usuario.created_at) }}</p>
               </div>
             </div>
 
             <div class="estado-actual-box" style="margin-top: 20px;">
-              <label>Estado Administrativo</label>
+              <label>Estado Actual</label>
               <span :class="['badge badge-grande', usuario.estadoadministrativo === 'Alta' ? 'badge-verde' : 'badge-rojo']">
                 {{ usuario.estadoadministrativo }}
               </span>
@@ -41,7 +52,6 @@
         <div class="modal-footer">
           <button class="btn-secundario" @click="cerrar">Cerrar</button>
 
-          <!-- Botón dinámico según el estado -->
           <button
             v-if="usuario?.estadoadministrativo === 'Alta'"
             class="btn-primario" style="background-color: #c62828;"
@@ -66,6 +76,7 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue'
+import { formatearFechaLocal } from '@/logic/reporteDetalleModal';
 
 defineProps({
   visible: { type: Boolean, default: false },
