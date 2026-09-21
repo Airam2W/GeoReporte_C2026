@@ -16,6 +16,7 @@ app.mount('#app')
 
 const adminSession = localStorage.getItem('adminSession')
 if (adminSession) {
-  router.push('/dashboard')
+  const session = JSON.parse(adminSession)
+  router.push(session.tipo_id === 1 ? '/management' : '/dashboard')
 }
 

@@ -292,7 +292,7 @@
 
 /* Alineación perfecta de altura entre input y botón */
 .input-grupo {
-  display: flex; gap: 12px; height: 42px;
+  display: flex; gap: 12px; height: 58px;
 }
 
 .input-grupo input {
@@ -311,8 +311,9 @@
 
 .btn-buscar-verde {
   background-color: #318236; /* Verde exacto de la captura */
-  color: white; border: none; padding: 0 32px; border-radius: 4px;
+  color: white; border: none; padding: 10px 32px; border-radius: 4px;
   font-weight: 500; font-size: 0.95rem; cursor: pointer; transition: background-color 0.2s;
+  margin-top: 3px;
 }
 
 .btn-buscar-verde:hover {

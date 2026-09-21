@@ -101,7 +101,7 @@
             </button>
 
             <button
-              v-if="reporte.estado !== 'Rechazado'"
+              v-if="reporte.estado !== 'Rechazado' && reporte.estado !== 'Turnado'"
               class="btn-peligroso"
               @click="$emit('rechazar', reporte?.folio)"
             >
@@ -144,4 +144,4 @@ const props = defineProps({
 
 </script>
 
-<style src="../assets/reporteDetalle.css"></style>
+<style src="../assets/reporteDetalle.css"/>

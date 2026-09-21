@@ -202,6 +202,10 @@
   background: #ffebee;
   color: #c62828;
 }
+.badge-purpura {
+  background: #dac5e8;
+  color: #571897;
+}
 .badge-gris {
   background: #f5f5f5;
   color: #616161;
@@ -209,9 +213,17 @@
 
 /* Botones Acción */
 .acciones-celda {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  width: 1%;
+}
+.acciones-celda .btn-accion {
+  display: inline-flex;
+  vertical-align: middle;
+}
+.acciones-celda .btn-accion + .btn-accion {
+  margin-left: 8px;
 }
 .btn-accion {
   width: 32px;
@@ -237,6 +249,10 @@
 
 .btn-devolver:hover {
   background: #e8f5e9;
+}
+
+.btn-editar:hover {
+  background: #fff8e1;
 }
 
 /* ==========================================

@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
-import { iniciarSesionAdmin, menuAbierto, menuRef } from '../logic/home'
+import { iniciarSesion, menuAbierto, menuRef } from '../logic/home'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 
 const router = useRouter()
@@ -40,21 +40,26 @@ const ejecutarBusqueda = async () => {
     .select(`
       folio, descripcion, nombre, telefono, domicilio, referencias, foto_url, created_at,
       problemas (nombreamigable),
-      reportesexistentes (estado)
+      detalle_reporte (
+        estado_id,
+        estadoreporte (estado)
+      )
     `)
     .eq('folio', folioInput.value.trim())
     .single()
+
 
   if (error || !data) {
     errorBusqueda.value = 'No se encontró ningún reporte con ese folio.'
     return
   }
 
+
   // Si tiene éxito, cerramos este modal y abrimos el de los detalles
   modalBusquedaVisible.value = false
   reporteEncontrado.value = {
     ...data,
-    estado: data.reportesexistentes?.[0]?.estado || 'Llegado'
+    estado: data.detalle_reporte?.estadoreporte?.estado || 'Llegado'
   }
   modalVisible.value = true
 }
@@ -86,7 +91,7 @@ defineExpose({
         </button>
         <transition name="fade">
           <ul v-if="menuAbierto" class="menu-list">
-            <li @click="iniciarSesionAdmin">Iniciar sesión</li>
+            <li @click="iniciarSesion">Iniciar sesión</li>
           </ul>
         </transition>
       </nav>
@@ -142,6 +147,6 @@ defineExpose({
       </div>
     </transition>
   </div>
-</template> 
+</template>
 
 <style src="../assets/home.css"></style>
