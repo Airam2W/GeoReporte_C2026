@@ -25,7 +25,7 @@ const reportesMock = [
 		foto_url: null,
 		created_at: '2026-09-15T12:00:00Z',
 		problemas: { id: 1, nombre: 'Bache' },
-		reportesexistentes: [{ estado: 'Llegado' }],
+		detalle_reporte: { estado_id: 1, estadoreporte: {estado: 'Llegado' }},
 	},
 	{
 		folio: 'ALU-LUZ-20260914-002-XYZ789',
@@ -37,7 +37,7 @@ const reportesMock = [
 		foto_url: null,
 		created_at: '2026-09-14T12:00:00Z',
 		problemas: { id: 2, nombre: 'Falla de iluminacion' },
-		reportesexistentes: [{ estado: 'Llegado' }],
+		detalle_reporte: { estado_id: 1, estadoreporte: {estado: 'Llegado' }},
 	},
 	{
 		folio: 'ALU-DRE-20260913-003-QWE456',
@@ -49,7 +49,7 @@ const reportesMock = [
 		foto_url: null,
 		created_at: '2026-09-13T12:00:00Z',
 		problemas: { id: 3, nombre: 'Drenaje' },
-		reportesexistentes: [{ estado: 'Finalizado' }],
+		detalle_reporte: { estado_id: 4, estadoreporte: {estado: 'Finalizado' }},
 	},
 ]
 
@@ -111,7 +111,7 @@ describe('Pruebas del panel de filtros del administrador', () => {
 					}),
 				}
 			}
-			if(table == 'reportesexistentes'){
+			if(table == 'detalle_reporte'){
 				return{
 					update: updateMock,
 				}
@@ -236,7 +236,7 @@ describe('Pruebas del panel de filtros del administrador', () => {
 
 		await wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
 
-		expect(updateMock).toHaveBeenCalledWith({ estado: 'Rechazado' })
+		expect(updateMock).toHaveBeenCalledWith({ estado_id: 3 })
 		expect(updateEqMock).toHaveBeenCalledWith('folio', 'ALU-BAC-20260915-001-ABC123')
 
 		const reporte = wrapper.vm.reportes.find(
@@ -288,7 +288,7 @@ describe('Pruebas del panel de filtros del administrador', () => {
   		const p2 = wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
 
   		await Promise.all([p1, p2])
-		expect(Swal.fire).toHaveBeenCalledTimes(4)
+		expect(Swal.fire).toHaveBeenCalledTimes(2)
 		expect(Swal.fire).toHaveBeenCalledWith(
     	expect.objectContaining({ title: '¿Rechazar reporte?' }),)
   		expect(updateMock).toHaveBeenCalledTimes(1)
@@ -301,7 +301,7 @@ describe('Pruebas del panel de filtros del administrador', () => {
 
 		await Promise.all([p1, p2])
 
-		expect(Swal.fire).toHaveBeenCalledTimes(4)
+		expect(Swal.fire).toHaveBeenCalledTimes(2)
 		expect(Swal.fire).toHaveBeenCalledWith(
 		expect.objectContaining({ title: '¿Devolver a "Llegado"?' }),)
 		expect(updateMock).toHaveBeenCalledTimes(1)

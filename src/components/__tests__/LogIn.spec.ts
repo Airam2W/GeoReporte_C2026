@@ -9,8 +9,8 @@ import HomeView from '@/views/HomeView.vue'
 import { supabase } from '@/lib/supabase'
 import router from '@/router'
 import { menuAbierto } from '@/logic/home'
-import './setup'
-
+import './setup' 
+ 
 describe('Pruebas Unitarias del inicio de sesión', () => {
 	const sessionStorage = new Map<string, string>()
 
@@ -70,7 +70,7 @@ describe('Pruebas Unitarias del inicio de sesión', () => {
 		modal.querySelector<HTMLButtonElement>('#login-submit')?.click()
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
-		expect(supabase.rpc).toHaveBeenCalledWith('login_admin', {
+		expect(supabase.rpc).toHaveBeenCalledWith('login_usuario', {
 			p_correo: 'admin@georeporte.mx',
 			p_contrasena: 'secreto123',
 		})
@@ -97,7 +97,7 @@ describe('Pruebas Unitarias del inicio de sesión', () => {
 
 	it('PU-LG-04: navega al dashboard con credenciales correctas', async () => {
 		vi.mocked(supabase.rpc).mockResolvedValue({
-			data: [{ id: 1, nombre: 'Administrador' }],
+			data: [{ id: 1, nombre: 'Administrador', estado: 'Activo', tipo_id: 2}],
 			error: null,
 		} as never)
 		const pushSpy = vi.spyOn(router, 'push').mockResolvedValue(undefined)
@@ -110,7 +110,7 @@ describe('Pruebas Unitarias del inicio de sesión', () => {
 		modal.querySelector<HTMLButtonElement>('#login-submit')?.click()
 		await vi.waitFor(() => expect(pushSpy).toHaveBeenCalledWith('/dashboard'))
 
-		expect(localStorage.getItem('adminSession')).toBe(JSON.stringify({ id: 1, nombre: 'Administrador' }))
+		expect(localStorage.getItem('adminSession')).toBe(JSON.stringify({ id: 1, nombre: 'Administrador', estado: 'Activo', tipo_id: 2 }))
 		expect(document.querySelector('.modal')).toBeNull()
 		wrapper.unmount()
 	})

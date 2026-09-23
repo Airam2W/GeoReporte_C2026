@@ -200,6 +200,7 @@ const router = useRouter()
 const admin = ref<any>(null)
 const cargando = ref(true)
 const reportes = ref<any[]>([])
+const foliosProcesando = ref(new Set<string>())
 const problemasOpciones = ref<any[]>([])
 
 // Estado del Modal de Ver Reporte
@@ -325,6 +326,9 @@ const cerrarModalVer = () => {
 }
 
 const rechazarReporte = async (folio: string) => {
+  if (foliosProcesando.value.has(folio)) return
+    foliosProcesando.value.add(folio)
+    try {
   const result = await Swal.fire({
     title: '¿Rechazar reporte?',
     text: `¿Estás seguro de que deseas rechazar el folio ${folio}? Esta acción lo marcará como rechazado.`,
@@ -360,12 +364,19 @@ const rechazarReporte = async (folio: string) => {
         text: 'Hubo un error al rechazar el reporte en la base de datos.',
         icon: 'error',
         confirmButtonColor: '#1a6b2f',
-      })
+        })
+      }
     }
-  }
+  } 
+  finally{
+     foliosProcesando.value.delete(folio)
+    }
 }
 
 const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llegado') => {
+  if (foliosProcesando.value.has(folio)) return
+    foliosProcesando.value.add(folio)
+    try {
   const result = await Swal.fire({
     title: `¿Devolver a "${nuevoEstado}"?`,
     text: `El folio ${folio} cambiará su estado a "${nuevoEstado}".`,
@@ -380,7 +391,7 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llega
 
   if (result.isConfirmed) {
     const { error } = await supabase
-      .from('reportesexistentes')
+      .from('detalle_reporte')
       .update({ estado: nuevoEstado })
       .eq('folio', folio)
 
@@ -396,12 +407,15 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llega
       })
     } else {
       Swal.fire({
-        title: 'Error',
-        text: 'Hubo un error al actualizar el estado en la base de datos.',
-        icon: 'error',
-        confirmButtonColor: '#1a6b2f',
-      })
-    }
+          title: 'Error',
+          text: 'Hubo un error al actualizar el estado en la base de datos.',
+          icon: 'error',
+          confirmButtonColor: '#1a6b2f',
+        })
+      }
+    } 
+  }finally {
+    foliosProcesando.value.delete(folio)
   }
 }
 
@@ -442,6 +456,7 @@ defineExpose({
   devolverReporte,
   asignarReporte,
   cerrarSesion,
+  foliosProcesando,
 })
 </script>
 
