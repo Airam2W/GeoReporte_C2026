@@ -221,7 +221,9 @@ const usuariosFiltrados = computed(() => {
     const nombreCompleto = `${u.nombre} ${u.apellido_p} ${u.apellido_m}`.toLowerCase()
     const coincideBusqueda = nombreCompleto.includes(q) || u.correo.toLowerCase().includes(q)
     const coincideRol = filtros.value.rol === '' || u.tipousuario_id == filtros.value.rol
-    const coincideDepto = filtros.value.departamento === '' || u.departamento_id === filtros.value.departamento
+    const coincideDepto =
+      filtros.value.departamento === '' ||
+      String(u.departamento_id) === String(filtros.value.departamento)
     const coincideEstado = filtros.value.estado === '' || u.estadoadministrativo === filtros.value.estado
 
     return coincideBusqueda && coincideRol && coincideDepto && coincideEstado
