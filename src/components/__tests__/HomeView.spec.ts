@@ -19,7 +19,7 @@ vi.mock('@/logic/home', async () => {
     return {
         menuAbierto: ref(false),
         menuRef: ref(null),
-        iniciarSesionAdmin: vi.fn(),
+        iniciarSesion: vi.fn(),
     };
 });
 
@@ -77,7 +77,9 @@ describe('Pruebas Unitarias del Módulo Home', () => {
             foto_url: 'https://example.com/foto.jpg',
             fecha_creacion: '2026-03-15T00:00:00Z',
             problemas: { nombre: 'Bache' },
-            reportesexistentes: [{ estado: 'En Proceso' }],
+            detalle_reporte: {
+                estado_id: 2, 
+                estadoreporte: {estado: 'En Proceso' }},
         };
         singleMock.mockResolvedValueOnce({ data: mockReporte, error: null });
 
@@ -95,6 +97,7 @@ describe('Pruebas Unitarias del Módulo Home', () => {
         expect(wrapper.vm.modalVisible).toBe(true);
         expect(wrapper.vm.modalBusquedaVisible).toBe(false);
     });
+
 
     it('PU-2: Mostrar mensaje si el folio no existe', async () => {
         singleMock.mockResolvedValueOnce({ data: null, error: { message: 'Filas no encontradas' } });
@@ -125,7 +128,7 @@ describe('Pruebas Unitarias del Módulo Home', () => {
             foto_url: 'https://example.com/foto.jpg',
             fecha_creacion: '2026-03-15T00:00:00Z',
             problemas: { nombre: 'Bache' },
-            reportesexistentes: [], 
+            detalle_reporte: null, 
         };
         singleMock.mockResolvedValueOnce({ data: mockReporte, error: null });
 
@@ -182,7 +185,7 @@ describe('Pruebas Unitarias del Módulo Home', () => {
         expect(wrapper.vm.modalBusquedaVisible).toBe(true);
     });
      it('PU-09: El menú desplegable llama a iniciarSesion al hacer clic', async () => {
-        const { menuAbierto, iniciarSesionAdmin } = await import('@/logic/home');
+        const { menuAbierto, iniciarSesion } = await import('@/logic/home');
  
         expect(menuAbierto.value).toBe(false);
  
@@ -193,6 +196,6 @@ describe('Pruebas Unitarias del Módulo Home', () => {
         expect(opcionLogin.exists()).toBe(true);
         await opcionLogin.trigger('click');
  
-        expect(iniciarSesionAdmin).toHaveBeenCalled();
+        expect(iniciarSesion).toHaveBeenCalled();
     });
 });

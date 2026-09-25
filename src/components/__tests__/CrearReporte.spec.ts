@@ -7,7 +7,7 @@ import './setup'
 describe('Pruebas Unitarias del Módulo CrearReporte', () => {
     let wrapper: VueWrapper<any>;
     let insertMock: any;
-    let insertReporteExistenteMock:any;
+    let insertDetalleReporteMock:any;
     const mockDepartamentos = [
         { id: 1, nombre: 'Alumbrado Público' },
         { id: 2, nombre: 'Parques y Jardines' },
@@ -20,7 +20,7 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         insertMock = vi.fn().mockResolvedValue({error: null});
-        insertReporteExistenteMock = vi.fn().mockResolvedValue({error: null});
+        insertDetalleReporteMock = vi.fn().mockResolvedValue({error: null});
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'departamentos') {
                 return {
@@ -40,9 +40,9 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
                     insert: insertMock,
                 };
             }
-            if (table == 'reportesexistentes'){
+            if (table == 'detalle_reporte'){
                 return{
-                    insert: insertReporteExistenteMock,
+                    insert: insertDetalleReporteMock,
                 };
             }
             return{};
@@ -161,7 +161,7 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
         await wrapper.vm.enviarReporte();
         expect(supabase.storage.from).toHaveBeenCalledWith('fotos');
         expect(supabase.from).toHaveBeenCalledWith('reportes');
-        expect(supabase.from).toHaveBeenCalledWith('reportesexistentes');
+        expect(supabase.from).toHaveBeenCalledWith('detalle_reporte');
         expect(document.querySelector('.modal-reporte-exitoso')).not.toBeNull();
         expect(wrapper.vm.form.descripcion).toBe('');
     });

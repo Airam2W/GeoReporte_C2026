@@ -20,9 +20,11 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",
+    "build": "^0.1.4",
     "leaflet": "^1.9.4",
     "nvm": "^0.0.4",
     "pinia": "^4.0.2",
+    "run": "^2.1.5",
     "sweetalert2": "^11.26.25",
     "vue": "^3.5.40",
     "vue-router": "^5.2.0"
