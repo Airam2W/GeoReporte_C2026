@@ -365,6 +365,26 @@ const rechazarReporte = async (folio: string) => {
   }
 }
 
+const buscarEstadoId = async (estado: string): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('estadoreporte')
+      .select('id')
+      .eq('estado', estado)
+      .single()
+
+    if (error) {
+      console.error('Error al buscar estado:', error.message)
+      return null
+    }
+
+    return data?.id ?? null
+  } catch (err: any) {
+    console.error('Error inesperado en buscarEstadoId:', err.message)
+    return null
+  }
+}
+
 const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llegado') => {
   const result = await Swal.fire({
     title: `¿Devolver a "${nuevoEstado}"?`,
@@ -379,9 +399,20 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llega
   })
 
   if (result.isConfirmed) {
+    const estadoId = await buscarEstadoId(nuevoEstado)
+    if (!estadoId) {
+      Swal.fire({
+        title: 'Error',
+        text: 'No se encontró el estado en la base de datos.',
+        icon: 'error',
+        confirmButtonColor: '#1a6b2f',
+      })
+      return
+    }
+
     const { error } = await supabase
-      .from('reportesexistentes')
-      .update({ estado: nuevoEstado })
+      .from('detalle_reporte')
+      .update({ estado_id: estadoId })
       .eq('folio', folio)
 
     if (!error) {
@@ -404,6 +435,7 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llega
     }
   }
 }
+
 
 const asignarReporte = (folio: string | undefined) => {
   //Desactivar el boton Asginar Reporte
