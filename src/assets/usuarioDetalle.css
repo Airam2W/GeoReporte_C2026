@@ -128,3 +128,59 @@
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
 }
+
+.jerarquia-box label {
+  display: block;
+  font-size: 0.8rem;
+  color: #777;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.jerarquia-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jerarquia-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.jerarquia-rol {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.badge-supervisor { background: #e3f2fd; color: #1976d2; }
+.badge-jefe { background: #fff8e1; color: #f57f17; }
+.badge-trabajador { background: #e8f5e9; color: #2e7d32; }
+
+.jerarquia-nombre {
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.jerarquia-vacio {
+  font-size: 0.9rem;
+  color: #aaa;
+  font-style: italic;
+  padding: 8px 4px;
+}
+
+.jerarquia-separador {
+  height: 1px;
+  background: #eee;
+  margin: 4px 0;
+}

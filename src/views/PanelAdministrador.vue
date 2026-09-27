@@ -200,7 +200,6 @@ const router = useRouter()
 const admin = ref<any>(null)
 const cargando = ref(true)
 const reportes = ref<any[]>([])
-const foliosProcesando = ref(new Set<string>())
 const problemasOpciones = ref<any[]>([])
 
 // Estado del Modal de Ver Reporte
@@ -326,9 +325,6 @@ const cerrarModalVer = () => {
 }
 
 const rechazarReporte = async (folio: string) => {
-  if (foliosProcesando.value.has(folio)) return
-    foliosProcesando.value.add(folio)
-    try {
   const result = await Swal.fire({
     title: '¿Rechazar reporte?',
     text: `¿Estás seguro de que deseas rechazar el folio ${folio}? Esta acción lo marcará como rechazado.`,
@@ -348,8 +344,9 @@ const rechazarReporte = async (folio: string) => {
       .eq('folio', folio)
 
     if (!error) {
-      const index = reportes.value.findIndex((r) => r.folio === folio)
-      if (index !== -1) reportes.value[index].estado = 'Rechazado'
+      //const index = reportes.value.findIndex((r) => r.folio === folio)
+      //if (index !== -1) reportes.value[index].estado = 'Rechazado'
+      await cargarReportes()
 
       Swal.fire({
         title: '¡Rechazado!',
@@ -364,13 +361,9 @@ const rechazarReporte = async (folio: string) => {
         text: 'Hubo un error al rechazar el reporte en la base de datos.',
         icon: 'error',
         confirmButtonColor: '#1a6b2f',
-        })
-      }
+      })
     }
-  } 
-  finally{
-     foliosProcesando.value.delete(folio)
-    }
+  }
 }
 
 const buscarEstadoId = async (estado: string): Promise<string | null> => {
@@ -394,9 +387,6 @@ const buscarEstadoId = async (estado: string): Promise<string | null> => {
 }
 
 const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llegado') => {
-  if (foliosProcesando.value.has(folio)) return
-    foliosProcesando.value.add(folio)
-    try {
   const result = await Swal.fire({
     title: `¿Devolver a "${nuevoEstado}"?`,
     text: `El folio ${folio} cambiará su estado a "${nuevoEstado}".`,
@@ -423,16 +413,13 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llega
 
     const { error } = await supabase
       .from('detalle_reporte')
-<<<<<<< HEAD
       .update({ estado_id: estadoId })
-=======
-      .update({ estado: nuevoEstado })
->>>>>>> 378c2d2fe6451a7f5803ad15c7560854c0d6379e
       .eq('folio', folio)
 
     if (!error) {
-      const index = reportes.value.findIndex((r) => r.folio === folio)
-      if (index !== -1) reportes.value[index].estado = nuevoEstado
+      //const index = reportes.value.findIndex((r) => r.folio === folio)
+      //if (index !== -1) reportes.value[index].estado = nuevoEstado
+      await cargarReportes()
 
       Swal.fire({
         title: '¡Actualizado!',
@@ -442,15 +429,12 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llega
       })
     } else {
       Swal.fire({
-          title: 'Error',
-          text: 'Hubo un error al actualizar el estado en la base de datos.',
-          icon: 'error',
-          confirmButtonColor: '#1a6b2f',
-        })
-      }
-    } 
-  }finally {
-    foliosProcesando.value.delete(folio)
+        title: 'Error',
+        text: 'Hubo un error al actualizar el estado en la base de datos.',
+        icon: 'error',
+        confirmButtonColor: '#1a6b2f',
+      })
+    }
   }
 }
 
@@ -492,7 +476,6 @@ defineExpose({
   devolverReporte,
   asignarReporte,
   cerrarSesion,
-  foliosProcesando,
 })
 </script>
 
