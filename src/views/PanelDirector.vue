@@ -47,21 +47,37 @@
             {{
               filtros.seccion === 'departamentos'
                 ? 'Gestión de Departamentos'
-                : 'Gestión de Personal'
+                : filtros.seccion === 'problematicas'
+                  ? 'Gestión de Problemáticas'
+                  : 'Gestión de Personal'
             }}
           </h2>
           <p>
             {{
               filtros.seccion === 'departamentos'
                 ? 'Administra los departamentos internos y externos del ayuntamiento.'
-                : 'Administra los accesos y roles del personal del ayuntamiento.'
+                : filtros.seccion === 'problematicas'
+                  ? 'Administra los tipos de problemáticas reportables por departamento.'
+                  : 'Administra los accesos y roles del personal del ayuntamiento.'
             }}
           </p>
         </div>
         <button
           class="btn-primario"
-          :title="filtros.seccion === 'departamentos' ? 'Agregar departamento' : 'Agregar usuario'"
-          @click="filtros.seccion === 'departamentos' ? abrirModalFormDepto() : abrirModalForm()"
+          :title="
+            filtros.seccion === 'departamentos'
+              ? 'Agregar departamento'
+              : filtros.seccion === 'problematicas'
+                ? 'Agregar problemática'
+                : 'Agregar usuario'
+          "
+          @click="
+            filtros.seccion === 'departamentos'
+              ? abrirModalFormDepto()
+              : filtros.seccion === 'problematicas'
+                ? abrirModalFormProblematica()
+                : abrirModalForm()
+          "
           style="
             background-color: #1a6b2f;
             padding: 10px 20px;
@@ -72,7 +88,13 @@
             cursor: pointer;
           "
         >
-          {{ filtros.seccion === 'departamentos' ? 'Agregar Departamento' : 'Crear Usuario' }}
+          {{
+            filtros.seccion === 'departamentos'
+              ? 'Agregar Departamento'
+              : filtros.seccion === 'problematicas'
+                ? 'Agregar Problemática'
+                : 'Crear Usuario'
+          }}
         </button>
       </header>
 
@@ -95,7 +117,9 @@
             :placeholder="
               filtros.seccion === 'departamentos'
                 ? 'Buscar por nombre de departamento...'
-                : 'Buscar por nombre, apellidos o correo...'
+                : filtros.seccion === 'problematicas'
+                  ? 'Buscar por nombre de problemática...'
+                  : 'Buscar por nombre, apellidos o correo...'
             "
           />
         </div>
@@ -141,7 +165,7 @@
         </template>
 
         <!-- Filtro exclusivo de Departamentos -->
-        <div class="filtro-grupo" v-else>
+        <div class="filtro-grupo" v-else-if="filtros.seccion === 'departamentos'">
           <select name="tipoDepartamento" v-model="filtros.tipoDepartamento">
             <option value="">Todos los tipos</option>
             <option value="Interno">Departamento Interno</option>
@@ -149,10 +173,46 @@
           </select>
         </div>
 
+        <!-- Filtro exclusivo de Problemáticas -->
+        <template v-else>
+          <div class="filtro-grupo">
+            <select name="tipoProblematica" v-model="filtros.tipoProblematica">
+              <option value="">Todos los tipos</option>
+              <option value="Interno">Problemática Interna</option>
+              <option value="Externo">Problemática Externa</option>
+            </select>
+          </div>
+
+          <div class="filtro-grupo">
+            <select
+              name="departamentoProblematica"
+              v-model="filtros.departamentoProblematica"
+              :disabled="filtros.tipoProblematica === ''"
+            >
+              <option value="">Todos los departamentos</option>
+
+              <!-- Solo Internos -->
+              <template v-if="filtros.tipoProblematica === 'Interno'">
+                <option v-for="dep in departamentosInternos" :key="dep.id" :value="dep.id">
+                  {{ dep.nombre }}
+                </option>
+              </template>
+
+              <!-- Solo Externos -->
+              <template v-else-if="filtros.tipoProblematica === 'Externo'">
+                <option v-for="dep in departamentosExternos" :key="dep.id" :value="dep.id">
+                  {{ dep.departamento }}
+                </option>
+              </template>
+            </select>
+          </div>
+        </template>
+
         <div class="filtro-grupo">
           <select name="seccion" v-model="filtros.seccion">
             <option value="personal">Personal Administrativo</option>
             <option value="departamentos">Departamentos</option>
+            <option value="problematicas">Problemáticas</option>
           </select>
         </div>
       </section>
@@ -215,7 +275,7 @@
         </table>
 
         <!-- Tabla de Departamentos -->
-        <table v-else class="tabla-reportes">
+        <table v-else-if="filtros.seccion === 'departamentos'" class="tabla-reportes">
           <thead>
             <tr>
               <th>NOMBRE</th>
@@ -263,6 +323,57 @@
             </tr>
           </tbody>
         </table>
+
+        <table v-else class="tabla-reportes">
+          <thead>
+            <tr>
+              <th>NOMBRE</th>
+              <th>NOMBRE AMIGABLE</th>
+              <th>DEPARTAMENTO</th>
+              <th>TIPO</th>
+              <th class="text-center">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="cargando" class="fila-vacia">
+              <td colspan="5">Cargando problemáticas...</td>
+            </tr>
+            <tr v-else-if="problematicasFiltradas.length === 0" class="fila-vacia">
+              <td colspan="5">No se encontraron problemáticas con estos filtros.</td>
+            </tr>
+            <tr
+              v-else
+              v-for="prob in problematicasFiltradas"
+              :key="`${prob.tipo}-${prob.id}`"
+              class="fila-datos"
+            >
+              <td class="font-bold">{{ prob.nombre }}</td>
+              <td>{{ prob.nombreamigable || 'Sin asignar' }}</td>
+              <td>{{ prob.departamentoNombre }}</td>
+              <td>
+                <span :class="['badge', prob.tipo === 'Interno' ? 'badge-azul' : 'badge-gris']">
+                  {{ prob.tipo }}
+                </span>
+              </td>
+              <td class="acciones-celda">
+                <button
+                  class="btn-accion btn-ver"
+                  title="Ver detalles"
+                  @click="abrirModalVerProblematica(prob)"
+                >
+                  👁️
+                </button>
+                <button
+                  class="btn-accion btn-editar"
+                  title="Editar"
+                  @click="abrirModalFormProblematica(prob)"
+                >
+                  ✏️
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </main>
 
@@ -297,6 +408,21 @@
       :departamento="departamentoActivo"
       @close="cerrarModalVerDepto"
     />
+
+    <ProblematicaFormModal
+      :visible="modalProblematicaFormVisible"
+      :problematicaAEditar="problematicaActivo"
+      :departamentos="departamentosOpciones"
+      :departamentos-externos="departamentosExternosOpciones"
+      @close="cerrarModalFormProblematica"
+      @save="ejecutarGuardadoProblematica"
+    />
+
+    <ProblematicaDetalleModal
+      :visible="modalProblematicaDetalleVisible"
+      :problematica="problematicaActivo"
+      @close="cerrarModalVerProblematica"
+    />
   </div>
 </template>
 
@@ -309,6 +435,14 @@ import UsuarioDetalleModal from '../components/UsuarioDetalleModal.vue'
 import UsuarioFormModal from '../components/UsuarioFormModal.vue'
 import DepartamentoFormModal from '../components/DepartamentoFormModal.vue'
 import DepartamentoDetalleModal from '../components/DepartamentoDetalleModal.vue'
+import ProblematicaFormModal from '../components/ProblematicaFormModal.vue'
+import ProblematicaDetalleModal from '../components/ProblematicaDetalleModal.vue'
+
+const problematicasData = ref<any[]>([])
+
+const modalProblematicaDetalleVisible = ref(false)
+const modalProblematicaFormVisible = ref(false)
+const problematicaActivo = ref<any>(null)
 
 const departamentosData = ref<any[]>([])
 
@@ -330,8 +464,6 @@ const modalVisible = ref(false)
 const modalFormVisible = ref(false)
 const usuarioActivo = ref<any>(null)
 
-
-
 const seccionGuardada = localStorage.getItem('panelSeccionActiva') || 'personal'
 
 const filtros = ref({
@@ -341,6 +473,8 @@ const filtros = ref({
   estado: 'Alta',
   seccion: seccionGuardada,
   tipoDepartamento: '',
+  tipoProblematica: '',
+  departamentoProblematica: '',
 })
 
 onMounted(async () => {
@@ -365,6 +499,48 @@ onMounted(async () => {
 
 const departamentosInternos = ref<any[]>([])
 const departamentosExternos = ref<any[]>([])
+
+const cargarListaProblematicas = async () => {
+  cargando.value = true
+
+  const { data: internas, error: errorInt } = await supabase
+    .from('problemas')
+    .select('id, nombre, nombreamigable, departamento_id, departamentos(id, nombre)')
+    .order('nombre', { ascending: true })
+
+  const { data: externas, error: errorExt } = await supabase
+    .from('problemas_externos')
+    .select(
+      'id, nombre, nombreamigable, departamento_externo_id, departamentos_externos(id, departamento)',
+    )
+    .order('nombre', { ascending: true })
+
+  if (!errorInt && !errorExt) {
+    const listaInternas = (internas || []).map((p) => ({
+      id: p.id,
+      nombre: p.nombre,
+      nombreamigable: p.nombreamigable,
+      tipo: 'Interno',
+      departamento_id: p.departamento_id,
+      departamentoNombre: p.departamentos?.nombre || 'Sin asignar',
+      raw: p,
+    }))
+
+    const listaExternas = (externas || []).map((p) => ({
+      id: p.id,
+      nombre: p.nombre,
+      nombreamigable: p.nombreamigable,
+      tipo: 'Externo',
+      departamento_id: p.departamento_externo_id,
+      departamentoNombre: p.departamentos_externos?.departamento || 'Sin asignar',
+      raw: p,
+    }))
+
+    problematicasData.value = [...listaInternas, ...listaExternas]
+  }
+
+  cargando.value = false
+}
 
 const cargarDepartamentos = async () => {
   const { data: internos } = await supabase.from('departamentos').select('id, nombre')
@@ -415,8 +591,10 @@ const cargarListaDepartamentos = async () => {
 const cargarDatos = async () => {
   if (filtros.value.seccion === 'personal') {
     await cargarUsuarios()
-  } else {
+  } else if (filtros.value.seccion === 'departamentos') {
     await cargarListaDepartamentos()
+  } else {
+    await cargarListaProblematicas()
   }
 }
 
@@ -539,15 +717,22 @@ import { watch } from 'vue'
 watch(
   () => filtros.value.seccion,
   (nuevaSeccion) => {
-    // Guardar en localStorage para persistir entre recargas
     localStorage.setItem('panelSeccionActiva', nuevaSeccion)
 
-    // Limpiar filtros que no aplican al cambiar de sección
     filtros.value.rol = ''
     filtros.value.departamento = ''
     filtros.value.tipoDepartamento = ''
+    filtros.value.tipoProblematica = ''
+    filtros.value.departamentoProblematica = ''
     filtros.value.busqueda = ''
     cargarDatos()
+  },
+)
+
+watch(
+  () => filtros.value.tipoProblematica,
+  () => {
+    filtros.value.departamentoProblematica = ''
   },
 )
 
@@ -567,6 +752,24 @@ const usuariosFiltrados = computed(() => {
   })
 })
 
+const problematicasFiltradas = computed(() => {
+  return problematicasData.value.filter((p) => {
+    const q = filtros.value.busqueda.toLowerCase()
+    const coincideBusqueda =
+      p.nombre.toLowerCase().includes(q) || (p.nombreamigable || '').toLowerCase().includes(q)
+
+    const coincideTipo =
+      filtros.value.tipoProblematica === '' ||
+      p.tipo.toLowerCase() === filtros.value.tipoProblematica.toLowerCase()
+
+    const coincideDepartamento =
+      filtros.value.departamentoProblematica === '' ||
+      String(p.departamento_id) === String(filtros.value.departamentoProblematica)
+
+    return coincideBusqueda && coincideTipo && coincideDepartamento
+  })
+})
+
 const departamentosFiltrados = computed(() => {
   return departamentosData.value.filter((d) => {
     const q = filtros.value.busqueda.toLowerCase()
@@ -579,6 +782,87 @@ const departamentosFiltrados = computed(() => {
     return coincideBusqueda && coincideTipo
   })
 })
+
+const abrirModalVerProblematica = (prob: any) => {
+  problematicaActivo.value = prob
+  modalProblematicaDetalleVisible.value = true
+}
+
+const cerrarModalVerProblematica = () => {
+  modalProblematicaDetalleVisible.value = false
+  setTimeout(() => {
+    problematicaActivo.value = null
+  }, 300)
+}
+
+const abrirModalFormProblematica = (prob: any = null) => {
+  problematicaActivo.value = prob
+  modalProblematicaFormVisible.value = true
+}
+
+const cerrarModalFormProblematica = () => {
+  modalProblematicaFormVisible.value = false
+  setTimeout(() => {
+    problematicaActivo.value = null
+  }, 300)
+}
+
+const ejecutarGuardadoProblematica = async (formData: any, esEdicion: boolean) => {
+  try {
+    if (esEdicion) {
+      if (formData.tipo === 'Interno') {
+        const { error } = await supabase
+          .from('problemas')
+          .update({
+            nombre: formData.nombre,
+            nombreamigable: formData.nombreamigable,
+            departamento_id: formData.departamento_id,
+          })
+          .eq('id', formData.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('problemas_externos')
+          .update({
+            nombre: formData.nombre,
+            nombreamigable: formData.nombreamigable,
+            departamento_externo_id: formData.departamento_id,
+          })
+          .eq('id', formData.id)
+        if (error) throw error
+      }
+    } else {
+      if (formData.tipo === 'Interno') {
+        const { error } = await supabase.from('problemas').insert({
+          nombre: formData.nombre,
+          nombreamigable: formData.nombreamigable,
+          departamento_id: formData.departamento_id,
+        })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('problemas_externos').insert({
+          nombre: formData.nombre,
+          nombreamigable: formData.nombreamigable,
+          departamento_externo_id: formData.departamento_id,
+        })
+        if (error) throw error
+      }
+    }
+
+    Swal.fire({
+      title: esEdicion ? 'Problemática Actualizada' : 'Problemática Creada',
+      text: `Se ha guardado "${formData.nombre}" correctamente.`,
+      icon: 'success',
+      confirmButtonColor: '#1a6b2f',
+    })
+
+    cerrarModalFormProblematica()
+    await cargarDatos()
+  } catch (error: any) {
+    console.error('Error al guardar problemática: ', error)
+    Swal.fire('Error', 'Ocurrió un problema al guardar la problemática.', 'error')
+  }
+}
 
 const abrirModalVerDepto = (depto: any) => {
   departamentoActivo.value = depto
