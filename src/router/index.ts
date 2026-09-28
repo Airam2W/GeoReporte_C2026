@@ -3,12 +3,14 @@ import HomeView from '../views/HomeView.vue'
 import CrearReporte from '../views/CrearReporte.vue'
 import PanelAdministrador from '../views/PanelAdministrador.vue'
 import PanelDirector from '../views/PanelDirector.vue'
+import PanelAdminExterno from '@/views/PanelAdminExterno.vue'
 
 const routes = [
   { path: '/', component: HomeView },
   { path: '/reporte', component: CrearReporte },
   { path: '/dashboard', component: PanelAdministrador },
   { path: '/management', component: PanelDirector },
+  { path: '/external', component: PanelAdminExterno }
 ]
 
 const router = createRouter({

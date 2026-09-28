@@ -255,6 +255,24 @@
   background: #fff8e1;
 }
 
+.btn-large {
+  background: #047857;
+  width: 160px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: 0.2s;
+}
+
+.btn-large:hover {
+  background: #154728;
+}
+
 /* ==========================================
    DISEÑO DEL MODAL "VER REPORTE"
 ========================================== */
@@ -447,6 +465,11 @@
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.swal-difuminado {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 @media (max-width: 768px) {

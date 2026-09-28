@@ -14,12 +14,12 @@
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
           <circle cx="12" cy="10" r="3"></circle>
         </svg>
-        <h1>GeoReporte | Panel de Control</h1>
+        <h1>GeoReporte | Administrador Externo</h1>
       </div>
       <div class="topbar-user" v-if="admin">
         <div class="user-info">
           <span class="user-name">{{ admin.nombre }}</span>
-          <span class="user-dept">¡Bienvenido!</span>
+          <span class="user-dept">{{ admin.departamento }}</span>
         </div>
         <button class="btn-logout" @click="cerrarSesion" title="Cerrar Sesión">
           <svg
@@ -41,9 +41,8 @@
     <!-- Contenido Principal -->
     <main class="dashboard-content">
       <header class="content-header" v-if="admin">
-        <h2>Reportes del Departamento</h2>
-        <!-- Cambiar por nombre del departamento -->
-        <p>{{ admin.departamento }}</p>
+        <h2>Reportes Turnados a su Dependencia</h2>
+        <p>Consulte el detalle de los reportes recibidos y actualice su estado de atención.</p>
       </header>
 
       <!-- Panel de Filtros -->
@@ -68,19 +67,6 @@
         </div>
 
         <div class="filtro-grupo">
-          <input v-model="filtros.fecha" type="date" title="Filtrar por fecha" />
-        </div>
-
-        <div class="filtro-grupo">
-          <select v-model="filtros.problema">
-            <option value="">Todos los problemas</option>
-            <option v-for="prob in problemasOpciones" :key="prob.id" :value="prob.id">
-              {{ prob.nombre }}
-            </option>
-          </select>
-        </div>
-
-        <div class="filtro-grupo">
           <select
             name="estado"
             id="estado"
@@ -91,7 +77,6 @@
             <option value="En Proceso" class="badge-amarillo">En Proceso</option>
             <option value="Finalizado" class="badge-verde">Finalizado</option>
             <option value="Rechazado" class="badge-rojo">Rechazado</option>
-            <option value="Turnado" class="badge-purpura">Turnado</option>
           </select>
         </div>
       </section>
@@ -102,9 +87,10 @@
           <thead>
             <tr>
               <th>FOLIO</th>
-              <th>PROBLEMA</th>
-              <th>DOMICILIO</th>
-              <th>CIUDADANO</th>
+              <th>FECHA TURNADO</th>
+              <th>PROBLEMÁTICA REPORTADA</th>
+              <th>UBICACIÓN</th>
+              <th>ESTADO ACTUAL</th>
               <th class="text-center">ACCIONES</th>
             </tr>
           </thead>
@@ -116,58 +102,34 @@
               <td colspan="6">No se encontraron reportes con estos filtros.</td>
             </tr>
             <tr v-else v-for="reporte in reportesFiltrados" :key="reporte.folio" class="fila-datos">
-              <td class="font-mono">#{{ reporte.folio.split('-')[4] || reporte.folio }}</td>
-              <td class="font-bold">{{ reporte.problemas?.nombre }}</td>
-              <td :title="reporte.domicilio">{{ truncarTexto(reporte.domicilio, 25) }}</td>
+              <td class="font-bold" style="color: #1a6b2f;">#{{ reporte.folio.split('-')[4] || reporte.folio }}</td>
+              <td class="font-mono">{{ formatearFecha(reporte.detalle_reporte?.updated_at) }}</td>
               <td>
                 <div class="ciudadano-info">
-                  <span>{{ reporte.nombre }}</span>
-                  <small>{{ reporte.telefono }}</small>
+                  <span>{{ reporte.problemas_externos?.nombreamigable }}</span>
+                  <small>{{ reporte.problemas_externos?.nombre }}</small>
                 </div>
               </td>
+              <td :title="reporte.domicilio">
+                <div class="ciudadano-info">
+                  <span>Col.{{ reporte.domicilio.split(',')[1] }}</span>
+                  <small>{{ reporte.domicilio.split(',')[0] }}</small>
+                </div>
+              </td>
+              <td class="text-center">
+                <span :class="['badge', obtenerClaseEstado(reporte.detalle_reporte?.estadoreporte?.estado.toLowerCase())]"
+                >
+                  {{ reporte.detalle_reporte?.estadoreporte?.estado }}
+                </span>
+              </td>
+
               <td class="acciones-celda">
                 <button
-                  class="btn-accion btn-ver"
+                  class="btn-accion btn-large"
                   title="Ver detalle"
                   @click="abrirModalVer(reporte)"
                 >
-                  👁️
-                </button>
-
-                <button
-                  v-if="reporte.estado === 'Llegado'"
-                  class="btn-accion btn-asignar"
-                  title="Asignar supervisor"
-                  @click="asignarReporte(reporte.folio)"
-                >
-                  👤
-                </button>
-
-                <button
-                  v-if="reporte.estado === 'Finalizado'"
-                  class="btn-accion btn-devolver"
-                  title="Devolver a En Proceso"
-                  @click="devolverReporte(reporte.folio, 'En Proceso')"
-                >
-                  ⬅️
-                </button>
-
-                <button
-                  v-if="reporte.estado === 'Rechazado'"
-                  class="btn-accion btn-devolver"
-                  title="Devolver a Llegado"
-                  @click="devolverReporte(reporte.folio, 'Llegado')"
-                >
-                  ↩️
-                </button>
-
-                <button
-                  v-if="reporte.estado !== 'Rechazado' && reporte.estado !== 'Turnado'"
-                  class="btn-accion btn-rechazar"
-                  title="Rechazar reporte"
-                  @click="rechazarReporte(reporte.folio)"
-                >
-                  ❌
+                  Ver y Actualizar Estado
                 </button>
               </td>
             </tr>
@@ -181,7 +143,6 @@
       :reporte="reporteActivo"
       :esAdmin="true"
       @close="cerrarModalVer"
-      @asignar="asignarReporte"
       @rechazar="rechazarReporte"
       @devolver="devolverReporte"
     />
@@ -191,16 +152,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { supabase } from '../lib/supabase' // Ajusta la ruta a tu supabase.ts
+import { supabase } from '../lib/supabase'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import Swal from 'sweetalert2'
-import { truncarTexto, obtenerClaseEstado } from '../logic/panelAdministrador'
-import { redireccionarUsuario } from '@/logic/redirectUser.ts'
+import { obtenerClaseEstado } from '../logic/panelAdministrador'
+import { redireccionarUsuario } from '../logic/redirectUser.ts'
+import { formatearFecha } from '@/logic/reporteDetalleModal.ts'
 
 const router = useRouter()
 const admin = ref<any>(null)
 const cargando = ref(true)
 const reportes = ref<any[]>([])
+const foliosProcesando = ref(new Set<string>())
 const problemasOpciones = ref<any[]>([])
 
 // Estado del Modal de Ver Reporte
@@ -216,28 +179,32 @@ const filtros = ref({
 
 onMounted(async () => {
   const sessionData = localStorage.getItem('adminSession')
-  if (!sessionData) {
-    router.push('/')
-    return
-  }
+    if (!sessionData) {
+      router.push('/')
+      return
+    }
+
   admin.value = JSON.parse(sessionData)
 
-  if (admin.value.tipo_id !== 2) {
-    Swal.fire('Acceso Denegado', 'No tienes permisos para ver esta sección.', 'error',)
+  if (admin.value.tipo_id !== 6) {
+
+    Swal.fire('Acceso Denegado', 'No tienes permisos para ver esta sección. Externo', 'error')
     redireccionarUsuario();
     return
   }
 
   await cargarCatalogos()
   await cargarReportes()
+
+
 })
 
 const cargarCatalogos = async () => {
   // Traer solo problemas del departamento del admin
   const { data: problemasData, error: problemasError } = await supabase
-    .from('problemas')
-    .select('id, nombre, departamento_id')
-    .eq('departamento_id', admin.value.departamento_id)
+    .from('problemas_externos')
+    .select('id, nombre, nombreamigable, departamento_externo_id')
+    .eq('departamento_externo_id', admin.value.departamento_id)
 
   if (problemasError) {
     console.error('Error al cargar problemas:', problemasError.message)
@@ -247,14 +214,14 @@ const cargarCatalogos = async () => {
 
   // Traer nombre del departamento para mostrarlo en el header
   const { data: deptData, error: deptError } = await supabase
-    .from('departamentos')
-    .select('id, nombre')
+    .from('departamentos_externos')
+    .select('id, departamento')
     .eq('id', admin.value.departamento_id)
 
   if (deptError) {
     console.error('Error al cargar departamento:', deptError.message)
   } else if (deptData && deptData.length > 0) {
-    admin.value.departamento = deptData[0].nombre
+    admin.value.departamento = deptData[0]?.departamento
   }
 }
 
@@ -262,17 +229,16 @@ const cargarReportes = async () => {
   cargando.value = true
   const { data, error } = await supabase
     .from('reportes')
-    .select(
-      `
+    .select(`
       folio, descripcion, nombre, telefono, domicilio, referencias, foto_url, created_at,
-      problemas (id, nombre),
+      problemas_externos (id, nombre, nombreamigable),
       detalle_reporte (
         estado_id,
-        estadoreporte (estado)
+        estadoreporte(estado),
+        updated_at
       )
-    `,
-    )
-    .eq('departamento_id', admin.value.departamento_id)
+    `)
+    .eq('departamento_externo_id', admin.value.departamento_id)
     .order('created_at', { ascending: false })
 
   if (!error && data) {
@@ -290,31 +256,14 @@ const reportesFiltrados = computed(() => {
     const q = filtros.value.busqueda.toLowerCase()
     const coincideBusqueda =
       r.folio.toLowerCase().includes(q) ||
-      r.nombre.toLowerCase().includes(q) ||
+      r.problemas_externos.nombre.toLowerCase().includes(q) ||
+      r.problemas_externos.nombreamigable.toLowerCase().includes(q) ||
+      r.descripcion.toLowerCase().includes(q) ||
       r.domicilio.toLowerCase().includes(q) ||
-      r.telefono.includes(q)
-
-    const coincideProblema =
-      filtros.value.problema === '' || r.problemas?.id == filtros.value.problema
+      formatearFecha(r.detalle_reporte?.updated_at).includes(q)
 
     const coincideEstado = filtros.value.estado === '' || r.estado === filtros.value.estado
-
-    let coincideFecha = true
-    if (filtros.value.fecha) {
-      const fechaUtc = r.created_at.endsWith('Z') ? r.created_at : `${r.created_at}Z`
-
-      const fechaLocal = new Date(fechaUtc)
-
-      const year = fechaLocal.getFullYear()
-      const month = String(fechaLocal.getMonth() + 1).padStart(2, '0')
-      const day = String(fechaLocal.getDate()).padStart(2, '0')
-
-      const fechaFormateadaLocal = `${year}-${month}-${day}`
-
-      coincideFecha = fechaFormateadaLocal === filtros.value.fecha
-    }
-
-    return coincideBusqueda && coincideProblema && coincideEstado && coincideFecha
+    return coincideBusqueda && coincideEstado
   })
 })
 
@@ -332,6 +281,9 @@ const cerrarModalVer = () => {
 }
 
 const rechazarReporte = async (folio: string) => {
+  if (foliosProcesando.value.has(folio)) return
+    foliosProcesando.value.add(folio)
+    try {
   const result = await Swal.fire({
     title: '¿Rechazar reporte?',
     text: `¿Estás seguro de que deseas rechazar el folio ${folio}? Esta acción lo marcará como rechazado.`,
@@ -342,7 +294,6 @@ const rechazarReporte = async (folio: string) => {
     confirmButtonText: 'Sí, rechazar',
     cancelButtonText: 'Cancelar',
     reverseButtons: true,
-    customClass: { container: 'swal-difuminado' },
   })
 
   if (result.isConfirmed) {
@@ -352,9 +303,8 @@ const rechazarReporte = async (folio: string) => {
       .eq('folio', folio)
 
     if (!error) {
-      //const index = reportes.value.findIndex((r) => r.folio === folio)
-      //if (index !== -1) reportes.value[index].estado = 'Rechazado'
-      await cargarReportes()
+      const index = reportes.value.findIndex((r) => r.folio === folio)
+      if (index !== -1) reportes.value[index].estado = 'Rechazado'
 
       Swal.fire({
         title: '¡Rechazado!',
@@ -369,32 +319,20 @@ const rechazarReporte = async (folio: string) => {
         text: 'Hubo un error al rechazar el reporte en la base de datos.',
         icon: 'error',
         confirmButtonColor: '#1a6b2f',
-      })
+        })
+      }
     }
   }
-}
-
-const buscarEstadoId = async (estado: string): Promise<string | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('estadoreporte')
-      .select('id')
-      .eq('estado', estado)
-      .single()
-
-    if (error) {
-      console.error('Error al buscar estado:', error.message)
-      return null
+  finally{
+    foliosProcesando.value.delete(folio)
+    await cargarReportes()
     }
-
-    return data?.id ?? null
-  } catch (err: any) {
-    console.error('Error inesperado en buscarEstadoId:', err.message)
-    return null
-  }
 }
 
 const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llegado') => {
+  if (foliosProcesando.value.has(folio)) return
+    foliosProcesando.value.add(folio)
+    try {
   const result = await Swal.fire({
     title: `¿Devolver a "${nuevoEstado}"?`,
     text: `El folio ${folio} cambiará su estado a "${nuevoEstado}".`,
@@ -405,68 +343,37 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llega
     confirmButtonText: 'Sí, devolver',
     cancelButtonText: 'Cancelar',
     reverseButtons: true,
-    customClass: { container: 'swal-difuminado' }
   })
 
   if (result.isConfirmed) {
-    const estadoId = await buscarEstadoId(nuevoEstado)
-    if (!estadoId) {
-      Swal.fire({
-        title: 'Error',
-        text: 'No se encontró el estado en la base de datos.',
-        icon: 'error',
-        confirmButtonColor: '#1a6b2f',
-        customClass: { container: 'swal-difuminado' }
-      })
-      return
-    }
-
     const { error } = await supabase
       .from('detalle_reporte')
-      .update({ estado_id: estadoId })
+      .update({ estado_id: nuevoEstado == 'Llegado' ? 1 : 2 })
       .eq('folio', folio)
 
     if (!error) {
-      //const index = reportes.value.findIndex((r) => r.folio === folio)
-      //if (index !== -1) reportes.value[index].estado = nuevoEstado
-      await cargarReportes()
+      const index = reportes.value.findIndex((r) => r.folio === folio)
+      if (index !== -1) reportes.value[index].estado = nuevoEstado
 
       Swal.fire({
         title: '¡Actualizado!',
         text: `El reporte ahora está en "${nuevoEstado}".`,
         icon: 'success',
         confirmButtonColor: '#1a6b2f',
-        customClass: { container: 'swal-difuminado' }
       })
     } else {
       Swal.fire({
-        title: 'Error',
-        text: 'Hubo un error al actualizar el estado en la base de datos.',
-        icon: 'error',
-        confirmButtonColor: '#1a6b2f',
-        customClass: { container: 'swal-difuminado' }
-      })
+          title: 'Error',
+          text: 'Hubo un error al actualizar el estado en la base de datos.',
+          icon: 'error',
+          confirmButtonColor: '#1a6b2f',
+        })
+      }
     }
+  }finally {
+    foliosProcesando.value.delete(folio)
+    await cargarReportes()
   }
-}
-
-
-const asignarReporte = (folio: string | undefined) => {
-  //Desactivar el boton Asginar Reporte
-  const asignarBtn = document.querySelector('.btn-asignar') as HTMLButtonElement
-  asignarBtn.disabled = true
-
-  if (!folio) return
-  Swal.fire({
-    title: 'Asignar Supervisor',
-    text: `Aquí iría la lógica para asignar el folio ${folio}`,
-    icon: 'info',
-    confirmButtonColor: '#1a6b2f',
-    customClass: { container: 'swal-difuminado' }
-  })
-
-  // Reactivar el boton Asignar Reporte
-  asignarBtn.disabled = false
 }
 
 const cerrarSesion = () => {
@@ -487,9 +394,9 @@ defineExpose({
   cerrarModalVer,
   rechazarReporte,
   devolverReporte,
-  asignarReporte,
   cerrarSesion,
+  foliosProcesando,
 })
 </script>
 
-<style src="../assets/panelAdministrador.css"></style>
+<style src="../assets/panelAdministrador.css"/>

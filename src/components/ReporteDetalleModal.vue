@@ -16,8 +16,7 @@
             <div class="info-columna">
               <div class="info-item">
                 <label>Problema Reportado</label>
-                <!-- Usamos las minúsculas para Postgres -->
-                <p class="destacado">{{ reporte.problemas?.nombreamigable }}</p>
+                <p class="destacado">{{ reporte.problemas?.nombreamigable || reporte.problemas_externos?.nombreamigable }}</p>
               </div>
 
               <div class="info-item">
@@ -77,7 +76,7 @@
 
           <template v-if="esAdmin && reporte">
             <button
-              v-if="reporte.estado === 'Llegado'"
+              v-if="reporte.estado === 'Llegado' && reporte.problemas?.nombre != null"
               class="btn-primario"
               @click="$emit('asignar', reporte?.folio)"
             >
