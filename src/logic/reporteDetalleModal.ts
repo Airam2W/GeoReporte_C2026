@@ -16,3 +16,9 @@ export const formatearFechaLocal = (fechaString: string) => {
   const fechaUtc = fechaString.endsWith('Z') ? fechaString : `${fechaString}Z`
   return new Date(fechaUtc).toLocaleString('es-MX')
 }
+
+export const formatearFecha = (fechaString: string) => {
+  if (!fechaString) return ''
+  const fechaUtc = fechaString.endsWith('Z') ? fechaString : `${fechaString}Z`
+  return new Date(fechaUtc).toLocaleDateString('es-MX')
+}

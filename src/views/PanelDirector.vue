@@ -17,7 +17,7 @@
       </div>
       <div class="topbar-user" v-if="director">
         <div class="user-info">
-          <span class="user-name">{{ director.nombre }}</span>
+          <span class="user-name">{{ director.nombre }} </span>
           <span class="user-dept">¡Bienvenido Director!</span>
         </div>
         <button class="btn-logout" @click="cerrarSesion" title="Cerrar Sesión">
@@ -38,6 +38,19 @@
     </nav>
 
     <main class="dashboard-content">
+      <nav class="tabs-secciones" aria-label="Secciones del panel">
+        <button
+          v-for="seccion in secciones"
+          :key="seccion.valor"
+          type="button"
+          :class="['tab-seccion', { activa: filtros.seccion === seccion.valor }]"
+          :aria-current="filtros.seccion === seccion.valor ? 'page' : undefined"
+          @click="filtros.seccion = seccion.valor; cargarCatalogos(); cargarDatos(); cargarDepartamentos();"
+        >
+          {{ seccion.etiqueta }}
+        </button>
+      </nav>
+
       <header
         class="content-header"
         style="display: flex; justify-content: space-between; align-items: center"
@@ -208,13 +221,6 @@
           </div>
         </template>
 
-        <div class="filtro-grupo">
-          <select name="seccion" v-model="filtros.seccion">
-            <option value="personal">Personal Administrativo</option>
-            <option value="departamentos">Departamentos</option>
-            <option value="problematicas">Problemáticas</option>
-          </select>
-        </div>
       </section>
 
       <div class="tabla-contenedor">
@@ -319,6 +325,13 @@
                 >
                   ✏️
                 </button>
+                <button
+                  class="btn-accion btn-eliminar"
+                  title="Eliminar"
+                  @click="eliminarDepartamento(depto)"
+                >
+                  🗑️
+                </button>
               </td>
             </tr>
           </tbody>
@@ -369,6 +382,13 @@
                   @click="abrirModalFormProblematica(prob)"
                 >
                   ✏️
+                </button>
+                <button
+                  class="btn-accion btn-eliminar"
+                  title="Eliminar"
+                  @click="eliminarProblematica(prob)"
+                >
+                  🗑️
                 </button>
               </td>
             </tr>
@@ -466,6 +486,12 @@ const usuarioActivo = ref<any>(null)
 
 const seccionGuardada = localStorage.getItem('panelSeccionActiva') || 'personal'
 
+const secciones = [
+  { valor: 'personal', etiqueta: 'Gestión de Personal' },
+  { valor: 'departamentos', etiqueta: 'Departamentos' },
+  { valor: 'problematicas', etiqueta: 'Problemáticas' },
+]
+
 const filtros = ref({
   busqueda: '',
   rol: '',
@@ -487,7 +513,7 @@ onMounted(async () => {
 
   if (sesion.tipo_id !== 1) {
     Swal.fire('Acceso Denegado', 'No tienes permisos para ver esta sección.', 'error')
-    router.push('/dashboard')
+    redireccionarUsuario()
     return
   }
   director.value = sesion
@@ -713,6 +739,7 @@ const cargarUsuarios = async () => {
 }
 
 import { watch } from 'vue'
+import { redireccionarUsuario } from '@/logic/redirectUser.ts'
 
 watch(
   () => filtros.value.seccion,
@@ -864,6 +891,46 @@ const ejecutarGuardadoProblematica = async (formData: any, esEdicion: boolean) =
   }
 }
 
+const eliminarProblematica = async (prob: any) => {
+  const result = await Swal.fire({
+    title: '¿Eliminar problemática?',
+    text: `Se eliminará "${prob.nombre}" de forma permanente. Esta acción no se puede deshacer.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#c62828',
+    cancelButtonColor: '#888',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    customClass: { container: 'swal-difuminado' }
+  })
+
+  if (!result.isConfirmed) return
+
+  const tabla = prob.tipo === 'Interno' ? 'problemas' : 'problemas_externos'
+  const { error } = await supabase.from(tabla).delete().eq('id', prob.id)
+
+  if (error) {
+    console.error('Error al eliminar problemática: ', error)
+    Swal.fire(
+      'No se pudo eliminar',
+      error.code === '23503'
+        ? 'Esta problemática tiene registros asociados (por ejemplo, reportes) y no puede eliminarse.'
+        : 'Ocurrió un problema al eliminar la problemática.',
+      'error',
+    )
+    return
+  }
+
+  await cargarDatos()
+  Swal.fire({
+    title: 'Problemática Eliminada',
+    text: `Se ha eliminado "${prob.nombre}" correctamente.`,
+    icon: 'success',
+    confirmButtonColor: '#1a6b2f',
+  })
+}
+
 const abrirModalVerDepto = (depto: any) => {
   departamentoActivo.value = depto
   modalDeptoDetalleVisible.value = true
@@ -931,6 +998,51 @@ const ejecutarGuardadoDepartamento = async (formData: any, esEdicion: boolean) =
     console.error('Error al guardar departamento: ', error)
     Swal.fire('Error', 'Ocurrió un problema al guardar el departamento.', 'error')
   }
+}
+
+const eliminarDepartamento = async (depto: any) => {
+  const result = await Swal.fire({
+    title: '¿Eliminar departamento?',
+    text: `Se eliminará "${depto.nombre}" de forma permanente. Esta acción no se puede deshacer.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#c62828',
+    cancelButtonColor: '#888',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    customClass: { container: 'swal-difuminado' }
+  })
+
+  if (!result.isConfirmed) return
+
+  const tabla = depto.tipo === 'Interno' ? 'departamentos' : 'departamentos_externos'
+  const { error } = await supabase.from(tabla).delete().eq('id', depto.id)
+
+  if (error) {
+    console.error('Error al eliminar departamento: ', error)
+    Swal.fire(
+      'No se pudo eliminar',
+      error.code === '23503'
+        ? 'Este departamento tiene personal, problemáticas u otros registros asociados y no puede eliminarse.'
+        : 'Ocurrió un problema al eliminar el departamento.',
+      'error',
+    )
+    return
+  }
+
+  // Refresca la lista y los catálogos para que el departamento eliminado
+  // ya no aparezca en los filtros ni en los formularios
+  await cargarDatos()
+  await cargarCatalogos()
+  await cargarDepartamentos()
+
+  Swal.fire({
+    title: 'Departamento Eliminado',
+    text: `Se ha eliminado "${depto.nombre}" correctamente.`,
+    icon: 'success',
+    confirmButtonColor: '#1a6b2f',
+  })
 }
 
 const abrirModalVer = (user: any) => {
@@ -1048,3 +1160,46 @@ const cerrarSesion = () => {
 </script>
 
 <style src="../assets/panelAdministrador.css" />
+
+<style scoped>
+.tabs-secciones {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.tab-seccion {
+  flex-shrink: 0;
+  padding: 14px 29px;
+  border: none;
+  border-radius: 999px;
+  background-color: #eceeed;
+  color: #444;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.tab-seccion:hover {
+  background-color: #dfe3e0;
+}
+
+.tab-seccion.activa {
+  background-color: #1a6b2f;
+  color: #fff;
+}
+
+.btn-eliminar:hover {
+  background-color: #fdecea;
+}
+
+.tab-seccion:focus-visible {
+  outline: 3px solid #1a6b2f;
+  outline-offset: 2px;
+}
+</style>

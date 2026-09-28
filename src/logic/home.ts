@@ -92,6 +92,7 @@ import { Toast } from '../utils/alertas'
 //   }
 // }
 import { ref } from 'vue'
+import { redireccionarUsuario } from './redirectUser'
 export const menuAbierto = ref(false)
 export const menuRef = ref<HTMLElement | null>(null)
 
@@ -247,20 +248,10 @@ export const iniciarSesion = () => {
 
       document.body.removeChild(modal)
 
-      switch (usuario.tipo_id) {
-        case 1:
-          router.push('/management')
-          break;
-        case 2:
-          router.push('/dashboard')
-          break;
-        default:
-          router.push('/dashboard')
-          break;
-        }
+      redireccionarUsuario()
 
     } catch (err) {
-      errorGlobal.textContent = 'Error al conectar con el servidor'
+      errorGlobal.textContent = 'Error al conectar con el servidor: ' + err
       errorGlobal.style.display = 'block'
       submitBtn.disabled = false
       submitBtn.textContent = 'Iniciar sesión'
@@ -272,12 +263,6 @@ export const iniciarSesion = () => {
     document.body.removeChild(modal)
   })
 
-  // Cerrar modal al hacer click fuera
-  // modal.addEventListener('click', (event) => {
-  //   if (event.target === modal) {
-  //     document.body.removeChild(modal)
-  //   }
-  // })
 }
 
 // Detectar click fuera del menú
