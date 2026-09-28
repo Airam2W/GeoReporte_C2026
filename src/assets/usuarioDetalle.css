@@ -44,6 +44,14 @@
   color: #aaa;
   cursor: pointer;
 }
+.btn-rojo {
+  background: #c62828 !important;
+  color: white !important;
+}
+.btn-verde {
+  background: #2e7d32 !important;
+  color: white !important;
+}
 .modal-body {
   padding: 24px;
 }

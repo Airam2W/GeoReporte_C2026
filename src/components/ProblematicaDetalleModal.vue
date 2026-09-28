@@ -38,10 +38,38 @@
                 {{ problematica.tipo }}
               </span>
             </div>
+
+            <div class="estado-actual-box" style="margin-top: 20px">
+              <label>Estado</label>
+              <span
+                :class="[
+                  'badge badge-grande',
+                  problematica.estado === 'Alta' ? 'badge-verde' : 'badge-rojo',
+                ]"
+              >
+                {{ problematica.estado }}
+              </span>
+            </div>
           </div>
         </div>
 
         <div class="modal-footer">
+          <button
+            v-if="problematica.estado === 'Alta'"
+            class="btn-rojo btn-secundario"
+            @click="cambiarEstado(problematica)"
+            name="darBaja"
+          >
+            Dar de Baja
+          </button>
+          <button
+            v-else
+            class="btn-verde btn-secundario"
+            @click="cambiarEstado(problematica)"
+            name="darAlta"
+          >
+            Dar de Alta
+          </button>
           <button class="btn-secundario" @click="cerrar">Cerrar</button>
         </div>
       </div>
@@ -51,13 +79,24 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue'
+import { ref } from 'vue'
 
 defineProps({
   visible: { type: Boolean, default: false },
   problematica: { type: Object, default: null },
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'cambiarEstado'])
+const botonDarBaja = ref<HTMLButtonElement | null>(null)
+const botonDarAlta = ref<HTMLButtonElement | null>(null)
+
+function cambiarEstado(problematica: any) {
+  botonDarBaja.value?.setAttribute('disabled', 'true')
+  botonDarAlta.value?.setAttribute('disabled', 'true')
+  emit('cambiarEstado', problematica);
+  botonDarBaja.value?.removeAttribute('disabled')
+  botonDarAlta.value?.removeAttribute('disabled')
+}
 
 const cerrar = () => {
   emit('close')

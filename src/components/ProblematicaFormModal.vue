@@ -57,7 +57,7 @@
               :class="{ 'input-error': errores.departamento_id }"
             >
               <option value="">Seleccione...</option>
-              <option v-for="dep in departamentos" :key="dep.id" :value="dep.id">
+              <option v-for="dep in departamentos.filter(d => d.estado === 'Alta')" :key="dep.id" :value="dep.id">
                 {{ dep.nombre }}
               </option>
             </select>
@@ -72,7 +72,7 @@
               :class="{ 'input-error': errores.departamento_id }"
             >
               <option value="">Seleccione...</option>
-              <option v-for="dep in departamentosExternos" :key="dep.id" :value="dep.id">
+              <option v-for="dep in departamentosExternos.filter(d => d.estado === 'Alta')" :key="dep.id" :value="dep.id">
                 {{ dep.departamento }}
               </option>
             </select>

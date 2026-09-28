@@ -121,7 +121,7 @@
             :class="{ 'input-error': errores.departamento_id }"
           >
             <option value="">Selecciona un departamento...</option>
-            <option v-for="dep in departamentos" :key="dep.id" :value="dep.id">
+            <option v-for="dep in departamentos.filter(d => d.estado === 'Alta')" :key="dep.id" :value="dep.id">
               {{ dep.nombreamigable }}
             </option>
           </select>
@@ -149,7 +149,7 @@
                   : 'Primero selecciona un departamento'
               }}
             </option>
-            <option v-for="prob in problemas" :key="prob.id" :value="prob.id">
+            <option v-for="prob in problemas.filter(d => d.estado === 'Alta')" :key="prob.id" :value="prob.id">
               {{ prob.nombreamigable }}
             </option>
           </select>

@@ -178,7 +178,8 @@
         </template>
 
         <!-- Filtro exclusivo de Departamentos -->
-        <div class="filtro-grupo" v-else-if="filtros.seccion === 'departamentos'">
+         <template v-else-if="filtros.seccion === 'departamentos'">
+        <div class="filtro-grupo">
           <select name="tipoDepartamento" v-model="filtros.tipoDepartamento">
             <option value="">Todos los tipos</option>
             <option value="Interno">Departamento Interno</option>
@@ -186,6 +187,14 @@
           </select>
         </div>
 
+        <div class="filtro-grupo">
+          <select name="estado" v-model="filtros.estado">
+            <option value="">Todos los estados</option>
+            <option value="Alta">Alta</option>
+            <option value="Baja">Baja</option>
+          </select>
+        </div>
+        </template>
         <!-- Filtro exclusivo de Problemáticas -->
         <template v-else>
           <div class="filtro-grupo">
@@ -219,6 +228,16 @@
               </template>
             </select>
           </div>
+
+          <!-- Filtro de Problematicas Alta/Baja-->
+          <div class="filtro-grupo">
+            <select name="estado" v-model="filtros.estado">
+              <option value="">Todos los estados</option>
+              <option value="Alta">Alta</option>
+              <option value="Baja">Baja</option>
+            </select>
+          </div>
+
         </template>
 
       </section>
@@ -287,6 +306,7 @@
               <th>NOMBRE</th>
               <th>NOMBRE AMIGABLE</th>
               <th>TIPO</th>
+              <th>ESTADO</th>
               <th class="text-center">ACCIONES</th>
             </tr>
           </thead>
@@ -310,6 +330,16 @@
                   {{ depto.tipo }}
                 </span>
               </td>
+              <td>
+                <span
+                  :class="[
+                    'badge',
+                    depto.raw.estado === 'Alta' ? 'badge-verde' : 'badge-rojo',
+                  ]"
+                >
+                  {{ depto.raw.estado || 'N/A' }}
+                </span>
+              </td>
               <td class="acciones-celda">
                 <button
                   class="btn-accion btn-ver"
@@ -327,10 +357,10 @@
                 </button>
                 <button
                   class="btn-accion btn-eliminar"
-                  title="Eliminar"
-                  @click="eliminarDepartamento(depto)"
+                  :title="depto.raw.estado === 'Alta' ? 'Dar de baja' : 'Dar de alta'"
+                  @click="cambiarEstadoDepartamento(depto)"
                 >
-                  🗑️
+                  {{ depto.raw.estado === 'Alta' ? '⬇️' : '⬆️' }}
                 </button>
               </td>
             </tr>
@@ -344,6 +374,7 @@
               <th>NOMBRE AMIGABLE</th>
               <th>DEPARTAMENTO</th>
               <th>TIPO</th>
+              <th>ESTADO</th>
               <th class="text-center">ACCIONES</th>
             </tr>
           </thead>
@@ -368,6 +399,16 @@
                   {{ prob.tipo }}
                 </span>
               </td>
+              <td>
+                <span
+                  :class="[
+                    'badge',
+                    prob.estado === 'Alta' ? 'badge-verde' : 'badge-rojo',
+                  ]"
+                >
+                  {{ prob.estado }}
+                </span>
+              </td>
               <td class="acciones-celda">
                 <button
                   class="btn-accion btn-ver"
@@ -385,10 +426,10 @@
                 </button>
                 <button
                   class="btn-accion btn-eliminar"
-                  title="Eliminar"
-                  @click="eliminarProblematica(prob)"
+                  :title="prob.estado === 'Alta' ? 'Dar de baja' : 'Dar de alta'"
+                  @click="cambiarEstadoProblema(prob)"
                 >
-                  🗑️
+                  {{ prob.estado === 'Alta' ? '⬇️' : '⬆️' }}
                 </button>
               </td>
             </tr>
@@ -427,6 +468,7 @@
       :visible="modalDeptoDetalleVisible"
       :departamento="departamentoActivo"
       @close="cerrarModalVerDepto"
+      @cambiarEstado="cambiarEstadoDepartamento"
     />
 
     <ProblematicaFormModal
@@ -442,6 +484,7 @@
       :visible="modalProblematicaDetalleVisible"
       :problematica="problematicaActivo"
       @close="cerrarModalVerProblematica"
+      @cambiarEstado="cambiarEstadoProblema"
     />
   </div>
 </template>
@@ -501,6 +544,7 @@ const filtros = ref({
   tipoDepartamento: '',
   tipoProblematica: '',
   departamentoProblematica: '',
+  estadoProblematica: '',
 })
 
 onMounted(async () => {
@@ -531,13 +575,13 @@ const cargarListaProblematicas = async () => {
 
   const { data: internas, error: errorInt } = await supabase
     .from('problemas')
-    .select('id, nombre, nombreamigable, departamento_id, departamentos(id, nombre)')
+    .select('id, nombre, nombreamigable, departamento_id, departamentos(id, nombre), estado')
     .order('nombre', { ascending: true })
 
   const { data: externas, error: errorExt } = await supabase
     .from('problemas_externos')
     .select(
-      'id, nombre, nombreamigable, departamento_externo_id, departamentos_externos(id, departamento)',
+      'id, nombre, nombreamigable, departamento_externo_id, departamentos_externos(id, departamento), estado',
     )
     .order('nombre', { ascending: true })
 
@@ -549,6 +593,7 @@ const cargarListaProblematicas = async () => {
       tipo: 'Interno',
       departamento_id: p.departamento_id,
       departamentoNombre: p.departamentos?.nombre || 'Sin asignar',
+      estado: p.estado,
       raw: p,
     }))
 
@@ -559,6 +604,7 @@ const cargarListaProblematicas = async () => {
       tipo: 'Externo',
       departamento_id: p.departamento_externo_id,
       departamentoNombre: p.departamentos_externos?.departamento || 'Sin asignar',
+      estado: p.estado,
       raw: p,
     }))
 
@@ -569,10 +615,10 @@ const cargarListaProblematicas = async () => {
 }
 
 const cargarDepartamentos = async () => {
-  const { data: internos } = await supabase.from('departamentos').select('id, nombre')
+  const { data: internos } = await supabase.from('departamentos').select('id, nombre, nombreamigable, estado')
   const { data: externos } = await supabase
     .from('departamentos_externos')
-    .select('id, departamento')
+    .select('id, departamento, estado')
 
   departamentosInternos.value = internos || []
   departamentosExternos.value = externos || []
@@ -583,12 +629,12 @@ const cargarListaDepartamentos = async () => {
 
   const { data: internos, error: errorInt } = await supabase
     .from('departamentos')
-    .select('id, nombre, nombreamigable')
+    .select('id, nombre, nombreamigable, estado')
     .order('nombre', { ascending: true })
 
   const { data: externos, error: errorExt } = await supabase
     .from('departamentos_externos')
-    .select('id, departamento')
+    .select('id, departamento, estado')
     .order('departamento', { ascending: true })
 
   if (!errorInt && !errorExt) {
@@ -597,6 +643,7 @@ const cargarListaDepartamentos = async () => {
       nombre: d.nombre,
       nombreamigable: d.nombreamigable,
       tipo: 'Interno',
+      estado: d.estado,
       raw: d,
     }))
 
@@ -605,6 +652,7 @@ const cargarListaDepartamentos = async () => {
       nombre: d.departamento,
       nombreamigable: null,
       tipo: 'Externo',
+      estado: d.estado,
       raw: d,
     }))
 
@@ -629,11 +677,11 @@ const cargarCatalogos = async () => {
 
   if (rData) rolesOpciones.value = rData
 
-  const { data: dData } = await supabase.from('departamentos').select(`id, nombre, nombreamigable`)
+  const { data: dData } = await supabase.from('departamentos').select(`id, nombre, nombreamigable, estado`)
 
   if (dData) departamentosOpciones.value = dData
 
-  const { data: deData } = await supabase.from('departamentos_externos').select(`id, departamento`)
+  const { data: deData } = await supabase.from('departamentos_externos').select(`id, departamento, estado`)
 
   if (deData) departamentosExternosOpciones.value = deData
 
@@ -751,6 +799,7 @@ watch(
     filtros.value.tipoDepartamento = ''
     filtros.value.tipoProblematica = ''
     filtros.value.departamentoProblematica = ''
+    filtros.value.estado = 'Alta'
     filtros.value.busqueda = ''
     cargarDatos()
   },
@@ -793,7 +842,10 @@ const problematicasFiltradas = computed(() => {
       filtros.value.departamentoProblematica === '' ||
       String(p.departamento_id) === String(filtros.value.departamentoProblematica)
 
-    return coincideBusqueda && coincideTipo && coincideDepartamento
+    const coincideEstado =
+      filtros.value.estado === '' || p.estado === filtros.value.estado
+
+    return coincideBusqueda && coincideTipo && coincideDepartamento && coincideEstado
   })
 })
 
@@ -806,7 +858,10 @@ const departamentosFiltrados = computed(() => {
       filtros.value.tipoDepartamento === '' ||
       d.tipo.toLowerCase() === filtros.value.tipoDepartamento.toLowerCase()
 
-    return coincideBusqueda && coincideTipo
+    const coincideEstado =
+      filtros.value.estado === '' || d.estado === filtros.value.estado
+
+    return coincideBusqueda && coincideTipo && coincideEstado
   })
 })
 
@@ -825,6 +880,53 @@ const cerrarModalVerProblematica = () => {
 const abrirModalFormProblematica = (prob: any = null) => {
   problematicaActivo.value = prob
   modalProblematicaFormVisible.value = true
+}
+
+const cambiarEstadoProblematica = async (prob: any) => {
+
+  const nuevoEstado = prob.estado === 'Alta' ? 'Baja' : 'Alta'
+  // Confirmación pregunta si el usuario realmente quiere darla de baja o alta
+  Swal.fire({
+    title: `¿Deseas dar de ${nuevoEstado === 'Alta' ? 'alta' : 'baja'} esta problemática?`,
+    text: `Se dará de ${nuevoEstado === 'Alta' ? 'alta' : 'baja'} "${prob.nombre}".`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#1a6b2f',
+    cancelButtonColor: '#888',
+    confirmButtonText: `Sí, ${nuevoEstado === 'Alta' ? 'Dar de Alta' : 'Dar de Baja'}`,
+    cancelButtonText: 'Cancelar',
+  }).then((result) => {
+    if (result.isConfirmed) {
+      cambiarEstadoProblematicaEnBD(prob);
+      Swal.fire({
+        title: `Problemática ${nuevoEstado === 'Alta' ? 'dada de Alta' : 'dada de Baja'}`,
+        text: `Se ha dado de ${nuevoEstado === 'Alta' ? 'alta' : 'baja'} "${prob.nombre}" correctamente.`,
+        icon: 'success',
+        confirmButtonColor: '#1a6b2f',
+      })
+      cerrarModalVerProblematica()
+    }
+  })
+}
+
+const cambiarEstadoProblematicaEnBD = async (prob: any) => {
+  const nuevoEstado = prob.estado === 'Alta' ? 'Baja' : 'Alta'
+  const tabla = prob.tipo === 'Interno' ? 'problemas' : 'problemas_externos'
+
+  const { error } = await supabase.from(tabla).update({ estado: nuevoEstado }).eq('id', prob.id)
+
+  if (error) {
+    console.error('Error al cambiar estado de problemática: ', error)
+    Swal.fire(
+      'Error',
+      'Ocurrió un problema al cambiar el estado de la problemática.',
+      'error',
+    )
+    return
+  }
+
+  await cargarDatos()
+  cerrarModalVerProblematica()
 }
 
 const cerrarModalFormProblematica = () => {
@@ -864,6 +966,7 @@ const ejecutarGuardadoProblematica = async (formData: any, esEdicion: boolean) =
           nombre: formData.nombre,
           nombreamigable: formData.nombreamigable,
           departamento_id: formData.departamento_id,
+          estado: 'Alta',
         })
         if (error) throw error
       } else {
@@ -871,6 +974,7 @@ const ejecutarGuardadoProblematica = async (formData: any, esEdicion: boolean) =
           nombre: formData.nombre,
           nombreamigable: formData.nombreamigable,
           departamento_externo_id: formData.departamento_id,
+          estado: 'Alta',
         })
         if (error) throw error
       }
@@ -891,15 +995,16 @@ const ejecutarGuardadoProblematica = async (formData: any, esEdicion: boolean) =
   }
 }
 
-const eliminarProblematica = async (prob: any) => {
+const cambiarEstadoProblema = async (prob: any) => {
+  const nuevoEstado = prob.estado === 'Alta' ? 'Alta' : 'Baja'
   const result = await Swal.fire({
-    title: '¿Eliminar problemática?',
-    text: `Se eliminará "${prob.nombre}" de forma permanente. Esta acción no se puede deshacer.`,
+    title: `¿Deseas dar de ${nuevoEstado === 'Alta' ? 'alta' : 'baja'} esta problemática?`,
+    text: `Se ${nuevoEstado === 'Alta' ? 'dará de baja' : 'dará de alta'} "${prob.nombre}".`,
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonColor: '#c62828',
+    confirmButtonColor: '#0060c0',
     cancelButtonColor: '#888',
-    confirmButtonText: 'Sí, eliminar',
+    confirmButtonText: `Sí, dar de ${nuevoEstado === 'Alta' ? 'baja' : 'alta'}`,
     cancelButtonText: 'Cancelar',
     reverseButtons: true,
     customClass: { container: 'swal-difuminado' }
@@ -911,21 +1016,13 @@ const eliminarProblematica = async (prob: any) => {
   const { error } = await supabase.from(tabla).delete().eq('id', prob.id)
 
   if (error) {
-    console.error('Error al eliminar problemática: ', error)
-    Swal.fire(
-      'No se pudo eliminar',
-      error.code === '23503'
-        ? 'Esta problemática tiene registros asociados (por ejemplo, reportes) y no puede eliminarse.'
-        : 'Ocurrió un problema al eliminar la problemática.',
-      'error',
-    )
-    return
+    cambiarEstadoProblematicaEnBD(prob) // Cambia el estado a "Baja" si no se puede eliminar
   }
 
   await cargarDatos()
   Swal.fire({
-    title: 'Problemática Eliminada',
-    text: `Se ha eliminado "${prob.nombre}" correctamente.`,
+    title: 'Problemática Actualizada',
+    text: `Se ha actualizado el estado de "${prob.nombre}" correctamente.`,
     icon: 'success',
     confirmButtonColor: '#1a6b2f',
   })
@@ -975,12 +1072,12 @@ const ejecutarGuardadoDepartamento = async (formData: any, esEdicion: boolean) =
       if (formData.tipo === 'Interno') {
         const { error } = await supabase
           .from('departamentos')
-          .insert({ nombre: formData.nombre, nombreamigable: formData.nombreamigable })
+          .insert({ nombre: formData.nombre, nombreamigable: formData.nombreamigable, estado: 'Alta' })
         if (error) throw error
       } else {
         const { error } = await supabase
           .from('departamentos_externos')
-          .insert({ departamento: formData.nombre })
+          .insert({ departamento: formData.nombre, estado: 'Alta' })
         if (error) throw error
       }
     }
@@ -1000,15 +1097,15 @@ const ejecutarGuardadoDepartamento = async (formData: any, esEdicion: boolean) =
   }
 }
 
-const eliminarDepartamento = async (depto: any) => {
+const cambiarEstadoDepartamento = async (depto: any) => {
   const result = await Swal.fire({
-    title: '¿Eliminar departamento?',
-    text: `Se eliminará "${depto.nombre}" de forma permanente. Esta acción no se puede deshacer.`,
-    icon: 'warning',
+    title: '¿Cambiar estado del departamento?',
+    text: `Se cambiará el estado de "${depto.nombre}" a ${depto.estado === 'Alta' ? 'Baja' : 'Alta'}.`,
+    icon: 'info',
     showCancelButton: true,
-    confirmButtonColor: '#c62828',
+    confirmButtonColor: '#0060c0',
     cancelButtonColor: '#888',
-    confirmButtonText: 'Sí, eliminar',
+    confirmButtonText: 'Sí, cambiar estado',
     cancelButtonText: 'Cancelar',
     reverseButtons: true,
     customClass: { container: 'swal-difuminado' }
@@ -1020,14 +1117,7 @@ const eliminarDepartamento = async (depto: any) => {
   const { error } = await supabase.from(tabla).delete().eq('id', depto.id)
 
   if (error) {
-    console.error('Error al eliminar departamento: ', error)
-    Swal.fire(
-      'No se pudo eliminar',
-      error.code === '23503'
-        ? 'Este departamento tiene personal, problemáticas u otros registros asociados y no puede eliminarse.'
-        : 'Ocurrió un problema al eliminar el departamento.',
-      'error',
-    )
+    cambiarEstadoDepartamentoEnBD(depto) // Cambia el estado a "Baja" si no se puede eliminar
     return
   }
 
@@ -1043,6 +1133,26 @@ const eliminarDepartamento = async (depto: any) => {
     icon: 'success',
     confirmButtonColor: '#1a6b2f',
   })
+}
+
+const cambiarEstadoDepartamentoEnBD = async (depto: any) => {
+  const nuevoEstado = depto.estado === 'Alta' ? 'Baja' : 'Alta'
+  const tabla = depto.tipo === 'Interno' ? 'departamentos' : 'departamentos_externos'
+
+  const { error } = await supabase.from(tabla).update({ estado: nuevoEstado }).eq('id', depto.id)
+
+  if (error) {
+    console.error('Error al cambiar estado de departamento: ', error)
+    Swal.fire(
+      'Error',
+      'Ocurrió un problema al cambiar el estado del departamento.',
+      'error',
+    )
+    return
+  }
+
+  await cargarDatos()
+  cerrarModalVerDepto()
 }
 
 const abrirModalVer = (user: any) => {

@@ -1,5 +1,5 @@
 ALTER TABLE problemas_externos
-  DROP COLUMN dep_externo_id,
+  DROP COLUMN IF EXISTS dep_externo_id,
   ADD COLUMN IF NOT EXISTS nombre TEXT NOT NULL,
   ADD COLUMN IF NOT EXISTS nombreamigable TEXT NOT NULL,
   ADD COLUMN IF NOT EXISTS departamento_externo_id INT REFERENCES departamentos_externos(id);
