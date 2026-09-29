@@ -6,13 +6,23 @@ import './setup'
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
 
-vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: pushMock }),
-}))
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('vue-router')>()
+	return {
+		...actual,
+		useRouter: () => ({ push: pushMock }),
+	}
+})
 
-vi.mock('sweetalert2', () => ({
-  default: { fire: vi.fn().mockResolvedValue({ isConfirmed: true }) },
-}))
+vi.mock('sweetalert2', () => {
+	const fire = vi.fn().mockResolvedValue({ isConfirmed: true })
+	return {
+		default: {
+			fire,
+			mixin: vi.fn().mockReturnValue({ fire: vi.fn().mockResolvedValue(undefined) }),
+		},
+	}
+})
 
 const reportesMock = [
 	{
@@ -25,7 +35,7 @@ const reportesMock = [
 		foto_url: null,
 		created_at: '2026-09-15T12:00:00Z',
 		problemas: { id: 1, nombre: 'Bache' },
-		detalle_reporte: { estado_id: 1, estadoreporte: {estado: 'Llegado' }},
+		detalle_reporte: { estado_id: 1, estadoreporte: { estado: 'Llegado' } },
 	},
 	{
 		folio: 'ALU-LUZ-20260914-002-XYZ789',
@@ -37,7 +47,7 @@ const reportesMock = [
 		foto_url: null,
 		created_at: '2026-09-14T12:00:00Z',
 		problemas: { id: 2, nombre: 'Falla de iluminacion' },
-		detalle_reporte: { estado_id: 1, estadoreporte: {estado: 'Llegado' }},
+		detalle_reporte: { estado_id: 1, estadoreporte: { estado: 'Llegado' } },
 	},
 	{
 		folio: 'ALU-DRE-20260913-003-QWE456',
@@ -49,21 +59,25 @@ const reportesMock = [
 		foto_url: null,
 		created_at: '2026-09-13T12:00:00Z',
 		problemas: { id: 3, nombre: 'Drenaje' },
-		detalle_reporte: { estado_id: 4, estadoreporte: {estado: 'Finalizado' }},
+		detalle_reporte: { estado_id: 4, estadoreporte: { estado: 'Finalizado' } },
 	},
 ]
 
 describe('Pruebas del panel de filtros del administrador', () => {
 	let wrapper: VueWrapper<any>
-	let updateEqMock: any
-	let updateMock: any
+	let actualizarEqMock: any
+	let actualizarMock: any
+	let reportesEstado: any[]
+	let ultimaActualizacion: any
+
 	beforeEach(async () => {
 		vi.clearAllMocks()
+		reportesEstado = structuredClone(reportesMock)
 
 		const storage = new Map<string, string>([
 			[
 				'adminSession',
-				JSON.stringify({ id: 1, nombre: 'Administrador', departamento_id: 1 }),
+				JSON.stringify({ id: 1, nombre: 'Administrador', departamento_id: 1 , tipo_id: 2}),
 			],
 		])
 
@@ -73,52 +87,100 @@ describe('Pruebas del panel de filtros del administrador', () => {
 			removeItem: (key: string) => storage.delete(key),
 		})
 
-		updateEqMock = vi.fn().mockResolvedValue({ error: null })
-		updateMock = vi.fn().mockReturnValue({ eq: updateEqMock })
-
-		;(supabase.from as any).mockImplementation((table: string) => {
-			if (table === 'problemas') {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockResolvedValue({
-							data: [
-								{ id: 1, nombre: 'Bache', departamento_id: 1 },
-								{ id: 2, nombre: 'Falla de iluminacion', departamento_id: 1 },
-							],
-							error: null,
-						}),
-					}),
+		actualizarEqMock = vi.fn(async (columna: string, valor: any) => {
+			const reporte = reportesEstado.find((r: any) => r[columna] === valor)
+			if (reporte) {
+				if ('estado_id' in ultimaActualizacion) {
+					const estadoTexto =
+						ultimaActualizacion.estado_id === 3 ? 'Rechazado' :
+							ultimaActualizacion.estado_id === 1 ? 'Llegado' :
+								ultimaActualizacion.estado_id === 2 ? 'En Proceso' :
+									reporte.detalle_reporte.estadoreporte.estado
+					reporte.detalle_reporte = {
+						estado_id: ultimaActualizacion.estado_id,
+						estadoreporte: { estado: estadoTexto },
+					}
+				} else if ('estado' in ultimaActualizacion) {
+					reporte.detalle_reporte = {
+						estado_id: reporte.detalle_reporte?.estado_id,
+						estadoreporte: { estado: ultimaActualizacion.estado },
+					}
 				}
 			}
-
-			if (table === 'departamentos') {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockResolvedValue({
-							data: [{ id: 1, nombre: 'Servicios Publicos' }],
-							error: null,
-						}),
-					}),
-				}
-			}
-
-			if (table === 'reportes') {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							order: vi.fn().mockResolvedValue({ data: reportesMock, error: null }),
-						}),
-					}),
-				}
-			}
-			if(table == 'detalle_reporte'){
-				return{
-					update: updateMock,
-				}
-			}
-
-			return {}
+			return { error: null }
 		})
+
+		actualizarMock = vi.fn((payload: any) => {
+			ultimaActualizacion = payload
+			return { eq: actualizarEqMock }
+		})
+
+			; (supabase.from as any).mockImplementation((table: string) => {
+				if (table === 'problemas') {
+					return {
+						select: vi.fn().mockReturnValue({
+							eq: vi.fn().mockResolvedValue({
+								data: [
+									{ id: 1, nombre: 'Bache', departamento_id: 1 },
+									{ id: 2, nombre: 'Falla de iluminacion', departamento_id: 1 },
+								],
+								error: null,
+							}),
+						}),
+					}
+				}
+
+				if (table === 'departamentos') {
+					return {
+						select: vi.fn().mockReturnValue({
+							eq: vi.fn().mockResolvedValue({
+								data: [{ id: 1, nombre: 'Servicios Publicos' }],
+								error: null,
+							}),
+						}),
+					}
+				}
+
+				if (table === 'reportes') {
+					return {
+						select: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								order: vi.fn().mockImplementation(() =>
+									Promise.resolve({ data: structuredClone(reportesEstado), error: null }),
+								),
+							}),
+						}),
+					}
+				}
+
+				if (table === 'detalle_reporte') {
+					return {
+						update: actualizarMock,
+					}
+				}
+				if (table === 'estadoreporte') {
+					return {
+						select: vi.fn().mockReturnValue({
+							eq: vi.fn().mockImplementation((_columna: string, valorEstado: string) => {
+								const mapaEstados: Record<string, number> = {
+									'Llegado': 1,
+									'En Proceso': 2,
+									'Rechazado': 3,
+									'Finalizado': 4,
+								}
+								return {
+									single: vi.fn().mockResolvedValue({
+										data: { id: mapaEstados[valorEstado] ?? null },
+										error: null,
+									}),
+								}
+							}),
+						}),
+					}
+				}
+
+				return {}
+			})
 
 		wrapper = mount(PanelAdministrador)
 		await vi.waitFor(() => expect(wrapper.vm.cargando).toBe(false))
@@ -230,14 +292,14 @@ describe('Pruebas del panel de filtros del administrador', () => {
 
 		expect(localStorage.getItem('adminSession')).toBeNull()
 		expect(pushMock).toHaveBeenCalledWith('/')
-	})	
+	})
 	it('PU-PA-11: rechazar un reporte actualiza la BD y el estado local', async () => {
 		const Swal = (await import('sweetalert2')).default
 
 		await wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
 
-		expect(updateMock).toHaveBeenCalledWith({ estado_id: 3 })
-		expect(updateEqMock).toHaveBeenCalledWith('folio', 'ALU-BAC-20260915-001-ABC123')
+		expect(actualizarMock).toHaveBeenCalledWith({ estado_id: 3 })
+		expect(actualizarEqMock).toHaveBeenCalledWith('folio', 'ALU-BAC-20260915-001-ABC123')
 
 		const reporte = wrapper.vm.reportes.find(
 			(rep: any) => rep.folio === 'ALU-BAC-20260915-001-ABC123',
@@ -252,7 +314,7 @@ describe('Pruebas del panel de filtros del administrador', () => {
 
 		await wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
 
-		expect(updateMock).not.toHaveBeenCalled()
+		expect(actualizarMock).not.toHaveBeenCalled()
 
 		const reporte = wrapper.vm.reportes.find(
 			(r: any) => r.folio === 'ALU-BAC-20260915-001-ABC123',
@@ -261,7 +323,7 @@ describe('Pruebas del panel de filtros del administrador', () => {
 	})
 
 	it('PU-PA-13: si la BD falla al rechazar, el estado local no cambia', async () => {
-		updateEqMock.mockResolvedValueOnce({ error: { message: 'fallo' } })
+		actualizarEqMock.mockResolvedValueOnce({ error: { message: 'fallo' } })
 
 		await wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
 
@@ -274,7 +336,7 @@ describe('Pruebas del panel de filtros del administrador', () => {
 	it('PU-PA-14: devolver un reporte cambia su estado al indicado', async () => {
 		await wrapper.vm.devolverReporte('ALU-DRE-20260913-003-QWE456', 'En Proceso')
 
-		expect(updateMock).toHaveBeenCalledWith({ estado: 'En Proceso' })
+		expect(actualizarMock).toHaveBeenCalledWith({ estado_id: 2})
 
 		const reporte = wrapper.vm.reportes.find(
 			(r: any) => r.folio === 'ALU-DRE-20260913-003-QWE456',
@@ -282,16 +344,16 @@ describe('Pruebas del panel de filtros del administrador', () => {
 		expect(reporte.estado).toBe('En Proceso')
 	})
 	it('PU-PA-15: doble clic en rechazar dispara dos actualizaciones a la BD', async () => {
-  		const Swal = (await import('sweetalert2')).default
+		const Swal = (await import('sweetalert2')).default
 
-  		const p1 = wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
-  		const p2 = wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
+		const p1 = wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
+		const p2 = wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
 
-  		await Promise.all([p1, p2])
+		await Promise.all([p1, p2])
 		expect(Swal.fire).toHaveBeenCalledTimes(2)
 		expect(Swal.fire).toHaveBeenCalledWith(
-    	expect.objectContaining({ title: '¿Rechazar reporte?' }),)
-  		expect(updateMock).toHaveBeenCalledTimes(1)
+			expect.objectContaining({ title: '¿Rechazar reporte?' }),)
+		expect(actualizarMock).toHaveBeenCalledTimes(1)
 	})
 	it('PU-PA-16: doble clic en devolver a "Llegado" también dispara dos actualizaciones', async () => {
 		const Swal = (await import('sweetalert2')).default
@@ -303,7 +365,7 @@ describe('Pruebas del panel de filtros del administrador', () => {
 
 		expect(Swal.fire).toHaveBeenCalledTimes(2)
 		expect(Swal.fire).toHaveBeenCalledWith(
-		expect.objectContaining({ title: '¿Devolver a "Llegado"?' }),)
-		expect(updateMock).toHaveBeenCalledTimes(1)
+			expect.objectContaining({ title: '¿Devolver a "Llegado"?' }),)
+		expect(actualizarMock).toHaveBeenCalledTimes(1)
 	})
 })

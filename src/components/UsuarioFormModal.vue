@@ -85,6 +85,7 @@
             <div class="input-grupo" v-if="form.tipousuario_id == 2 || form.tipousuario_id == 3">
               <label>Departamento</label>
               <select
+                name = "departamento"
                 v-model="form.departamento_id"
                 :class="{ 'input-error': errores.departamento_id }"
               >
