@@ -10,7 +10,7 @@
 }
 
 .topbar {
-  background-color: #1a6b2f;
+  background-color: #621132;
   color: white;
   padding: 0 24px;
   height: 64px;
@@ -69,7 +69,7 @@
 }
 .content-header h2 {
   font-size: 1.8rem;
-  color: #1a6b2f;
+  color: #621132;
   margin-bottom: 4px;
 }
 .content-header p {
@@ -106,7 +106,7 @@
 }
 .filtro-grupo input:focus,
 .filtro-grupo select:focus {
-  border-color: #1a6b2f;
+  border-color: #621132;
 }
 .input-icono svg {
   position: absolute;
@@ -206,6 +206,10 @@
   background: #dac5e8;
   color: #571897;
 }
+.badge-cafe {
+  background: #f5f5dc;
+  color: #8b4513;
+}
 .badge-gris {
   background: #f5f5f5;
   color: #616161;
@@ -256,7 +260,7 @@
 }
 
 .btn-large {
-  background: #047857;
+  background: #621132;
   width: 160px;
   height: 30px;
   border: none;
@@ -270,7 +274,7 @@
 }
 
 .btn-large:hover {
-  background: #154728;
+  background: #d5c98a;
 }
 
 /* ==========================================
@@ -308,7 +312,7 @@
 .modal-header h3 {
   margin: 0;
   font-size: 1.4rem;
-  color: #1a6b2f;
+  color: #621132;
 }
 .folio-text {
   margin: 4px 0 0;
@@ -359,7 +363,7 @@
 .info-item .destacado {
   font-weight: 700;
   font-size: 1.1rem;
-  color: #1a6b2f;
+  color: #621132;
 }
 .descripcion-box {
   background: #f9f9f9;
@@ -450,11 +454,23 @@
   background: #d0d0d0;
 }
 .btn-primario {
-  background: #1a6b2f;
+  background: #621132;
   color: white;
 }
 .btn-primario:hover {
-  background: #145524;
+  background: #d5c98a;
+}
+
+.one-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fix-right {
+  margin-left: auto;
+  margin-right: 0;
+  margin-bottom: 14px;
 }
 
 /* Animación del modal */

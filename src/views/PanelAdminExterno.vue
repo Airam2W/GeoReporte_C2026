@@ -73,8 +73,7 @@
             v-model="filtros.estado"
             :class="['badge', obtenerClaseEstado(filtros.estado.toLowerCase())]"
           >
-            <option value="Llegado" class="badge-azul" selected>Llegado</option>
-            <option value="En Proceso" class="badge-amarillo">En Proceso</option>
+            <option value="Pendiente" class="badge-azul" selected>Pendiente</option>
             <option value="Finalizado" class="badge-verde">Finalizado</option>
             <option value="Rechazado" class="badge-rojo">Rechazado</option>
           </select>
@@ -102,7 +101,9 @@
               <td colspan="6">No se encontraron reportes con estos filtros.</td>
             </tr>
             <tr v-else v-for="reporte in reportesFiltrados" :key="reporte.folio" class="fila-datos">
-              <td class="font-bold" style="color: #1a6b2f;">#{{ reporte.folio.split('-')[4] || reporte.folio }}</td>
+              <td class="font-bold" style="color: #1a6b2f">
+                #{{ reporte.folio.split('-')[4] || reporte.folio }}
+              </td>
               <td class="font-mono">{{ formatearFecha(reporte.detalle_reporte?.updated_at) }}</td>
               <td>
                 <div class="ciudadano-info">
@@ -117,19 +118,54 @@
                 </div>
               </td>
               <td class="text-center">
-                <span :class="['badge', obtenerClaseEstado(reporte.detalle_reporte?.estadoreporte?.estado.toLowerCase())]"
+                <span
+                  :class="[
+                    'badge',
+                    obtenerClaseEstado(
+                      reporte.detalle_reporte?.estadoreporte?.estado.toLowerCase(),
+                    ),
+                  ]"
                 >
                   {{ reporte.detalle_reporte?.estadoreporte?.estado }}
                 </span>
               </td>
 
               <td class="acciones-celda">
+                <button class="btn-accion" title="Ver detalle" @click="abrirModalVer(reporte)">
+                  👁️
+                </button>
+
                 <button
-                  class="btn-accion btn-large"
-                  title="Ver detalle"
-                  @click="abrirModalVer(reporte)"
+                  v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Pendiente'"
+                  class="btn-accion"
+                  title="Rechazar reporte"
+                  :disabled="foliosProcesando.has(reporte.folio)"
+                  @click="rechazarReporte(reporte.folio)"
                 >
-                  Ver y Actualizar Estado
+                  ❌
+                </button>
+
+                <button
+                  v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Pendiente'"
+                  class="btn-accion"
+                  title="Finalizar reporte"
+                  :disabled="foliosProcesando.has(reporte.folio)"
+                  @click="devolverReporte(reporte.folio, 'Finalizado')"
+                >
+                  ✅
+                </button>
+
+                <button
+                  v-if="
+                    reporte.detalle_reporte?.estadoreporte?.estado === 'Rechazado' ||
+                    reporte.detalle_reporte?.estadoreporte?.estado === 'Finalizado'
+                  "
+                  class="btn-accion"
+                  title="Devolver a Pendiente"
+                  :disabled="foliosProcesando.has(reporte.folio)"
+                  @click="devolverReporte(reporte.folio, 'Pendiente')"
+                >
+                  🔄
                 </button>
               </td>
             </tr>
@@ -141,10 +177,11 @@
     <ReporteDetalleModal
       :visible="modalVisible"
       :reporte="reporteActivo"
-      :esAdmin="true"
+      :esAdminEx="true"
       @close="cerrarModalVer"
       @rechazar="rechazarReporte"
       @devolver="devolverReporte"
+      @finalizar="devolverReporte"
     />
   </div>
 </template>
@@ -152,12 +189,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { supabase } from '../lib/supabase'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import Swal from 'sweetalert2'
 import { obtenerClaseEstado } from '../logic/panelAdministrador'
 import { redireccionarUsuario } from '../logic/redirectUser.ts'
 import { formatearFecha } from '@/logic/reporteDetalleModal.ts'
+import { selectEq, selectEqOrder, updateEq } from '../services/supabaseController'
 
 const router = useRouter()
 const admin = ref<any>(null)
@@ -174,37 +211,41 @@ const filtros = ref({
   busqueda: '',
   fecha: '',
   problema: '',
-  estado: 'Llegado',
+  estado: 'Pendiente',
 })
 
+import { useCargando } from '../composable/useCargando'
+const { mostrarCargando, ocultarCargando } = useCargando()
+
 onMounted(async () => {
+  mostrarCargando() // Mostrar el indicador de carga al iniciar
   const sessionData = localStorage.getItem('adminSession')
-    if (!sessionData) {
-      router.push('/')
-      return
-    }
+  if (!sessionData) {
+    router.push('/')
+    return
+  }
 
   admin.value = JSON.parse(sessionData)
 
   if (admin.value.tipo_id !== 6) {
-
     Swal.fire('Acceso Denegado', 'No tienes permisos para ver esta sección. Externo', 'error')
-    redireccionarUsuario();
+    redireccionarUsuario()
     return
   }
 
   await cargarCatalogos()
   await cargarReportes()
-
-
+  ocultarCargando() // Ocultar el indicador de carga después de cargar los datos
 })
 
 const cargarCatalogos = async () => {
   // Traer solo problemas del departamento del admin
-  const { data: problemasData, error: problemasError } = await supabase
-    .from('problemas_externos')
-    .select('id, nombre, nombreamigable, departamento_externo_id')
-    .eq('departamento_externo_id', admin.value.departamento_id)
+  const { data: problemasData, error: problemasError } = await selectEq(
+    'problemas_externos',
+    'departamento_externo_id',
+    admin.value.departamento_id,
+    ['id', 'nombre', 'nombreamigable', 'departamento_externo_id'],
+  )
 
   if (problemasError) {
     console.error('Error al cargar problemas:', problemasError.message)
@@ -213,10 +254,12 @@ const cargarCatalogos = async () => {
   }
 
   // Traer nombre del departamento para mostrarlo en el header
-  const { data: deptData, error: deptError } = await supabase
-    .from('departamentos_externos')
-    .select('id, departamento')
-    .eq('id', admin.value.departamento_id)
+  const { data: deptData, error: deptError } = await selectEq(
+    'departamentos_externos',
+    'id',
+    admin.value.departamento_id,
+    ['id', 'departamento'],
+  )
 
   if (deptError) {
     console.error('Error al cargar departamento:', deptError.message)
@@ -227,24 +270,30 @@ const cargarCatalogos = async () => {
 
 const cargarReportes = async () => {
   cargando.value = true
-  const { data, error } = await supabase
-    .from('reportes')
-    .select(`
-      folio, descripcion, nombre, telefono, domicilio, referencias, foto_url, created_at,
-      problemas_externos (id, nombre, nombreamigable),
-      detalle_reporte (
-        estado_id,
-        estadoreporte(estado),
-        updated_at
-      )
-    `)
-    .eq('departamento_externo_id', admin.value.departamento_id)
-    .order('created_at', { ascending: false })
+  const { data, error } = await selectEqOrder(
+    'reportes',
+    'departamento_externo_id',
+    admin.value.departamento_id,
+    'created_at',
+    [
+      'folio',
+      'descripcion',
+      'nombre',
+      'telefono',
+      'domicilio',
+      'referencias',
+      'foto_url',
+      'created_at',
+      'problemas_externos (id, nombre, nombreamigable)',
+      'detalle_reporte (estado_id, estadoreporte (estado), updated_at)',
+    ],
+    false, // 👈 ascendente = true, descendente = false
+  )
 
   if (!error && data) {
     reportes.value = data.map((r) => ({
       ...r,
-      estado: r.detalle_reporte?.estadoreporte?.estado || 'Llegado',
+      estado: r.detalle_reporte?.estadoreporte?.estado || 'Pendiente',
     }))
   }
   cargando.value = false
@@ -282,87 +331,88 @@ const cerrarModalVer = () => {
 
 const rechazarReporte = async (folio: string) => {
   if (foliosProcesando.value.has(folio)) return
-    foliosProcesando.value.add(folio)
-    try {
-  const result = await Swal.fire({
-    title: '¿Rechazar reporte?',
-    text: `¿Estás seguro de que deseas rechazar el folio ${folio}? Esta acción lo marcará como rechazado.`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    cancelButtonColor: '#888',
-    confirmButtonText: 'Sí, rechazar',
-    cancelButtonText: 'Cancelar',
-    reverseButtons: true,
-  })
+  foliosProcesando.value.add(folio)
+  try {
+    const result = await Swal.fire({
+      title: '¿Rechazar reporte?',
+      text: `¿Estás seguro de que deseas rechazar el folio ${folio}? Esta acción lo marcará como rechazado.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#888',
+      confirmButtonText: 'Sí, rechazar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true,
+    })
 
-  if (result.isConfirmed) {
-    const { error } = await supabase
-      .from('detalle_reporte')
-      .update({ estado_id: 3 })
-      .eq('folio', folio)
+    if (result.isConfirmed) {
+      const { error } = await updateEq(
+        'detalle_reporte', // tabla
+        'folio', // campo para eq
+        folio, // valor a comparar
+        { estado_id: 3 }, // data a actualizar
+      )
 
-    if (!error) {
-      const index = reportes.value.findIndex((r) => r.folio === folio)
-      if (index !== -1) reportes.value[index].estado = 'Rechazado'
+      if (!error) {
+        const index = reportes.value.findIndex((r) => r.folio === folio)
+        if (index !== -1) reportes.value[index].estado = 'Rechazado'
 
-      Swal.fire({
-        title: '¡Rechazado!',
-        text: 'El reporte ha sido rechazado correctamente.',
-        icon: 'success',
-        confirmButtonColor: '#1a6b2f',
-      })
-    } else {
-      // Alerta de error
-      Swal.fire({
-        title: 'Error',
-        text: 'Hubo un error al rechazar el reporte en la base de datos.',
-        icon: 'error',
-        confirmButtonColor: '#1a6b2f',
+        Swal.fire({
+          title: '¡Rechazado!',
+          text: 'El reporte ha sido rechazado correctamente.',
+          icon: 'success',
+          confirmButtonColor: '#1a6b2f',
+        })
+      } else {
+        // Alerta de error
+        Swal.fire({
+          title: 'Error',
+          text: 'Hubo un error al rechazar el reporte en la base de datos.',
+          icon: 'error',
+          confirmButtonColor: '#1a6b2f',
         })
       }
     }
-  }
-  finally{
+  } finally {
     foliosProcesando.value.delete(folio)
     await cargarReportes()
-    }
+    cerrarModalVer()
+  }
 }
 
-const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llegado') => {
+const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Pendiente') => {
   if (foliosProcesando.value.has(folio)) return
-    foliosProcesando.value.add(folio)
-    try {
-  const result = await Swal.fire({
-    title: `¿Devolver a "${nuevoEstado}"?`,
-    text: `El folio ${folio} cambiará su estado a "${nuevoEstado}".`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonColor: '#1a6b2f',
-    cancelButtonColor: '#888',
-    confirmButtonText: 'Sí, devolver',
-    cancelButtonText: 'Cancelar',
-    reverseButtons: true,
-  })
+  foliosProcesando.value.add(folio)
+  try {
+    const result = await Swal.fire({
+      title: `¿Devolver a "${nuevoEstado}"?`,
+      text: `El folio ${folio} cambiará su estado a "${nuevoEstado}".`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#1a6b2f',
+      cancelButtonColor: '#888',
+      confirmButtonText: 'Sí, devolver',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true,
+    })
 
-  if (result.isConfirmed) {
-    const { error } = await supabase
-      .from('detalle_reporte')
-      .update({ estado_id: nuevoEstado == 'Llegado' ? 1 : 2 })
-      .eq('folio', folio)
-
-    if (!error) {
-      const index = reportes.value.findIndex((r) => r.folio === folio)
-      if (index !== -1) reportes.value[index].estado = nuevoEstado
-
-      Swal.fire({
-        title: '¡Actualizado!',
-        text: `El reporte ahora está en "${nuevoEstado}".`,
-        icon: 'success',
-        confirmButtonColor: '#1a6b2f',
+    if (result.isConfirmed) {
+      const { error } = await updateEq('detalle_reporte', 'folio', folio, {
+        estado_id: nuevoEstado == 'Finalizado' ? 4 : 1,
       })
-    } else {
-      Swal.fire({
+
+      if (!error) {
+        const index = reportes.value.findIndex((r) => r.folio === folio)
+        if (index !== -1) reportes.value[index].estado = nuevoEstado
+
+        Swal.fire({
+          title: '¡Actualizado!',
+          text: `El reporte ahora está en "${nuevoEstado}".`,
+          icon: 'success',
+          confirmButtonColor: '#1a6b2f',
+        })
+      } else {
+        Swal.fire({
           title: 'Error',
           text: 'Hubo un error al actualizar el estado en la base de datos.',
           icon: 'error',
@@ -370,9 +420,10 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llega
         })
       }
     }
-  }finally {
+  } finally {
     foliosProcesando.value.delete(folio)
     await cargarReportes()
+    cerrarModalVer()
   }
 }
 
@@ -399,4 +450,4 @@ defineExpose({
 })
 </script>
 
-<style src="../assets/panelAdministrador.css"/>
+<style src="../assets/panelAdministrador.css" />

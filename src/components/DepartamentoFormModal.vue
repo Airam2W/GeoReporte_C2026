@@ -46,7 +46,9 @@
               type="text"
               :class="{ 'input-error': errores.nombreamigable }"
             />
-            <span v-if="errores.nombreamigable" class="msg-error">{{ errores.nombreamigable }}</span>
+            <span v-if="errores.nombreamigable" class="msg-error">{{
+              errores.nombreamigable
+            }}</span>
           </div>
         </form>
 
@@ -63,6 +65,8 @@
 
 <script setup lang="ts">
 import { ref, watch, defineProps, defineEmits } from 'vue'
+import Swal from 'sweetalert2'
+import { selectIlike } from '../services/supabaseController'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -103,9 +107,6 @@ watch(
 
 const cerrar = () => emit('close')
 
-import { ref, watch, defineProps, defineEmits } from 'vue'
-import Swal from 'sweetalert2'
-
 const guardar = async () => {
   errores.value = {}
   let esValido = true
@@ -126,6 +127,36 @@ const guardar = async () => {
   }
 
   if (!esValido) return
+
+  // --- Validación de nombre duplicado contra AMBAS tablas ---
+  const nombreNormalizado = form.value.nombre.trim()
+
+  const [resInternos, resExternos] = await Promise.all([
+    selectIlike('departamentos', 'nombre', nombreNormalizado, ['id', 'nombre']),
+    selectIlike('departamentos_externos', 'departamento', nombreNormalizado, [
+      'id',
+      'departamento',
+    ]),
+  ])
+
+  if (resInternos.error || resExternos.error) {
+    console.error('Error al validar nombre duplicado:', resInternos.error || resExternos.error)
+  } else {
+    const duplicadoInterno = resInternos.data?.find(
+      (d) => !(form.value.tipo === 'Interno' && String(d.id) === String(form.value.id)),
+    )
+
+    const duplicadoExterno = resExternos.data?.find(
+      (d) => !(form.value.tipo === 'Externo' && String(d.id) === String(form.value.id)),
+    )
+
+    if (duplicadoInterno || duplicadoExterno) {
+      errores.value.nombre = esEdicion.value
+        ? 'No se puede modificar el departamento: ya existe otro departamento (interno o externo) con este nombre.'
+        : 'No se puede crear el departamento: ya existe un departamento (interno o externo) con este nombre.'
+      return
+    }
+  }
 
   const result = await Swal.fire({
     title: esEdicion.value ? '¿Actualizar departamento?' : '¿Agregar departamento?',

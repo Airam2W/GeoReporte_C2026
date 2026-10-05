@@ -27,7 +27,9 @@
               type="text"
               :class="{ 'input-error': errores.nombreamigable }"
             />
-            <span v-if="errores.nombreamigable" class="msg-error">{{ errores.nombreamigable }}</span>
+            <span v-if="errores.nombreamigable" class="msg-error">{{
+              errores.nombreamigable
+            }}</span>
           </div>
 
           <div class="input-grupo">
@@ -57,11 +59,17 @@
               :class="{ 'input-error': errores.departamento_id }"
             >
               <option value="">Seleccione...</option>
-              <option v-for="dep in departamentos.filter(d => d.estado === 'Alta')" :key="dep.id" :value="dep.id">
+              <option
+                v-for="dep in departamentos.filter((d) => d.estado === 'Alta')"
+                :key="dep.id"
+                :value="dep.id"
+              >
                 {{ dep.nombre }}
               </option>
             </select>
-            <span v-if="errores.departamento_id" class="msg-error">{{ errores.departamento_id }}</span>
+            <span v-if="errores.departamento_id" class="msg-error">{{
+              errores.departamento_id
+            }}</span>
           </div>
 
           <!-- Departamento Externo -->
@@ -72,11 +80,17 @@
               :class="{ 'input-error': errores.departamento_id }"
             >
               <option value="">Seleccione...</option>
-              <option v-for="dep in departamentosExternos.filter(d => d.estado === 'Alta')" :key="dep.id" :value="dep.id">
+              <option
+                v-for="dep in departamentosExternos.filter((d) => d.estado === 'Alta')"
+                :key="dep.id"
+                :value="dep.id"
+              >
                 {{ dep.departamento }}
               </option>
             </select>
-            <span v-if="errores.departamento_id" class="msg-error">{{ errores.departamento_id }}</span>
+            <span v-if="errores.departamento_id" class="msg-error">{{
+              errores.departamento_id
+            }}</span>
           </div>
         </form>
 
@@ -94,6 +108,7 @@
 <script setup lang="ts">
 import { ref, watch, defineProps, defineEmits } from 'vue'
 import Swal from 'sweetalert2'
+import { selectIlike } from '../services/supabaseController'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -163,6 +178,33 @@ const guardar = async () => {
   }
 
   if (!esValido) return
+
+  // --- Validación de nombre duplicado contra AMBAS tablas ---
+  const nombreNormalizado = form.value.nombre.trim()
+
+  const [resInternas, resExternas] = await Promise.all([
+    selectIlike('problemas', 'nombre', nombreNormalizado, ['id', 'nombre']),
+    selectIlike('problemas_externos', 'nombre', nombreNormalizado, ['id', 'nombre']),
+  ])
+
+  if (resInternas.error || resExternas.error) {
+    console.error('Error al validar nombre duplicado:', resInternas.error || resExternas.error)
+  } else {
+    const duplicadoInterna = resInternas.data?.find(
+      (p) => !(form.value.tipo === 'Interno' && String(p.id) === String(form.value.id)),
+    )
+
+    const duplicadoExterna = resExternas.data?.find(
+      (p) => !(form.value.tipo === 'Externo' && String(p.id) === String(form.value.id)),
+    )
+
+    if (duplicadoInterna || duplicadoExterna) {
+      errores.value.nombre = esEdicion.value
+        ? 'No se puede modificar la problemática: ya existe otra problemática (interna o externa) con este nombre.'
+        : 'No se puede crear la problemática: ya existe una problemática (interna o externa) con este nombre.'
+      return
+    }
+  }
 
   const result = await Swal.fire({
     title: esEdicion.value ? '¿Actualizar problemática?' : '¿Agregar problemática?',

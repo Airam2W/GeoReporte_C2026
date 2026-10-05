@@ -41,9 +41,14 @@
     <!-- Contenido Principal -->
     <main class="dashboard-content">
       <header class="content-header" v-if="admin">
-        <h2>Reportes del Departamento</h2>
-        <!-- Cambiar por nombre del departamento -->
-        <p>{{ admin.departamento }}</p>
+        <div class="one-line-header">
+          <h2>Reportes del Departamento</h2>
+          <!-- Cambiar por nombre del departamento -->
+          <p>{{ admin.departamento }}</p>
+          <button class="btn-primario btn-large fix-right" @click="irACrearReporte">
+            Crear Reporte
+          </button>
+        </div>
       </header>
 
       <!-- Panel de Filtros -->
@@ -87,11 +92,12 @@
             v-model="filtros.estado"
             :class="['badge', obtenerClaseEstado(filtros.estado.toLowerCase())]"
           >
-            <option value="Llegado" class="badge-azul" selected>Llegado</option>
-            <option value="En Proceso" class="badge-amarillo">En Proceso</option>
+            <option value="Pendiente" class="badge-azul" selected>Pendiente</option>
+            <option value="En Revisión" class="badge-amarillo">En Revisión</option>
+            <option value="Devuelto" class="badge-cafe">Devuelto</option>
+            <option value="Turnado" class="badge-purpura">Turnado</option>
             <option value="Finalizado" class="badge-verde">Finalizado</option>
             <option value="Rechazado" class="badge-rojo">Rechazado</option>
-            <option value="Turnado" class="badge-purpura">Turnado</option>
           </select>
         </div>
       </section>
@@ -135,7 +141,7 @@
                 </button>
 
                 <button
-                  v-if="reporte.estado === 'Llegado'"
+                  v-if="reporte.estado === 'Pendiente' || reporte.estado === 'Turnado'"
                   class="btn-accion btn-asignar"
                   title="Asignar supervisor"
                   @click="asignarReporte(reporte.folio)"
@@ -144,25 +150,29 @@
                 </button>
 
                 <button
-                  v-if="reporte.estado === 'Finalizado'"
-                  class="btn-accion btn-devolver"
-                  title="Devolver a En Proceso"
-                  @click="devolverReporte(reporte.folio, 'En Proceso')"
+                  v-if="reporte.estado === 'Devuelto'"
+                  class="btn-accion btn-asignar"
+                  title="Turnar reporte"
+                  @click="turnarReporte(reporte.folio)"
                 >
-                  ⬅️
+                  🔄
                 </button>
 
                 <button
-                  v-if="reporte.estado === 'Rechazado'"
+                  v-if="
+                    reporte.estado === 'Rechazado' ||
+                    reporte.estado === 'Finalizado' ||
+                    reporte.estado === 'Devuelto'
+                  "
                   class="btn-accion btn-devolver"
-                  title="Devolver a Llegado"
-                  @click="devolverReporte(reporte.folio, 'Llegado')"
+                  title="Devolver a Pendiente"
+                  @click="devolverReporte(reporte.folio, 'Pendiente')"
                 >
                   ↩️
                 </button>
 
                 <button
-                  v-if="reporte.estado !== 'Rechazado' && reporte.estado !== 'Turnado'"
+                  v-if="reporte.estado === 'Pendiente' || reporte.estado === 'Devuelto'"
                   class="btn-accion btn-rechazar"
                   title="Rechazar reporte"
                   @click="rechazarReporte(reporte.folio)"
@@ -184,6 +194,7 @@
       @asignar="asignarReporte"
       @rechazar="rechazarReporte"
       @devolver="devolverReporte"
+      @turnar="turnarReporte"
     />
   </div>
 </template>
@@ -191,7 +202,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { supabase } from '../lib/supabase' // Ajusta la ruta a tu supabase.ts
+import { selectEq, selectEqOrder, updateEq, selectEqSingle } from '../services/supabaseController'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import Swal from 'sweetalert2'
 import { truncarTexto, obtenerClaseEstado } from '../logic/panelAdministrador'
@@ -211,10 +222,14 @@ const filtros = ref({
   busqueda: '',
   fecha: '',
   problema: '',
-  estado: 'Llegado',
+  estado: 'Pendiente',
 })
 
+import { useCargando } from '../composable/useCargando'
+const { mostrarCargando, ocultarCargando } = useCargando()
+
 onMounted(async () => {
+  mostrarCargando() // Mostrar el indicador de carga al iniciar
   const sessionData = localStorage.getItem('adminSession')
   if (!sessionData) {
     router.push('/')
@@ -223,21 +238,24 @@ onMounted(async () => {
   admin.value = JSON.parse(sessionData)
 
   if (admin.value.tipo_id !== 2) {
-    Swal.fire('Acceso Denegado', 'No tienes permisos para ver esta sección.', 'error',)
-    redireccionarUsuario();
+    Swal.fire('Acceso Denegado', 'No tienes permisos para ver esta sección.', 'error')
+    redireccionarUsuario()
     return
   }
 
   await cargarCatalogos()
   await cargarReportes()
+  ocultarCargando() // Ocultar el indicador de carga después de cargar los datos
 })
 
 const cargarCatalogos = async () => {
   // Traer solo problemas del departamento del admin
-  const { data: problemasData, error: problemasError } = await supabase
-    .from('problemas')
-    .select('id, nombre, departamento_id')
-    .eq('departamento_id', admin.value.departamento_id)
+  const { data: problemasData, error: problemasError } = await selectEq(
+    'problemas',
+    'departamento_id',
+    admin.value.departamento_id,
+    ['id', 'nombre', 'departamento_id'],
+  )
 
   if (problemasError) {
     console.error('Error al cargar problemas:', problemasError.message)
@@ -246,10 +264,12 @@ const cargarCatalogos = async () => {
   }
 
   // Traer nombre del departamento para mostrarlo en el header
-  const { data: deptData, error: deptError } = await supabase
-    .from('departamentos')
-    .select('id, nombre')
-    .eq('id', admin.value.departamento_id)
+  const { data: deptData, error: deptError } = await selectEq(
+    'departamentos',
+    'id',
+    admin.value.departamento_id,
+    ['id', 'nombre'],
+  )
 
   if (deptError) {
     console.error('Error al cargar departamento:', deptError.message)
@@ -260,25 +280,30 @@ const cargarCatalogos = async () => {
 
 const cargarReportes = async () => {
   cargando.value = true
-  const { data, error } = await supabase
-    .from('reportes')
-    .select(
-      `
-      folio, descripcion, nombre, telefono, domicilio, referencias, foto_url, created_at,
-      problemas (id, nombre),
-      detalle_reporte (
-        estado_id,
-        estadoreporte (estado)
-      )
-    `,
-    )
-    .eq('departamento_id', admin.value.departamento_id)
-    .order('created_at', { ascending: false })
+  const { data, error } = await selectEqOrder(
+    'reportes',
+    'departamento_id',
+    admin.value.departamento_id,
+    'created_at',
+    [
+      'folio',
+      'descripcion',
+      'nombre',
+      'telefono',
+      'domicilio',
+      'referencias',
+      'foto_url',
+      'created_at',
+      'problemas (id, nombre)',
+      'detalle_reporte (estado_id, estadoreporte (estado))',
+    ],
+    false, // 👈 false = descendente, true = ascendente
+  )
 
   if (!error && data) {
     reportes.value = data.map((r) => ({
       ...r,
-      estado: r.detalle_reporte?.estadoreporte?.estado || 'Llegado',
+      estado: r.detalle_reporte?.estadoreporte?.estado || 'Pendiente',
     }))
   }
   cargando.value = false
@@ -346,15 +371,18 @@ const rechazarReporte = async (folio: string) => {
   })
 
   if (result.isConfirmed) {
-    const { error } = await supabase
-      .from('detalle_reporte')
-      .update({ estado_id: 3 })
-      .eq('folio', folio)
+    const { error } = await updateEq(
+      'detalle_reporte', // tabla
+      'folio', // campo para eq
+      folio, // valor a comparar
+      { estado_id: 3 }, // data a actualizar
+    )
 
     if (!error) {
       //const index = reportes.value.findIndex((r) => r.folio === folio)
       //if (index !== -1) reportes.value[index].estado = 'Rechazado'
       await cargarReportes()
+      cerrarModalVer()
 
       Swal.fire({
         title: '¡Rechazado!',
@@ -376,11 +404,12 @@ const rechazarReporte = async (folio: string) => {
 
 const buscarEstadoId = async (estado: string): Promise<string | null> => {
   try {
-    const { data, error } = await supabase
-      .from('estadoreporte')
-      .select('id')
-      .eq('estado', estado)
-      .single()
+    const { data, error } = await selectEqSingle(
+      'estadoreporte',
+      'estado',
+      estado,
+      ['id'], // 👈 columnas específicas
+    )
 
     if (error) {
       console.error('Error al buscar estado:', error.message)
@@ -394,7 +423,7 @@ const buscarEstadoId = async (estado: string): Promise<string | null> => {
   }
 }
 
-const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llegado') => {
+const devolverReporte = async (folio: string, nuevoEstado: 'En Revisión' | 'Pendiente') => {
   const result = await Swal.fire({
     title: `¿Devolver a "${nuevoEstado}"?`,
     text: `El folio ${folio} cambiará su estado a "${nuevoEstado}".`,
@@ -405,7 +434,7 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llega
     confirmButtonText: 'Sí, devolver',
     cancelButtonText: 'Cancelar',
     reverseButtons: true,
-    customClass: { container: 'swal-difuminado' }
+    customClass: { container: 'swal-difuminado' },
   })
 
   if (result.isConfirmed) {
@@ -416,27 +445,30 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llega
         text: 'No se encontró el estado en la base de datos.',
         icon: 'error',
         confirmButtonColor: '#1a6b2f',
-        customClass: { container: 'swal-difuminado' }
+        customClass: { container: 'swal-difuminado' },
       })
       return
     }
 
-    const { error } = await supabase
-      .from('detalle_reporte')
-      .update({ estado_id: estadoId })
-      .eq('folio', folio)
+    const { data, error } = await updateEq(
+      'detalle_reporte', // tabla
+      'folio', // campo para eq
+      folio, // valor a comparar
+      { estado_id: estadoId }, // data a actualizar
+    )
 
     if (!error) {
       //const index = reportes.value.findIndex((r) => r.folio === folio)
       //if (index !== -1) reportes.value[index].estado = nuevoEstado
       await cargarReportes()
+      cerrarModalVer()
 
       Swal.fire({
         title: '¡Actualizado!',
         text: `El reporte ahora está en "${nuevoEstado}".`,
         icon: 'success',
         confirmButtonColor: '#1a6b2f',
-        customClass: { container: 'swal-difuminado' }
+        customClass: { container: 'swal-difuminado' },
       })
     } else {
       Swal.fire({
@@ -444,12 +476,30 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llega
         text: 'Hubo un error al actualizar el estado en la base de datos.',
         icon: 'error',
         confirmButtonColor: '#1a6b2f',
-        customClass: { container: 'swal-difuminado' }
+        customClass: { container: 'swal-difuminado' },
       })
     }
   }
 }
 
+const turnarReporte = async (folio: string | undefined) => {
+  //Desactivar el boton Turnar Reporte
+  const turnarBtn = document.querySelector('.btn-asignar') as HTMLButtonElement
+  turnarBtn.disabled = true
+
+  if (!folio) return
+  Swal.fire({
+    title: 'Turnar Reporte',
+    text: `Aquí iría la lógica para turnar el folio ${folio}`,
+    icon: 'info',
+    confirmButtonColor: '#1a6b2f',
+    customClass: { container: 'swal-difuminado' },
+  })
+
+  // Reactivar el boton Turnar Reporte
+  turnarBtn.disabled = false
+  cerrarModalVer()
+}
 
 const asignarReporte = (folio: string | undefined) => {
   //Desactivar el boton Asginar Reporte
@@ -462,11 +512,16 @@ const asignarReporte = (folio: string | undefined) => {
     text: `Aquí iría la lógica para asignar el folio ${folio}`,
     icon: 'info',
     confirmButtonColor: '#1a6b2f',
-    customClass: { container: 'swal-difuminado' }
+    customClass: { container: 'swal-difuminado' },
   })
 
   // Reactivar el boton Asignar Reporte
   asignarBtn.disabled = false
+  cerrarModalVer()
+}
+
+const irACrearReporte = () => {
+  router.push('/reporte')
 }
 
 const cerrarSesion = () => {
@@ -488,6 +543,7 @@ defineExpose({
   rechazarReporte,
   devolverReporte,
   asignarReporte,
+  turnarReporte,
   cerrarSesion,
 })
 </script>

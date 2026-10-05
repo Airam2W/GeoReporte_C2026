@@ -123,7 +123,9 @@
                 :class="{ 'input-error': errores.departamento_id }"
               >
                 <option value="">Seleccione...</option>
-                <option v-for="j in jefes" :key="j.id" :value="j.id">{{ j.usuarios.nombre }} {{ j.usuarios.apellido_p }}</option>
+                <option v-for="j in jefes" :key="j.id" :value="j.id">
+                  {{ j.usuarios.nombre }} {{ j.usuarios.apellido_p }}
+                </option>
               </select>
               <span v-if="errores.departamento_id" class="msg-error">{{
                 errores.departamento_id
@@ -161,7 +163,7 @@
 
 <script setup lang="ts">
 import { ref, watch, defineProps, defineEmits } from 'vue'
-
+import { selectIlikeMaybeSingle } from '../services/supabaseController'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -170,7 +172,7 @@ const props = defineProps({
   departamentos: { type: Array, default: () => [] },
   departamentosExternos: { type: Array, default: () => [] },
   supervisores: { type: Array, default: () => [] },
-  jefes: { type: Array, default: () => [] }
+  jefes: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['close', 'save'])
@@ -188,24 +190,35 @@ const form = ref({
   departamento_id: '',
 })
 
-watch(() => props.visible, (newVal) => {
-  if (newVal) {
-    errores.value = {}
-    if (props.usuarioAEditar) {
-      esEdicion.value = true
-      form.value = {
-        ...props.usuarioAEditar,
-        contrasena: '',
-        tipousuario_id: props.usuarioAEditar.tipousuario_id || '',
-        departamento_id: props.usuarioAEditar.departamento_id || ''
+watch(
+  () => props.visible,
+  (newVal) => {
+    if (newVal) {
+      errores.value = {}
+      if (props.usuarioAEditar) {
+        esEdicion.value = true
+        form.value = {
+          ...props.usuarioAEditar,
+          contrasena: '',
+          tipousuario_id: props.usuarioAEditar.tipousuario_id || '',
+          departamento_id: props.usuarioAEditar.departamento_id || '',
+        }
+      } else {
+        esEdicion.value = false
+        form.value = {
+          id: '',
+          nombre: '',
+          apellido_p: '',
+          apellido_m: '',
+          correo: '',
+          contrasena: '',
+          tipousuario_id: '',
+          departamento_id: '',
+        }
       }
-    } else {
-      esEdicion.value = false
-      form.value = { id: '', nombre: '', apellido_p: '', apellido_m: '', correo: '', contrasena: '', tipousuario_id: '', departamento_id: '' }
     }
-  }
-})
-
+  },
+)
 
 const cerrar = () => emit('close')
 
@@ -216,7 +229,7 @@ const validarDepartamento = () => {
   }
 }
 
-const guardar = () => {
+const guardar = async () => {
   errores.value = {}
   let esValido = true
 
@@ -261,6 +274,22 @@ const guardar = () => {
   }
 
   if (!esValido) return
+
+  // --- Validación de correo duplicado contra la base de datos ---
+  const { data: existente, error: errorCheck } = await selectIlikeMaybeSingle(
+    'usuarios',
+    'correo',
+    form.value.correo.trim(),
+  )
+
+  if (errorCheck) {
+    console.error('Error al validar correo duplicado:', errorCheck)
+  } else if (existente && String(existente.id) !== String(form.value.id)) {
+    errores.value.correo = esEdicion.value
+      ? 'No se puede modificar el usuario: este correo ya está registrado por otro usuario.'
+      : 'No se puede crear el usuario: este correo ya está registrado.'
+    return
+  }
 
   emit('save', form.value, esEdicion.value)
 }

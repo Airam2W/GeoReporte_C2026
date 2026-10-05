@@ -2,8 +2,8 @@
 
 export const obtenerClaseEstado = (estado: string) => {
   const clases: Record<string, string> = {
-    llegado: 'badge-azul',
-    'en proceso': 'badge-amarillo',
+    pendiente: 'badge-azul',
+    'en revisión': 'badge-amarillo',
     finalizado: 'badge-verde',
     rechazado: 'badge-rojo',
     turnado: 'badge-purpura'

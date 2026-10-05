@@ -13,11 +13,12 @@ export const truncarTexto = (texto: string, limite: number): string => {
  */
 export const obtenerClaseEstado = (estado: string): string => {
   const clases: Record<string, string> = {
-    llegado: 'badge-azul',
-    'en proceso': 'badge-amarillo',
+    pendiente: 'badge-azul',
+    'en revisión': 'badge-amarillo',
     finalizado: 'badge-verde',
     rechazado: 'badge-rojo',
-    turnado: 'badge-purpura'
+    turnado: 'badge-purpura',
+    devuelto: 'badge-cafe'
   }
   return clases[estado] || 'badge-gris'
 }

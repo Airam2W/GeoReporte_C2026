@@ -23,7 +23,7 @@ html, body {
 .btn-zoom {
   width: 36px; height: 36px; border-radius: 8px; background: white; border: none;
   box-shadow: 0 2px 8px rgba(0,0,0,0.22); cursor: pointer;
-  font-size: 1.35rem; font-weight: 700; color: #1a6b2f;
+  font-size: 1.35rem; font-weight: 700; color: #621132;
   display: flex; align-items: center; justify-content: center; transition: background 0.15s;
 }
 .btn-zoom:hover { background: #f0faf0; }
@@ -32,7 +32,7 @@ html, body {
 .btn-agregar {
   position: absolute; bottom: 260px; right: 16px;
   width: 44px; height: 44px; border-radius: 50%;
-  background: #1a6b2f; color: white; border: none;
+  background: #621132; color: white; border: none;
   box-shadow: 0 2px 8px rgba(0,0,0,0.25); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   z-index: 10; font-size: 1.5rem; font-weight: bold;
@@ -40,7 +40,7 @@ html, body {
 .btn-regresar {
   position: absolute; bottom: 205px; right: 16px;
   width: 44px; height: 44px; border-radius: 50%;
-  background: #1a6b2f; color: white; border: none;
+  background: #621132; color: white; border: none;
   box-shadow: 0 2px 8px rgba(0,0,0,0.25); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   z-index: 10; font-size: 1.5rem; font-weight: bold;
@@ -64,7 +64,7 @@ html, body {
 }
 
 .btn-enviar:disabled {
-  background: #7ab88a;
+  background: #999;
   cursor: not-allowed;
   opacity: 0.8;
 }
@@ -73,7 +73,7 @@ html, body {
   width: 44px; height: 44px; border-radius: 50%;
   background: white; border: none;
   box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-  cursor: pointer; color: #1a6b2f;
+  cursor: pointer; color: #621132;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -106,9 +106,9 @@ html, body {
   position: absolute; top: 12px; right: 14px;
   background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #888;
 }
-.cerrar-detalle:hover { color: #1a6b2f; }
+.cerrar-detalle:hover { color: #621132; }
 
-.detalle-folio h3 { color: #1a6b2f; font-size: 1.1rem; }
+.detalle-folio h3 { color: #621132; font-size: 1.1rem; }
 
 .folio-busqueda-input {
   display: flex; gap: 8px;
@@ -118,14 +118,14 @@ html, body {
   border-radius: 8px; font-size: 0.95rem; outline: none;
   transition: border-color 0.15s;
 }
-.folio-busqueda-input input:focus { border-color: #1a6b2f; }
+.folio-busqueda-input input:focus { border-color: #621132; }
 .btn-buscar-folio {
-  padding: 10px 16px; background: #1a6b2f; color: white;
+  padding: 10px 16px; background: #621132; color: white;
   border: none; border-radius: 8px; font-size: 0.9rem;
   font-weight: 600; cursor: pointer; white-space: nowrap;
   transition: background 0.15s;
 }
-.btn-buscar-folio:hover { background: #22883b; }
+.btn-buscar-folio:hover { background: #d5c98a; }
 
 .folio-cargando {
   text-align: center; color: #888; font-size: 0.9rem; padding: 8px 0;
@@ -176,14 +176,14 @@ html, body {
   width: 36px; height: 4px; background: #ddd; border-radius: 2px;
   margin: 12px auto 0; flex-shrink: 0; cursor: pointer; transition: background 0.15s;
 }
-.handle-bar:hover { background: #1a6b2f; }
+.handle-bar:hover { background: #621132; }
 
 .panel-header {
   flex-shrink: 0; padding: 0 20px 14px;
   border-bottom: 1px solid #eee; cursor: pointer;
 }
 .panel-header h2 {
-  font-size: 1.15rem; color: #0f3d1a; margin-top: 10px; pointer-events: none;
+  font-size: 1.15rem; color: #621132; margin-top: 10px; pointer-events: none;
 }
 .btn-cerrar-panel {
   position: absolute; top: 12px; right: 16px;
@@ -200,16 +200,16 @@ html, body {
   background: none; border: none; font-size: 1.2rem;
   cursor: pointer; color: #888; line-height: 1; padding: 2px 4px;
 }
-.btn-cerrar-mapa:hover { color: #1a6b2f; }
-.franja-titulo { font-size: 1.05rem; font-weight: 700; color: #0f3d1a; }
+.btn-cerrar-mapa:hover { color: #621132; }
+.franja-titulo { font-size: 1.05rem; font-weight: 700; color: #621132; }
 .franja-sub    { font-size: 0.85rem; color: #888; margin-bottom: 8px; }
 .btn-confirmar-dir {
-  width: 100%; padding: 14px; background: #1a6b2f; color: white;
+  width: 100%; padding: 14px; background: #621132; color: white;
   border: none; border-radius: 12px; font-size: 1rem; font-weight: 600;
   cursor: pointer; transition: background 0.15s;
   margin-bottom: calc(8px + env(safe-area-inset-bottom, 12px));
 }
-.btn-confirmar-dir:hover { background: #22883b; }
+.btn-confirmar-dir:hover { background: #d5c98a; }
 
 .panel-form {
   padding: 16px 20px; overflow-y: auto;
@@ -225,21 +225,21 @@ html, body {
 }
 .panel-form input:focus,
 .panel-form select:focus,
-.panel-form textarea:focus { border-color: #1a6b2f; }
+.panel-form textarea:focus { border-color: #621132; }
 .panel-form textarea { resize: vertical; min-height: 90px; }
 
 .input-mapa-wrapper {
   display: flex; align-items: stretch; border: 1px solid #ddd;
   border-radius: 8px; overflow: hidden; width: 100%; min-height: 42px; transition: border-color 0.15s;
 }
-.input-mapa-wrapper:focus-within { border-color: #1a6b2f; }
+.input-mapa-wrapper:focus-within { border-color: #621132; }
 .input-domicilio {
   flex: 1; min-width: 0; padding: 10px 12px;
   border: none !important; outline: none !important; font-size: 0.95rem;
 }
 .btn-abrir-mapa {
   flex-shrink: 0; width: 44px; background: #f4f4f4; border: none;
-  border-left: 1px solid #ddd; cursor: pointer; color: #1a6b2f;
+  border-left: 1px solid #ddd; cursor: pointer; color: #621132;
   display: flex; align-items: center; justify-content: center; transition: background 0.15s;
 }
 .btn-abrir-mapa:hover { background: #e0eee0; }
@@ -251,7 +251,7 @@ html, body {
   font-size: 0.9rem; color: #555; cursor: pointer; transition: border-color 0.15s, background 0.15s;
   font-weight: normal;
 }
-.btn-foto:hover { border-color: #1a6b2f; background: #f4faf4; color: #1a6b2f; }
+.btn-foto:hover { border-color: #621132; background: #f4faf4; color: #621132; }
 .input-foto-hidden { display: none; }
 
 .contador { font-size: 0.75rem; color: #aaa; text-align: right; margin-top: -2px; }
@@ -261,10 +261,10 @@ html, body {
   margin-top: 14px;
   margin-bottom: calc(16px + env(safe-area-inset-bottom, 12px));
   padding: 14px;
-  background: #1a6b2f; color: white; border: none; border-radius: 10px;
+  background: #621132; color: white; border: none; border-radius: 10px;
   font-size: 1rem; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.15s;
 }
-.btn-enviar:hover { background: #22883b; }
+.btn-enviar:hover { background: #d5c98a; }
 
 /* ── Buscador de zona ── */
 .buscador-zona {
@@ -296,7 +296,7 @@ html, body {
   border-bottom: 1px solid #f0f0f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .buscador-zona-sugerencias li:last-child { border-bottom: none; }
-.buscador-zona-sugerencias li:hover { background: #f4faf4; color: #1a6b2f; }
+.buscador-zona-sugerencias li:hover { background: #f4faf4; color: #621132; }
 
 /* ── Clases para Validación ── */
 .input-error {
@@ -398,7 +398,7 @@ html, body {
 .modal-contenido button {
   margin-top: 20px;
   padding: 10px 20px;
-  background: #2e7d32; /* verde éxito */
+  background: #621132; /* verde éxito */
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -407,7 +407,7 @@ html, body {
   transition: background 0.3s;
 }
 .modal-contenido button:hover {
-  background: #1b5e20;
+  background: #d5c98a; /* verde más oscuro al pasar el mouse */
 }
 
 /* Animaciones */

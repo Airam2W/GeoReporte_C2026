@@ -45,7 +45,7 @@
           type="button"
           :class="['tab-seccion', { activa: filtros.seccion === seccion.valor }]"
           :aria-current="filtros.seccion === seccion.valor ? 'page' : undefined"
-          @click="filtros.seccion = seccion.valor; cargarCatalogos(); cargarDatos(); cargarDepartamentos();"
+          @click="seleccionarSeccion(seccion.valor)"
         >
           {{ seccion.etiqueta }}
         </button>
@@ -178,22 +178,22 @@
         </template>
 
         <!-- Filtro exclusivo de Departamentos -->
-         <template v-else-if="filtros.seccion === 'departamentos'">
-        <div class="filtro-grupo">
-          <select name="tipoDepartamento" v-model="filtros.tipoDepartamento">
-            <option value="">Todos los tipos</option>
-            <option value="Interno">Departamento Interno</option>
-            <option value="Externo">Departamento Externo</option>
-          </select>
-        </div>
+        <template v-else-if="filtros.seccion === 'departamentos'">
+          <div class="filtro-grupo">
+            <select name="tipoDepartamento" v-model="filtros.tipoDepartamento">
+              <option value="">Todos los tipos</option>
+              <option value="Interno">Departamento Interno</option>
+              <option value="Externo">Departamento Externo</option>
+            </select>
+          </div>
 
-        <div class="filtro-grupo">
-          <select name="estado" v-model="filtros.estado">
-            <option value="">Todos los estados</option>
-            <option value="Alta">Alta</option>
-            <option value="Baja">Baja</option>
-          </select>
-        </div>
+          <div class="filtro-grupo">
+            <select name="estado" v-model="filtros.estado">
+              <option value="">Todos los estados</option>
+              <option value="Alta">Alta</option>
+              <option value="Baja">Baja</option>
+            </select>
+          </div>
         </template>
         <!-- Filtro exclusivo de Problemáticas -->
         <template v-else>
@@ -237,9 +237,7 @@
               <option value="Baja">Baja</option>
             </select>
           </div>
-
         </template>
-
       </section>
 
       <div class="tabla-contenedor">
@@ -332,10 +330,7 @@
               </td>
               <td>
                 <span
-                  :class="[
-                    'badge',
-                    depto.raw.estado === 'Alta' ? 'badge-verde' : 'badge-rojo',
-                  ]"
+                  :class="['badge', depto.raw.estado === 'Alta' ? 'badge-verde' : 'badge-rojo']"
                 >
                   {{ depto.raw.estado || 'N/A' }}
                 </span>
@@ -400,12 +395,7 @@
                 </span>
               </td>
               <td>
-                <span
-                  :class="[
-                    'badge',
-                    prob.estado === 'Alta' ? 'badge-verde' : 'badge-rojo',
-                  ]"
-                >
+                <span :class="['badge', prob.estado === 'Alta' ? 'badge-verde' : 'badge-rojo']">
                   {{ prob.estado }}
                 </span>
               </td>
@@ -492,7 +482,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { supabase } from '../lib/supabase'
+import {
+  selectOrder,
+  selectAll,
+  selectNeq,
+  selectNeqOrder,
+  updateEq,
+  insert,
+  deleteEq,
+  callRpc,
+} from '../services/supabaseController'
 import Swal from 'sweetalert2'
 import UsuarioDetalleModal from '../components/UsuarioDetalleModal.vue'
 import UsuarioFormModal from '../components/UsuarioFormModal.vue'
@@ -535,6 +534,12 @@ const secciones = [
   { valor: 'problematicas', etiqueta: 'Problemáticas' },
 ]
 
+const seleccionarSeccion = (valor: string) => {
+  filtros.value.seccion = valor
+  cargarCatalogos()
+  cargarDepartamentos()
+}
+
 const filtros = ref({
   busqueda: '',
   rol: '',
@@ -547,7 +552,11 @@ const filtros = ref({
   estadoProblematica: '',
 })
 
+import { useCargando } from '../composable/useCargando'
+const { mostrarCargando, ocultarCargando } = useCargando()
+
 onMounted(async () => {
+  mostrarCargando() // Mostrar el indicador de carga al iniciar
   const sessionData = localStorage.getItem('adminSession')
   if (!sessionData) {
     router.push('/')
@@ -565,6 +574,7 @@ onMounted(async () => {
   await cargarCatalogos()
   await cargarDatos()
   await cargarDepartamentos()
+  ocultarCargando() // Ocultar el indicador de carga después de cargar los datos
 })
 
 const departamentosInternos = ref<any[]>([])
@@ -573,17 +583,26 @@ const departamentosExternos = ref<any[]>([])
 const cargarListaProblematicas = async () => {
   cargando.value = true
 
-  const { data: internas, error: errorInt } = await supabase
-    .from('problemas')
-    .select('id, nombre, nombreamigable, departamento_id, departamentos(id, nombre), estado')
-    .order('nombre', { ascending: true })
+  const { data: internas, error: errorInt } = await selectOrder(
+    'problemas',
+    'nombre',
+    ['id', 'nombre', 'nombreamigable', 'departamento_id', 'departamentos (id, nombre)', 'estado'],
+    true, // 👈 true = ascendente, false = descendente
+  )
 
-  const { data: externas, error: errorExt } = await supabase
-    .from('problemas_externos')
-    .select(
-      'id, nombre, nombreamigable, departamento_externo_id, departamentos_externos(id, departamento), estado',
-    )
-    .order('nombre', { ascending: true })
+  const { data: externas, error: errorExt } = await selectOrder(
+    'problemas_externos',
+    'nombre',
+    [
+      'id',
+      'nombre',
+      'nombreamigable',
+      'departamento_externo_id',
+      'departamentos_externos (id, departamento)',
+      'estado',
+    ],
+    true, // 👈 true = ascendente, false = descendente
+  )
 
   if (!errorInt && !errorExt) {
     const listaInternas = (internas || []).map((p) => ({
@@ -615,10 +634,18 @@ const cargarListaProblematicas = async () => {
 }
 
 const cargarDepartamentos = async () => {
-  const { data: internos } = await supabase.from('departamentos').select('id, nombre, nombreamigable, estado')
-  const { data: externos } = await supabase
-    .from('departamentos_externos')
-    .select('id, departamento, estado')
+  const { data: internos } = await selectAll('departamentos', [
+    'id',
+    'nombre',
+    'nombreamigable',
+    'estado',
+  ])
+
+  const { data: externos } = await selectAll('departamentos_externos', [
+    'id',
+    'departamento',
+    'estado',
+  ])
 
   departamentosInternos.value = internos || []
   departamentosExternos.value = externos || []
@@ -627,15 +654,19 @@ const cargarDepartamentos = async () => {
 const cargarListaDepartamentos = async () => {
   cargando.value = true
 
-  const { data: internos, error: errorInt } = await supabase
-    .from('departamentos')
-    .select('id, nombre, nombreamigable, estado')
-    .order('nombre', { ascending: true })
+  const { data: internos, error: errorInt } = await selectOrder(
+    'departamentos',
+    'nombre',
+    ['id', 'nombre', 'nombreamigable', 'estado'],
+    true, // 👈 true = ascendente, false = descendente
+  )
 
-  const { data: externos, error: errorExt } = await supabase
-    .from('departamentos_externos')
-    .select('id, departamento, estado')
-    .order('departamento', { ascending: true })
+  const { data: externos, error: errorExt } = await selectOrder(
+    'departamentos_externos',
+    'departamento',
+    ['id', 'departamento', 'estado'],
+    true, // 👈 true = ascendente, false = descendente
+  )
 
   if (!errorInt && !errorExt) {
     const listaInternos = (internos || []).map((d) => ({
@@ -673,63 +704,69 @@ const cargarDatos = async () => {
 }
 
 const cargarCatalogos = async () => {
-  const { data: rData } = await supabase.from('tipousuario').select(`id, nombre`).neq('id', 1)
+  const { data: rData } = await selectNeq(
+    'tipousuario',
+    'id',
+    1,
+    ['id', 'nombre'], // 👈 columnas específicas
+  )
 
   if (rData) rolesOpciones.value = rData
 
-  const { data: dData } = await supabase.from('departamentos').select(`id, nombre, nombreamigable, estado`)
+  const { data: dData } = await selectAll(
+    'departamentos',
+    ['id', 'nombre', 'nombreamigable', 'estado'], // 👈 columnas específicas
+  )
 
   if (dData) departamentosOpciones.value = dData
 
-  const { data: deData } = await supabase.from('departamentos_externos').select(`id, departamento, estado`)
+  const { data: deData } = await selectAll(
+    'departamentos_externos',
+    ['id', 'departamento', 'estado'], // 👈 columnas específicas
+  )
 
   if (deData) departamentosExternosOpciones.value = deData
 
-  const { data: sData } = await supabase
-    .from('supervisores')
-    .select('id, usuario_id, usuarios(id,nombre,apellido_p,apellido_m)')
+  const { data: sData } = await selectAll(
+    'supervisores',
+    ['id', 'usuario_id', 'usuarios(id,nombre,apellido_p,apellido_m)'], // 👈 columnas específicas
+  )
 
   if (sData) supervisoresOpciones.value = sData
 
-  const { data: jData } = await supabase
-    .from('jefes')
-    .select('id, usuario_id, usuarios(id,nombre,apellido_p,apellido_m)')
+  const { data: jData } = await selectAll(
+    'jefes',
+    ['id', 'usuario_id', 'usuarios(id,nombre,apellido_p,apellido_m)'], // 👈 columnas específicas
+  )
 
   if (jData) jefesOpciones.value = jData
 }
 const cargarUsuarios = async () => {
   cargando.value = true
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select(
-      `
-    id, correo, nombre, apellido_p, apellido_m, estadoadministrativo, tipousuario_id, fechaalta, fechabaja,
-    tipousuario:tipousuario_id (nombre),
-    administradores (created_at, departamentos(id, nombre)),
-    supervisores (
-      created_at,
-      departamentos(id, nombre),
-      usuarios(id, nombre, apellido_p, apellido_m),
-      jefes(id, usuarios(id, nombre, apellido_p, apellido_m))
-    ),
-    jefes (
-      created_at,
-      supervisores(id, usuarios(id, nombre, apellido_p, apellido_m)),
-      trabajadores(id, usuarios(id, nombre, apellido_p, apellido_m))
-    ),
-    trabajadores (
-      created_at,
-      jefes(
-        id,
-        usuarios(id, nombre, apellido_p, apellido_m),
-        supervisores(id, usuarios(id, nombre, apellido_p, apellido_m))
-      )
-    ),
-    personal_externo (created_at, departamentos_externos(id, departamento))
-  `,
-    )
-    .neq('tipousuario_id', 1)
-    .order('nombre', { ascending: true })
+  const { data, error } = await selectNeqOrder(
+    'usuarios',
+    'tipousuario_id',
+    1,
+    'nombre',
+    [
+      'id',
+      'correo',
+      'nombre',
+      'apellido_p',
+      'apellido_m',
+      'estadoadministrativo',
+      'tipousuario_id',
+      'fechaalta',
+      'fechabaja',
+      'tipousuario:tipousuario_id (nombre)',
+      'administradores (created_at, departamentos(id, nombre))',
+      'supervisores (created_at, departamentos(id, nombre), usuarios(id, nombre, apellido_p, apellido_m), jefes(id, usuarios(id, nombre, apellido_p, apellido_m)))',
+      'jefes (created_at, supervisores(id, usuarios(id, nombre, apellido_p, apellido_m)), trabajadores(id, usuarios(id, nombre, apellido_p, apellido_m)))',
+      'trabajadores (created_at, jefes(id, usuarios(id, nombre, apellido_p, apellido_m), supervisores(id, usuarios(id, nombre, apellido_p, apellido_m))) )',
+      'personal_externo (created_at, departamentos_externos(id, departamento))',
+    ],
+    true, // 👈 true = ascendente, false = descendente
+  )
 
   if (!error && data) {
     usuarios.value = data.map((u) => {
@@ -787,7 +824,7 @@ const cargarUsuarios = async () => {
 }
 
 import { watch } from 'vue'
-import { redireccionarUsuario } from '@/logic/redirectUser.ts'
+import { redireccionarUsuario } from '../logic/redirectUser'
 
 watch(
   () => filtros.value.seccion,
@@ -842,8 +879,7 @@ const problematicasFiltradas = computed(() => {
       filtros.value.departamentoProblematica === '' ||
       String(p.departamento_id) === String(filtros.value.departamentoProblematica)
 
-    const coincideEstado =
-      filtros.value.estado === '' || p.estado === filtros.value.estado
+    const coincideEstado = filtros.value.estado === '' || p.estado === filtros.value.estado
 
     return coincideBusqueda && coincideTipo && coincideDepartamento && coincideEstado
   })
@@ -858,8 +894,7 @@ const departamentosFiltrados = computed(() => {
       filtros.value.tipoDepartamento === '' ||
       d.tipo.toLowerCase() === filtros.value.tipoDepartamento.toLowerCase()
 
-    const coincideEstado =
-      filtros.value.estado === '' || d.estado === filtros.value.estado
+    const coincideEstado = filtros.value.estado === '' || d.estado === filtros.value.estado
 
     return coincideBusqueda && coincideTipo && coincideEstado
   })
@@ -883,7 +918,6 @@ const abrirModalFormProblematica = (prob: any = null) => {
 }
 
 const cambiarEstadoProblematica = async (prob: any) => {
-
   const nuevoEstado = prob.estado === 'Alta' ? 'Baja' : 'Alta'
   // Confirmación pregunta si el usuario realmente quiere darla de baja o alta
   Swal.fire({
@@ -897,7 +931,7 @@ const cambiarEstadoProblematica = async (prob: any) => {
     cancelButtonText: 'Cancelar',
   }).then((result) => {
     if (result.isConfirmed) {
-      cambiarEstadoProblematicaEnBD(prob);
+      cambiarEstadoProblematicaEnBD(prob)
       Swal.fire({
         title: `Problemática ${nuevoEstado === 'Alta' ? 'dada de Alta' : 'dada de Baja'}`,
         text: `Se ha dado de ${nuevoEstado === 'Alta' ? 'alta' : 'baja'} "${prob.nombre}" correctamente.`,
@@ -913,15 +947,16 @@ const cambiarEstadoProblematicaEnBD = async (prob: any) => {
   const nuevoEstado = prob.estado === 'Alta' ? 'Baja' : 'Alta'
   const tabla = prob.tipo === 'Interno' ? 'problemas' : 'problemas_externos'
 
-  const { error } = await supabase.from(tabla).update({ estado: nuevoEstado }).eq('id', prob.id)
+  const { error } = await updateEq(
+    tabla, // nombre de la tabla
+    'id', // campo para eq
+    prob.id, // valor a comparar
+    { estado: nuevoEstado }, // data a actualizar
+  )
 
   if (error) {
     console.error('Error al cambiar estado de problemática: ', error)
-    Swal.fire(
-      'Error',
-      'Ocurrió un problema al cambiar el estado de la problemática.',
-      'error',
-    )
+    Swal.fire('Error', 'Ocurrió un problema al cambiar el estado de la problemática.', 'error')
     return
   }
 
@@ -940,29 +975,33 @@ const ejecutarGuardadoProblematica = async (formData: any, esEdicion: boolean) =
   try {
     if (esEdicion) {
       if (formData.tipo === 'Interno') {
-        const { error } = await supabase
-          .from('problemas')
-          .update({
+        const { error } = await updateEq(
+          'problemas', // tabla
+          'id', // campo para eq
+          formData.id, // valor a comparar
+          {
             nombre: formData.nombre,
             nombreamigable: formData.nombreamigable,
             departamento_id: formData.departamento_id,
-          })
-          .eq('id', formData.id)
+          }, // data a actualizar
+        )
         if (error) throw error
       } else {
-        const { error } = await supabase
-          .from('problemas_externos')
-          .update({
+        const { error } = await updateEq(
+          'problemas_externos', // tabla
+          'id', // campo para eq
+          formData.id, // valor a comparar
+          {
             nombre: formData.nombre,
             nombreamigable: formData.nombreamigable,
             departamento_externo_id: formData.departamento_id,
-          })
-          .eq('id', formData.id)
+          }, // data a actualizar
+        )
         if (error) throw error
       }
     } else {
       if (formData.tipo === 'Interno') {
-        const { error } = await supabase.from('problemas').insert({
+        const { error } = await insert('problemas', {
           nombre: formData.nombre,
           nombreamigable: formData.nombreamigable,
           departamento_id: formData.departamento_id,
@@ -970,7 +1009,7 @@ const ejecutarGuardadoProblematica = async (formData: any, esEdicion: boolean) =
         })
         if (error) throw error
       } else {
-        const { error } = await supabase.from('problemas_externos').insert({
+        const { error } = await insert('problemas_externos', {
           nombre: formData.nombre,
           nombreamigable: formData.nombreamigable,
           departamento_externo_id: formData.departamento_id,
@@ -1007,13 +1046,17 @@ const cambiarEstadoProblema = async (prob: any) => {
     confirmButtonText: `Sí, dar de ${nuevoEstado === 'Alta' ? 'baja' : 'alta'}`,
     cancelButtonText: 'Cancelar',
     reverseButtons: true,
-    customClass: { container: 'swal-difuminado' }
+    customClass: { container: 'swal-difuminado' },
   })
 
   if (!result.isConfirmed) return
 
   const tabla = prob.tipo === 'Interno' ? 'problemas' : 'problemas_externos'
-  const { error } = await supabase.from(tabla).delete().eq('id', prob.id)
+  const { error } = await deleteEq(
+    tabla, // nombre de la tabla
+    'id', // campo para eq
+    prob.id, // valor a comparar
+  )
 
   if (error) {
     cambiarEstadoProblematicaEnBD(prob) // Cambia el estado a "Baja" si no se puede eliminar
@@ -1056,28 +1099,40 @@ const ejecutarGuardadoDepartamento = async (formData: any, esEdicion: boolean) =
   try {
     if (esEdicion) {
       if (formData.tipo === 'Interno') {
-        const { error } = await supabase
-          .from('departamentos')
-          .update({ nombre: formData.nombre, nombreamigable: formData.nombreamigable })
-          .eq('id', formData.id)
+        const { error } = await updateEq(
+          'departamentos', // tabla
+          'id', // campo para eq
+          formData.id, // valor a comparar
+          {
+            nombre: formData.nombre,
+            nombreamigable: formData.nombreamigable,
+          }, // data a actualizar
+        )
         if (error) throw error
       } else {
-        const { error } = await supabase
-          .from('departamentos_externos')
-          .update({ departamento: formData.nombre })
-          .eq('id', formData.id)
+        const { error } = await updateEq(
+          'departamentos_externos', // tabla
+          'id', // campo para eq
+          formData.id, // valor a comparar
+          {
+            departamento: formData.nombre,
+          }, // data a actualizar
+        )
         if (error) throw error
       }
     } else {
       if (formData.tipo === 'Interno') {
-        const { error } = await supabase
-          .from('departamentos')
-          .insert({ nombre: formData.nombre, nombreamigable: formData.nombreamigable, estado: 'Alta' })
+        const { error } = await insert('departamentos', {
+          nombre: formData.nombre,
+          nombreamigable: formData.nombreamigable,
+          estado: 'Alta',
+        })
         if (error) throw error
       } else {
-        const { error } = await supabase
-          .from('departamentos_externos')
-          .insert({ departamento: formData.nombre, estado: 'Alta' })
+        const { error } = await insert('departamentos_externos', {
+          departamento: formData.nombre,
+          estado: 'Alta',
+        })
         if (error) throw error
       }
     }
@@ -1108,13 +1163,17 @@ const cambiarEstadoDepartamento = async (depto: any) => {
     confirmButtonText: 'Sí, cambiar estado',
     cancelButtonText: 'Cancelar',
     reverseButtons: true,
-    customClass: { container: 'swal-difuminado' }
+    customClass: { container: 'swal-difuminado' },
   })
 
   if (!result.isConfirmed) return
 
   const tabla = depto.tipo === 'Interno' ? 'departamentos' : 'departamentos_externos'
-  const { error } = await supabase.from(tabla).delete().eq('id', depto.id)
+  const { error } = await deleteEq(
+    tabla, // nombre de la tabla
+    'id', // campo para eq
+    depto.id, // valor a comparar
+  )
 
   if (error) {
     cambiarEstadoDepartamentoEnBD(depto) // Cambia el estado a "Baja" si no se puede eliminar
@@ -1139,15 +1198,16 @@ const cambiarEstadoDepartamentoEnBD = async (depto: any) => {
   const nuevoEstado = depto.estado === 'Alta' ? 'Baja' : 'Alta'
   const tabla = depto.tipo === 'Interno' ? 'departamentos' : 'departamentos_externos'
 
-  const { error } = await supabase.from(tabla).update({ estado: nuevoEstado }).eq('id', depto.id)
+  const { error } = await updateEq(
+    tabla, // nombre de la tabla
+    'id', // campo para eq
+    depto.id, // valor a comparar
+    { estado: nuevoEstado }, // data a actualizar
+  )
 
   if (error) {
     console.error('Error al cambiar estado de departamento: ', error)
-    Swal.fire(
-      'Error',
-      'Ocurrió un problema al cambiar el estado del departamento.',
-      'error',
-    )
+    Swal.fire('Error', 'Ocurrió un problema al cambiar el estado del departamento.', 'error')
     return
   }
 
@@ -1181,9 +1241,7 @@ const cerrarModalForm = () => {
 
 const ejecutarGuardadoUsuario = async (formData: any, esEdicion: boolean) => {
   try {
-    const idUsuario = esEdicion ? formData.id : null
-
-    const { data, error } = await supabase.rpc('guardar_usuario', {
+    const { data, error } = await callRpc('guardar_usuario', {
       p_id: esEdicion ? formData.id : null,
       p_nombre: formData.nombre,
       p_apellido_p: formData.apellido_p,
@@ -1196,16 +1254,24 @@ const ejecutarGuardadoUsuario = async (formData: any, esEdicion: boolean) => {
     })
 
     if (error && !data) {
-      // solo mostrar error si no hay data
-      if (error.message.includes('unique constraint')) {
-        Swal.fire('Error', error.message, 'error')
+      const esDuplicado =
+        error.message.toLowerCase().includes('unique') ||
+        error.message.toLowerCase().includes('duplicate')
+
+      if (esDuplicado) {
+        Swal.fire(
+          'Error',
+          esEdicion
+            ? 'No se puede modificar el usuario: el correo ya está registrado por otro usuario.'
+            : 'No se puede crear el usuario: el correo ya está registrado.',
+          'error',
+        )
       } else {
         throw error
       }
       return
     }
 
-    // si hay data, aunque exista error, considera éxito
     Swal.fire({
       title: esEdicion ? 'Usuario Actualizado' : 'Usuario Creado',
       text: `Se ha guardado a ${formData.nombre} correctamente.`,
@@ -1235,34 +1301,37 @@ const cambiarEstadoUsuario = async (user: any, nuevoEstado: 'Alta' | 'Baja') => 
   })
 
   if (result.isConfirmed) {
-    const { error } = await supabase
-      .from('usuarios')
-      .update({ estadoadministrativo: nuevoEstado })
-      .eq('id', user.id)
+    const { error } = await updateEq(
+      'usuarios', // nombre de la tabla
+      'id', // campo para eq
+      user.id, // valor a comparar
+      { estadoadministrativo: nuevoEstado }, // data a actualizar
+    )
 
     // Si pasa de Alta -> Baja else si pasa de Baja -> Alta entonces cambiar Columna FechaBaja o FechaAlta con la fecha actual
     if (user.estadoadministrativo === 'Alta' && nuevoEstado === 'Baja') {
-      await supabase
-        .from('usuarios')
-        .update({ fechabaja: new Date().toISOString() })
-        .eq('id', user.id)
-    } else if (user.estadoadministrativo === 'Baja' && nuevoEstado === 'Alta') {
-      await supabase
-        .from('usuarios')
-        .update({ fechaalta: new Date().toISOString() })
-        .eq('id', user.id)
-    }
+      const { error } = await updateEq('usuarios', 'id', user.id, {
+        fechabaja: new Date().toISOString(),
+      })
 
-    if (!error) {
-      cerrarModalVer()
-      await cargarDatos()
-      Swal.fire('¡Actualizado!', `El usuario ahora está dado de ${nuevoEstado}.`, 'success')
-    } else {
-      Swal.fire('Error', 'No se pudo actualizar el estado.', 'error')
+      if (error) {
+        throw new Error('No se pudo marcar la fecha de baja: ' + error.message)
+      }
+    } else if (user.estadoadministrativo === 'Baja' && nuevoEstado === 'Alta') {
+      const { error } = await updateEq('usuarios', 'id', user.id, {
+        fechaalta: new Date().toISOString(),
+      })
+
+      if (!error) {
+        cerrarModalVer()
+        await cargarDatos()
+        Swal.fire('¡Actualizado!', `El usuario ahora está dado de ${nuevoEstado}.`, 'success')
+      } else {
+        Swal.fire('Error', 'No se pudo actualizar el estado.', 'error')
+      }
     }
   }
 }
-
 const cerrarSesion = () => {
   localStorage.removeItem('adminSession')
   router.push('/')

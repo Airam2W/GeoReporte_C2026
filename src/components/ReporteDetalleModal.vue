@@ -27,7 +27,7 @@
               <div class="info-item">
                 <label>Ubicación</label>
                 <p>{{ reporte.domicilio }}</p>
-                <p v-if="reporte.referencias" class="referencias">Ref: {{ reporte.referencias }}</p>
+                <p v-if="reporte.referencias" class="referencias">Ref: {{ reporte.referencias || 'No proporcionadas' }}</p>
               </div>
 
               <div class="info-grupo-doble">
@@ -35,9 +35,15 @@
                   <label>Ciudadano</label>
                   <p>{{ reporte.nombre }}</p>
                 </div>
-                <div class="info-item">
+                <div class="info-item"
+                v-if="esAdmin || esAdminEx">
                   <label>Teléfono</label>
                   <p>{{ reporte.telefono }}</p>
+                </div>
+                <div class="info-item"
+                v-if="esAdmin || esAdminEx">
+                  <label>Correo Electrónico</label>
+                  <p>{{ reporte.correo || 'No proporcionado' }}</p>
                 </div>
               </div>
 
@@ -70,13 +76,13 @@
         <div class="modal-footer">
           <button class="btn-secundario" @click="cerrar">Cerrar</button>
 
-          <button v-if="!esAdmin" class="btn-primario" @click="buscarReporte">
+          <button v-if="(!esAdmin && !esAdminEx)" class="btn-primario" @click="buscarReporte">
             Buscar Otro Reporte
           </button>
 
-          <template v-if="esAdmin && reporte">
+          <template v-if="reporte">
             <button
-              v-if="reporte.estado === 'Llegado' && reporte.problemas?.nombre != null"
+              v-if="(esAdmin || esAdminEx) && (reporte.estado === 'Pendiente' || reporte.estado === 'Turnado' )&& reporte.problemas?.nombre != null"
               class="btn-primario"
               @click="$emit('asignar', reporte?.folio)"
             >
@@ -84,27 +90,35 @@
             </button>
 
             <button
-              v-if="reporte.estado === 'Finalizado'"
+              v-if="esAdmin && reporte.estado === 'Devuelto' && reporte.problemas?.nombre != null"
               class="btn-primario"
-              @click="$emit('devolver', reporte?.folio, 'En Proceso')"
+              @click="$emit('turnar', reporte?.folio)"
             >
-              Devolver a En Proceso
+              Turnar Reporte
             </button>
 
             <button
-              v-if="reporte.estado === 'Rechazado'"
+              v-if="(esAdmin || esAdminEx) && (reporte.estado === 'Finalizado' || reporte.estado === 'Devuelto' || reporte.estado === 'Rechazado')"
               class="btn-primario"
-              @click="$emit('devolver', reporte?.folio, 'Llegado')"
+              @click="$emit('devolver', reporte?.folio, 'Pendiente')"
             >
-              Devolver a Llegado
+              Devolver a Pendiente
             </button>
 
             <button
-              v-if="reporte.estado !== 'Rechazado' && reporte.estado !== 'Turnado'"
+              v-if="(esAdmin || esAdminEx) && (reporte.estado  === 'Pendiente' || reporte.estado === 'Devuelto')"
               class="btn-peligroso"
               @click="$emit('rechazar', reporte?.folio)"
             >
               Rechazar Reporte
+            </button>
+
+            <button
+              v-if="esAdminEx && reporte.estado === 'Pendiente'"
+              class="btn-primario"
+              @click="$emit('devolver', reporte?.folio, 'Finalizado')"
+            >
+              Finalizar Reporte
             </button>
           </template>
         </div>
@@ -116,10 +130,13 @@
 <script setup lang="ts">
 import { formatearFechaLocal, obtenerClaseEstado } from '../logic/reporteDetalleModal'
 
-const emit = defineEmits(['close', 'asignar', 'rechazar', 'buscar', 'devolver'])
+const emit = defineEmits(['close', 'asignar', 'rechazar', 'buscar', 'devolver', 'turnar', 'finalizar'])
 
 const cerrar = () => {
   emit('close')
+}
+const finalizarReporte = () => {
+  emit('finalizar')
 }
 
 const buscarReporte = () => {
@@ -136,6 +153,10 @@ const props = defineProps({
     default: null,
   },
   esAdmin: {
+    type: Boolean,
+    default: false,
+  },
+  esAdminEx: {
     type: Boolean,
     default: false,
   },

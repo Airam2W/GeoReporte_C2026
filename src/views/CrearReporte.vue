@@ -121,7 +121,11 @@
             :class="{ 'input-error': errores.departamento_id }"
           >
             <option value="">Selecciona un departamento...</option>
-            <option v-for="dep in departamentos.filter(d => d.estado === 'Alta')" :key="dep.id" :value="dep.id">
+            <option
+              v-for="dep in departamentos.filter((d) => d.estado === 'Alta')"
+              :key="dep.id"
+              :value="dep.id"
+            >
               {{ dep.nombreamigable }}
             </option>
           </select>
@@ -149,7 +153,11 @@
                   : 'Primero selecciona un departamento'
               }}
             </option>
-            <option v-for="prob in problemas.filter(d => d.estado === 'Alta')" :key="prob.id" :value="prob.id">
+            <option
+              v-for="prob in problemas.filter((d) => d.estado === 'Alta')"
+              :key="prob.id"
+              :value="prob.id"
+            >
               {{ prob.nombreamigable }}
             </option>
           </select>
@@ -179,7 +187,7 @@
             name="nombre"
             v-model="form.nombre"
             type="text"
-            placeholder="Si se deja vacío, será Anónimo"
+            placeholder="Si deseas, puedes dejarlo en blanco"
           />
 
           <label>Teléfono</label>
@@ -194,6 +202,20 @@
             :class="{ 'input-error': errores.telefono }"
           />
           <span v-if="errores.telefono" class="msg-error">{{ errores.telefono }}</span>
+
+          <label
+            >Correo Electrónico<span class="opcional"
+              >(Opcional, se usará para notificaciones del reporte)</span
+            ></label
+          >
+          <input
+            name="correo"
+            v-model="form.correo"
+            type="email"
+            placeholder="tu@correo.com"
+            :class="{ 'input-error': errores.correo }"
+          />
+          <span v-if="errores.correo" class="msg-error">{{ errores.correo }}</span>
 
           <label>Domicilio del incidente</label>
           <div class="input-mapa-wrapper" :class="{ 'input-error': errores.domicilio }">
@@ -270,11 +292,12 @@
 </template>
 
 <script setup lang="ts">
-
 import { onMounted, onUnmounted, ref } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { supabase } from '../lib/supabase'
+import { selectOrder, selectEqOrder, uploadFoto, insert, getPublicUrl } from '../services/supabaseController'
+
+
 
 const mapContainer = ref<HTMLElement | null>(null)
 const map = ref<L.Map | null>(null)
@@ -282,7 +305,7 @@ const inputFoto = ref<HTMLInputElement | null>(null)
 const modoMapa = ref(false)
 const volandoAUbicacion = ref(false)
 
-const panelAbierto = ref(false)
+const panelAbierto = ref(true)
 
 const enviando = ref(false)
 const errores = ref<Record<string, string>>({})
@@ -318,11 +341,12 @@ const form = ref({
   foto: null as File | null,
   latitud: 0,
   longitud: 0,
+  correo: '',
 })
 
 // 1. Cargar departamentos al iniciar
 const cargarDepartamentos = async () => {
-  const { data, error } = await supabase.from('departamentos').select('*').order('id')
+  const { data, error } = await selectOrder('departamentos', 'id')
   if (!error && data) {
     departamentos.value = data
   } else {
@@ -338,11 +362,12 @@ const onDepartamentoSeleccionado = async () => {
 
   if (!form.value.departamento_id) return
 
-  const { data, error } = await supabase
-    .from('problemas')
-    .select('*')
-    .eq('departamento_id', form.value.departamento_id)
-    .order('id')
+  const { data, error } = await selectEqOrder(
+    'problemas', // tabla
+    'departamento_id', // campo para eq
+    form.value.departamento_id, // valor a comparar
+    'id', // campo para ordenar
+  )
 
   if (!error && data) {
     problemas.value = data
@@ -434,6 +459,10 @@ const router = useRouter()
 
 const irA = (ruta: string) => {
   router.push(ruta)
+  // Recargar la página para limpiar el estado del formulario
+  setTimeout(() => {
+    window.location.reload()
+  }, 100)
 }
 
 const irAUbicacionActual = () => {
@@ -480,6 +509,7 @@ const irAUbicacionActual = () => {
 const zoomIn = () => map.value?.zoomIn()
 const zoomOut = () => map.value?.zoomOut()
 
+
 const abrirPanel = () => {
   panelAbierto.value = !panelAbierto.value
   if (panelAbierto.value) {
@@ -509,6 +539,7 @@ const limpiarFormulario = () => {
     foto: null,
     latitud: 0,
     longitud: 0,
+    correo: '',
   }
   problemas.value = []
   errores.value = {}
@@ -516,7 +547,6 @@ const limpiarFormulario = () => {
 }
 
 const enviarReporte = async () => {
-
   if (enviando.value) return
 
   errores.value = {}
@@ -564,13 +594,17 @@ const enviarReporte = async () => {
   if (submitBtn) submitBtn.disabled = true
 
   // Generar el folio del reporte
-  const depTresLetras = departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombre
-    .substring(0, 3)
+  const depTresLetras = departamentos.value
+    .find((d) => d.id === form.value.departamento_id)
+    ?.nombre.substring(0, 3)
     .toUpperCase()
-  const probTresLetras = problemas.value.find((p) => p.id === form.value.problema_id)?.nombre.substring(0, 3).toUpperCase()
+  const probTresLetras = problemas.value
+    .find((p) => p.id === form.value.problema_id)
+    ?.nombre.substring(0, 3)
+    .toUpperCase()
   const fechaCuatroDigitosYear = new Date().getFullYear().toString().slice(-4)
   const fechaMes = (new Date().getMonth() + 1).toString().padStart(2, '0')
-  const fechaDia = (new Date().getDate()).toString().padStart(2, '0')
+  const fechaDia = new Date().getDate().toString().padStart(2, '0')
   const fechaFormateada = `${fechaCuatroDigitosYear}${fechaMes}${fechaDia}`
   const horaDosDigitos = new Date().getHours().toString().padStart(2, '0')
   const minutosDosDigitos = new Date().getMinutes().toString().padStart(2, '0')
@@ -592,37 +626,42 @@ const enviarReporte = async () => {
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `evidencias/${fileName}` // Se guardará dentro de una carpeta "evidencias"
 
-      const { error: uploadError } = await supabase.storage.from('fotos').upload(filePath, file)
+      const { data, error: uploadError } = await uploadFoto(filePath, file)
 
       if (uploadError) throw new Error('No se pudo subir la imagen: ' + uploadError.message)
 
       // Obtener la URL pública de la foto recién subida
-      const { data: publicUrlData } = supabase.storage.from('fotos').getPublicUrl(filePath)
+      const { data: publicUrlData, error } = await getPublicUrl(filePath)
+
+      if (error) throw new Error(error.message)
 
       fotoUrlFinal = publicUrlData.publicUrl
     }
 
     // 2. Insertar los datos en la tabla 'reportes'
-    const { error: insertReporteError } = await supabase.from('reportes').insert({
+    const { data, error: insertReporteError } = await insert('reportes', {
       folio: folioGenerado,
       departamento_id: form.value.departamento_id,
       problema_id: form.value.problema_id,
       descripcion: form.value.descripcion.trim(),
-      nombre: form.value.nombre ? form.value.nombre.trim() : 'Anónimo',
+      nombre: form.value.nombre ? form.value.nombre.trim() : 'Ciudadano Honorable',
       telefono: form.value.telefono,
+      correo: form.value.correo.trim(),
       domicilio: form.value.domicilio.trim(),
       referencias: form.value.referencias ? form.value.referencias.trim() : null,
       foto_url: fotoUrlFinal,
     })
 
     // 3. Insertar los datos en la tabla 'reportesExistentes'
-    const { error: insertReporteExistenteError } = await supabase.from('detalle_reporte').insert({
+    const { error: insertReporteExistenteError } = await insert('detalle_reporte', {
       folio: folioGenerado,
-      estado_id: 1
+      estado_id: 1,
     })
 
-    if (insertReporteError) throw new Error('Error al guardar en base de datos: ' + insertReporteError.message)
-    if (insertReporteExistenteError) throw new Error('Error al guardar en base de datos: ' + insertReporteExistenteError.message)
+    if (insertReporteError)
+      throw new Error('Error al guardar en base de datos: ' + insertReporteError.message)
+    if (insertReporteExistenteError)
+      throw new Error('Error al guardar en base de datos: ' + insertReporteExistenteError.message)
 
     mostrarModalReporteExitoso({
       folio: folioGenerado,
@@ -710,19 +749,30 @@ const irASugerencia = (s: any) => {
   sugerenciasZona.value = []
   queryZona.value = s.display_name
   map.value?.flyTo([parseFloat(s.lat), parseFloat(s.lon)], 16, { duration: 1 })
-};
+}
 
 const limpiarBusquedaZona = () => {
   queryZona.value = ''
   sugerenciasZona.value = []
-};
+}
 
-  //Necesario para las pruebas unitarias
-  defineExpose({
-  form, errores, enviando, departamentos, problemas,
-  map, modoMapa, queryZona, folioBusqueda, reporteEncontrado,
+//Necesario para las pruebas unitarias
+defineExpose({
+  form,
+  errores,
+  enviando,
+  departamentos,
+  problemas,
+  map,
+  modoMapa,
+  queryZona,
+  folioBusqueda,
+  reporteEncontrado,
   panelAbierto,
-  dentroDeculiacan, enviarReporte, confirmarDireccion,
-  seleccionarFoto, onDepartamentoSeleccionado,
-  });
+  dentroDeculiacan,
+  enviarReporte,
+  confirmarDireccion,
+  seleccionarFoto,
+  onDepartamentoSeleccionado,
+})
 </script>

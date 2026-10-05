@@ -1,5 +1,5 @@
 import router from '@/router'
-import { supabase } from '../lib/supabase'
+import { callRpc } from '../services/supabaseController'
 import { Toast } from '../utils/alertas'
 
 // export const verEstadoReporte = () => {
@@ -212,7 +212,7 @@ export const iniciarSesion = () => {
     submitBtn.textContent = 'Iniciando...'
 
     try {
-      const { data, error } = await supabase.rpc('login_usuario', {
+      const { data, error } = await callRpc('login_usuario', {
         p_correo: email,
         p_contrasena: password,
       })
@@ -231,7 +231,8 @@ export const iniciarSesion = () => {
       const usuario = data[0]
 
       if (usuario.estado !== 'Alta' && usuario.estado !== 'Activo') {
-        errorGlobal.textContent = 'Esta cuenta ha sido dada de baja. Porfavor, contacta con el Director General'
+        errorGlobal.textContent =
+          'Esta cuenta ha sido dada de baja. Porfavor, contacta con el Director General'
         errorGlobal.style.display = 'block'
         submitBtn.disabled = false
         submitBtn.textContent = 'Iniciar sesión'
@@ -241,15 +242,14 @@ export const iniciarSesion = () => {
       localStorage.setItem('adminSession', JSON.stringify(usuario))
 
       // Para éxito
-      Toast.fire({
-        icon: 'success',
-        title: `¡Bienvenido de vuelta, ${usuario.nombre}!`,
-      })
+      //Toast.fire({
+      //  icon: 'success',
+      //  title: `¡Bienvenido de vuelta, ${usuario.nombre}!`,
+      //})
 
       document.body.removeChild(modal)
 
       redireccionarUsuario()
-
     } catch (err) {
       errorGlobal.textContent = 'Error al conectar con el servidor: ' + err
       errorGlobal.style.display = 'block'

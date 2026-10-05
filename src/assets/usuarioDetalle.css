@@ -29,7 +29,7 @@
 .modal-header h3 {
   margin: 0;
   font-size: 1.4rem;
-  color: #1a6b2f;
+  color: #621132;
 }
 .folio-text {
   margin: 4px 0 0;
@@ -76,7 +76,7 @@
 .info-item .destacado {
   font-weight: 700;
   font-size: 1.1rem;
-  color: #1a6b2f;
+  color: #621132;
 }
 .info-grupo-doble {
   display: grid;
