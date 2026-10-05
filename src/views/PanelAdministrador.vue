@@ -213,6 +213,7 @@ const admin = ref<any>(null)
 const cargando = ref(true)
 const reportes = ref<any[]>([])
 const problemasOpciones = ref<any[]>([])
+const foliosProcesando = ref(new Set<string>())
 
 // Estado del Modal de Ver Reporte
 const modalVisible = ref(false)
@@ -357,6 +358,9 @@ const cerrarModalVer = () => {
 }
 
 const rechazarReporte = async (folio: string) => {
+  if (foliosProcesando.value.has(folio)) return
+  foliosProcesando.value.add(folio)
+  try {
   const result = await Swal.fire({
     title: '¿Rechazar reporte?',
     text: `¿Estás seguro de que deseas rechazar el folio ${folio}? Esta acción lo marcará como rechazado.`,
@@ -398,8 +402,12 @@ const rechazarReporte = async (folio: string) => {
         icon: 'error',
         confirmButtonColor: '#1a6b2f',
       })
+    } 
+  } 
+}
+    finally{
+      foliosProcesando.value.delete(folio);
     }
-  }
 }
 
 const buscarEstadoId = async (estado: string): Promise<string | null> => {
@@ -423,7 +431,10 @@ const buscarEstadoId = async (estado: string): Promise<string | null> => {
   }
 }
 
-const devolverReporte = async (folio: string, nuevoEstado: 'En Revisión' | 'Pendiente') => {
+const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llegado') => {
+   if (foliosProcesando.value.has(folio)) return
+  foliosProcesando.value.add(folio)
+  try {
   const result = await Swal.fire({
     title: `¿Devolver a "${nuevoEstado}"?`,
     text: `El folio ${folio} cambiará su estado a "${nuevoEstado}".`,
@@ -480,26 +491,11 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Revisión' | 'Pen
       })
     }
   }
+  }finally{
+    foliosProcesando.value.delete(folio)
+  }
 }
 
-const turnarReporte = async (folio: string | undefined) => {
-  //Desactivar el boton Turnar Reporte
-  const turnarBtn = document.querySelector('.btn-asignar') as HTMLButtonElement
-  turnarBtn.disabled = true
-
-  if (!folio) return
-  Swal.fire({
-    title: 'Turnar Reporte',
-    text: `Aquí iría la lógica para turnar el folio ${folio}`,
-    icon: 'info',
-    confirmButtonColor: '#1a6b2f',
-    customClass: { container: 'swal-difuminado' },
-  })
-
-  // Reactivar el boton Turnar Reporte
-  turnarBtn.disabled = false
-  cerrarModalVer()
-}
 
 const asignarReporte = (folio: string | undefined) => {
   //Desactivar el boton Asginar Reporte
