@@ -1,5 +1,5 @@
 [
-  { "id": 1, "nombre": "Limpia y Recolección", "nombreamigable": "Limpia, Recolección, Tratamiento y Disposición Final de Residuos", "estado": "Alta" },
-  { "id": 2, "nombre": "Parques y Jardines", "nombreamigable": "Parques y Jardines", "estado": "Alta" },
-  { "id": 3, "nombre": "Alumbrado Público", "nombreamigable": "Alumbrado Público y Eficiencia Energética", "estado": "Alta" }
+  { "id": 1, "nombre": "Basura y Limpieza", "nombreamigable": "Limpia, Recolección, Tratamiento y Disposición Final de Residuos", "estado": "Alta" },
+  { "id": 2, "nombre": "Áreas verdes y parques", "nombreamigable": "Parques y Jardines", "estado": "Alta" },
+  { "id": 3, "nombre": "Alumbrado público", "nombreamigable": "Alumbrado Público y Eficiencia Energética", "estado": "Alta" }
 ]
