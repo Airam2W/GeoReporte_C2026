@@ -51,11 +51,13 @@ describe('PC-03 Pruebas para seleccionar problemas por departamento', () => {
   it('No permitir seleccionar un problema sin un departamento seleccionado', () => {
     cy.contains('Crear reporte').click();
 
+    // Esperar a que el select tenga opciones cargadas antes de validar
+    cy.get('select[name="departamento"] option', { timeout: 10000 }).should('have.length.greaterThan', 1);
+
     // Verificar que está deshabilitada la lista de problemas
     cy.get('select[name="problema"]').should('be.disabled');
 
     // Seleccionar un departamento
-    cy.get('select[name="departamento"] option').should('have.length.greaterThan', 1);
     cy.get('select[name="departamento"]').select('Alumbrado público');
 
     // Verificar que ahora está habilitada la lista de problemas
@@ -72,10 +74,15 @@ describe('PC-04 Prueba para comprobación de inserciones en la base de datos', (
   it('Comprobar que se inserta un reporte en la base de datos al enviar', () => {
     cy.contains('Crear reporte').click();
 
+    // Esperar a que el select tenga opciones cargadas
+    cy.get('select[name="departamento"] option', { timeout: 10000 }).should('have.length.greaterThan', 1);
+
     // Llenar los campos obligatorios del formulario
-    cy.get('select[name="departamento"] option').should('have.length.greaterThan', 1);
     cy.get('select[name="departamento"]').select('Alumbrado público');
+    
+    // Asegurar que el select de problemas se habilite y cargue sus propias opciones
     cy.get('select[name="problema"]').should('not.be.disabled');
+    cy.get('select[name="problema"] option', { timeout: 10000 }).should('have.length.greaterThan', 1);
     cy.get('select[name="problema"]').select(1);
 
     cy.get('textarea[name="descripcion"]').type('Iluminación de la calle no funciona correctamente');
