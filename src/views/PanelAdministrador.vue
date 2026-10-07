@@ -431,7 +431,7 @@ const buscarEstadoId = async (estado: string): Promise<string | null> => {
   }
 }
 
-const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llegado') => {
+const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Pendiente') => {
    if (foliosProcesando.value.has(folio)) return
   foliosProcesando.value.add(folio)
   try {
@@ -539,7 +539,7 @@ defineExpose({
   rechazarReporte,
   devolverReporte,
   asignarReporte,
-  turnarReporte,
+  //turnarReporte,
   cerrarSesion,
 })
 </script>

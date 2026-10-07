@@ -1,7 +1,7 @@
 import { mount, VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PanelDirector from '@/views/PanelDirector.vue'
-import { supabase } from '@/lib/supabase'
+import * as db from '@/services/supabaseController'
 import './setup'
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
@@ -23,11 +23,6 @@ vi.mock('sweetalert2', () => {
 		},
 	}
 })
-const construirQueryEncadenable = (data: any, error: any = null) => {
-	const resultado: any = Promise.resolve({ data, error })
-	resultado.order = vi.fn().mockResolvedValue({ data, error })
-	return resultado
-}
 
 const usuariosMock = [
 	{
@@ -70,11 +65,7 @@ const usuariosMock = [
 
 describe('Pruebas del panel del director general', () => {
 	let wrapper: VueWrapper<any>
-	let updateEqMock: ReturnType<typeof vi.fn>
-	let updateMock: ReturnType<typeof vi.fn>
-	let rpcMock: ReturnType<typeof vi.fn>
 	let usuariosState: any[]
-	let lastUpdatePayload: any
 
 	beforeEach(async () => {
 		vi.clearAllMocks()
@@ -90,109 +81,67 @@ describe('Pruebas del panel del director general', () => {
 			removeItem: (key: string) => storage.delete(key),
 		})
 
-		updateEqMock = vi.fn(async (column: string, value: any) => {
-			const item = usuariosState.find((u: any) => u[column] === value)
-			if (item) Object.assign(item, lastUpdatePayload)
-			return { error: null }
+		// selectNeq(tabla, campo, valor, columnas) -> tipos de usuario
+		vi.mocked(db.selectNeq).mockResolvedValue({
+			data: [
+				{ id: 2, nombre: 'Supervisor' },
+				{ id: 3, nombre: 'Director de Departamento' },
+			],
+			error: null,
 		})
-		updateMock = vi.fn((payload: any) => {
-			lastUpdatePayload = payload
-			return { eq: updateEqMock }
+
+		// selectAll(tabla, columnas)
+		vi.mocked(db.selectAll).mockImplementation(async (tabla: string) => {
+			const datos: Record<string, any[]> = {
+				departamentos: [
+					{ id: 1, nombre: 'Servicios Publicos', nombreamigable: 'Servicios Publicos', estado: 'Alta' },
+					{ id: 2, nombre: 'Obras Publicas', nombreamigable: 'Obras Publicas', estado: 'Alta' },
+				],
+				departamentos_externos: [{ id: 1, departamento: 'Proveedor Externo', estado: 'Alta' }],
+				supervisores: [],
+				jefes: [],
+			}
+			return { data: structuredClone(datos[tabla] ?? []), error: null }
 		})
-		rpcMock = vi.mocked(supabase.rpc)
-		rpcMock.mockResolvedValue({ data: null, error: null } as never)
 
-			; (supabase.from as any).mockImplementation((table: string) => {
-				if (table === 'tipousuario') {
-					return {
-						select: vi.fn().mockReturnValue({
-							neq: vi.fn().mockResolvedValue({
-								data: [
-									{ id: 2, nombre: 'Supervisor' },
-									{ id: 3, nombre: 'Director de Departamento' },
-								],
-								error: null,
-							}),
-						}),
-					}
-				}
+		// selectNeqOrder(tabla, campo, valor, orderBy, columnas, ascending) -> usuarios
+		vi.mocked(db.selectNeqOrder).mockImplementation(async () => ({
+			data: structuredClone(usuariosState),
+			error: null,
+		}))
 
-				if (table === 'departamentos') {
-					const datos = [
-						{ id: 1, nombre: 'Servicios Publicos', nombreamigable: 'Servicios Publicos', estado: 'Alta' },
-						{ id: 2, nombre: 'Obras Publicas', nombreamigable: 'Obras Publicas', estado: 'Alta' },
-					]
-					return {
-						select: vi.fn().mockReturnValue(construirQueryEncadenable(datos)),
-						delete: vi.fn().mockReturnValue({
-							eq: vi.fn().mockResolvedValue({ error: null }),
-						}),
-						update: vi.fn().mockReturnValue({
-							eq: vi.fn().mockResolvedValue({ error: null }),
-						}),
-					}
-				}
+		// selectOrder(tabla, campo, columnas, ascending)
+		vi.mocked(db.selectOrder).mockImplementation(async (tabla: string) => {
+			const datos: Record<string, any[]> = {
+				departamentos: [
+					{ id: 1, nombre: 'Servicios Publicos', nombreamigable: 'Servicios Publicos', estado: 'Alta' },
+					{ id: 2, nombre: 'Obras Publicas', nombreamigable: 'Obras Publicas', estado: 'Alta' },
+				],
+				departamentos_externos: [{ id: 1, departamento: 'Proveedor Externo', estado: 'Alta' }],
+				problemas: [],
+				problemas_externos: [],
+			}
+			return { data: structuredClone(datos[tabla] ?? []), error: null }
+		})
 
-				if (table === 'departamentos_externos') {
-					const datos = [{ id: 1, departamento: 'Proveedor Externo', estado: 'Alta' }]
-					return {
-						select: vi.fn().mockReturnValue(construirQueryEncadenable(datos)),
-						delete: vi.fn().mockReturnValue({
-							eq: vi.fn().mockResolvedValue({ error: null }),
-						}),
-						update: vi.fn().mockReturnValue({
-							eq: vi.fn().mockResolvedValue({ error: null }),
-						}),
-					}
-				}
+		// selectIlike(tabla, campo, valor, columnas) -> validación de nombre duplicado en los formularios (sin duplicados)
+		vi.mocked(db.selectIlike).mockResolvedValue({ data: [], error: null })
 
-				if (table === 'supervisores') {
-					return {
-						select: vi.fn().mockResolvedValue({
-							data: [],
-							error: null,
-						}),
-					}
-				}
+		// selectIlikeMaybeSingle(tabla, campo, valor) -> validación de correo duplicado (sin duplicado)
+		vi.mocked(db.selectIlikeMaybeSingle).mockResolvedValue({ data: null, error: null })
 
-				if (table === 'jefes') {
-					return {
-						select: vi.fn().mockResolvedValue({
-							data: [],
-							error: null,
-						}),
-					}
-				}
+		// updateEq(tabla, campo, valor, data)
+		vi.mocked(db.updateEq).mockImplementation(async (tabla: string, campo: string, valor: any, payload: any) => {
+			if (tabla === 'usuarios') {
+				const item = usuariosState.find((u: any) => u[campo] === valor)
+				if (item) Object.assign(item, payload)
+			}
+			return { data: null, error: null }
+		})
 
-				if (table === 'usuarios') {
-					return {
-						select: vi.fn().mockReturnValue({
-							neq: vi.fn().mockReturnValue({
-								order: vi.fn().mockImplementation(() =>
-									Promise.resolve({ data: structuredClone(usuariosState), error: null }),
-								),
-							}),
-						}),
-						update: updateMock,
-					}
-				}
-				if (table === 'problemas') {
-					return {
-						select: vi.fn().mockReturnValue({
-							order: vi.fn().mockResolvedValue({ data: [], error: null }),
-						}),
-					}
-				}
-				if (table === 'problemas_externos') {
-					return {
-						select: vi.fn().mockReturnValue({
-							order: vi.fn().mockResolvedValue({ data: [], error: null }),
-						}),
-					}
-				}
-
-				return {}
-			})
+		vi.mocked(db.deleteEq).mockResolvedValue({ data: null, error: null })
+		vi.mocked(db.insert).mockResolvedValue({ data: null, error: null })
+		vi.mocked(db.callRpc).mockResolvedValue({ data: { ok: true }, error: null })
 
 		wrapper = mount(PanelDirector)
 		await vi.waitFor(() => expect(wrapper.vm.cargando).toBe(false))
@@ -251,14 +200,12 @@ describe('Pruebas del panel del director general', () => {
 		await botonBaja.trigger('click')
 
 		await vi.waitFor(() => {
-			expect(updateMock).toHaveBeenCalledWith({ estadoadministrativo: 'Baja' })
+			expect(db.updateEq).toHaveBeenCalledWith('usuarios', 'id', 10, { estadoadministrativo: 'Baja' })
 		})
-		expect(updateEqMock).toHaveBeenCalledWith('id', 10)
 		await vi.waitFor(() => {
-			expect(
-				wrapper.vm.usuarios.find((usuario: any) => usuario.id === 10).estadoadministrativo,
-			).toBe('Baja')
+			expect(db.updateEq).toHaveBeenCalledWith('usuarios', 'id', 10, { fechabaja: expect.any(String) })
 		})
+		expect(usuariosState.find((usuario: any) => usuario.id === 10).estadoadministrativo).toBe('Baja')
 	})
 
 	it('PU-PD-06: edita nombre, tipo de usuario y departamento y guarda los cambios en la base de datos', async () => {
@@ -271,16 +218,18 @@ describe('Pruebas del panel del director general', () => {
 		await modal.find('select[name="departamento"]').setValue('2')
 		await modal.find('form').trigger('submit.prevent')
 
-		expect(rpcMock).toHaveBeenCalledWith('guardar_usuario', {
-			p_id: 10,
-			p_nombre: 'Ana Maria',
-			p_apellido_p: 'Garcia',
-			p_apellido_m: 'Lopez',
-			p_correo: 'ana.garcia@culiacan.gob.mx',
-			p_contrasena: null,
-			p_tipousuario_id: 3,
-			p_departamento_id: 2,
-			p_estado: 'Alta'
+		await vi.waitFor(() => {
+			expect(db.callRpc).toHaveBeenCalledWith('guardar_usuario', {
+				p_id: 10,
+				p_nombre: 'Ana Maria',
+				p_apellido_p: 'Garcia',
+				p_apellido_m: 'Lopez',
+				p_correo: 'ana.garcia@culiacan.gob.mx',
+				p_contrasena: null,
+				p_tipousuario_id: 3,
+				p_departamento_id: 2,
+				p_estado: 'Alta'
+			})
 		})
 	})
 	it('PU-PD-07: redirige al inicio si no hay sesión', async () => {
@@ -337,17 +286,26 @@ describe('Pruebas del panel del director general', () => {
 		await modal.find('input[name="nombreamigable"]').setValue('Depto Amigable')
 		await modal.find('form').trigger('submit.prevent')
 
-		expect(supabase.from).toHaveBeenCalledWith('departamentos')
+		await vi.waitFor(() => {
+			expect(db.insert).toHaveBeenCalledWith('departamentos', {
+				nombre: 'Nuevo Depto',
+				nombreamigable: 'Depto Amigable',
+				estado: 'Alta',
+			})
+		})
 	})
 	it('PU-PD-12: da de baja un departamento interno desde la tabla', async () => {
 		wrapper.vm.filtros.seccion = 'departamentos'
 		await wrapper.vm.$nextTick()
 		await vi.waitFor(() => expect(wrapper.vm.cargando).toBe(false))
+		await wrapper.vm.$nextTick()
 
 		const botonEliminar = wrapper.find('.btn-eliminar')
 		await botonEliminar.trigger('click')
 
-		expect(supabase.from).toHaveBeenCalledWith('departamentos')
+		await vi.waitFor(() => {
+			expect(db.deleteEq).toHaveBeenCalledWith('departamentos', 'id', 1)
+		})
 	})
 	it('PU-PD-13: filtra problemáticas por tipo', async () => {
 		wrapper.vm.filtros.seccion = 'problematicas'
@@ -371,4 +329,4 @@ describe('Pruebas del panel del director general', () => {
 
 		expect(wrapper.vm.filtros.departamentoProblematica).toBe('')
 	})
-}) 
+})

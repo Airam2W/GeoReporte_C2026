@@ -402,7 +402,7 @@ onMounted(() => {
     attribution: '© OpenStreetMap contributors',
   }).addTo(map.value)
 
-  setTimeout(() => map.value?.invalidateSize(), 100)
+  setTimeout(() => map.value?.invalidateSize?.(), 100)
 })
 
 onUnmounted(() => {
