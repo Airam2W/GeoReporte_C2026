@@ -55,6 +55,7 @@ describe('PC-03 Pruebas para seleccionar problemas por departamento', () => {
     cy.get('select[name="problema"]').should('be.disabled');
 
     // Seleccionar un departamento
+    cy.get('select[name="departamento"] option').should('have.length.greaterThan', 1);
     cy.get('select[name="departamento"]').select('Alumbrado público');
 
     // Verificar que ahora está habilitada la lista de problemas
@@ -72,6 +73,7 @@ describe('PC-04 Prueba para comprobación de inserciones en la base de datos', (
     cy.contains('Crear reporte').click();
 
     // Llenar los campos obligatorios del formulario
+    cy.get('select[name="departamento"] option').should('have.length.greaterThan', 1);
     cy.get('select[name="departamento"]').select('Alumbrado público');
     cy.get('select[name="problema"]').should('not.be.disabled');
     cy.get('select[name="problema"]').select(1);
