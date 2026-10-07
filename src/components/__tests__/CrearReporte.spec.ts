@@ -1,59 +1,35 @@
 import { mount, VueWrapper } from '@vue/test-utils'
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import CrearReporteComponent from '@/views/CrearReporte.vue'
-import {supabase} from '@/lib/supabase'
+import { selectOrder, selectEqOrder, uploadFoto, insert, getPublicUrl } from '@/services/supabaseController'
 import './setup'
 
 describe('Pruebas Unitarias del Módulo CrearReporte', () => {
     let wrapper: VueWrapper<any>;
-    let insertMock: any;
-    let insertDetalleReporteMock:any;
+
     const mockDepartamentos = [
-        { id: 1, nombre: 'Alumbrado Público' },
-        { id: 2, nombre: 'Parques y Jardines' },
+        { id: 1, nombre: 'Alumbrado Público', nombreamigable: 'Alumbrado Público', estado: 'Alta' },
+        { id: 2, nombre: 'Parques y Jardines', nombreamigable: 'Parques y Jardines', estado: 'Alta' },
     ];
 
     const mockProblemas = [
-        { id: 1, nombre: 'Falla de iluminación', departamento_id: 1 },
+        { id: 1, nombre: 'Falla de iluminación', nombreamigable: 'Falla de iluminación', departamento_id: 1, estado: 'Alta' },
     ]
 
     beforeEach(() => {
         vi.clearAllMocks();
-        insertMock = vi.fn().mockResolvedValue({error: null});
-        insertDetalleReporteMock = vi.fn().mockResolvedValue({error: null});
-        (supabase.from as any).mockImplementation((table: string) => {
-            if (table === 'departamentos') {
-                return {
-                    select: vi.fn().mockReturnThis(),
-                    order: vi.fn().mockResolvedValue({ data: mockDepartamentos, error: null }),
-                };
-            }
-            if (table === 'problemas') {
-                return {
-                    select: vi.fn().mockReturnThis(),
-                    eq: vi.fn().mockReturnThis(),
-                    order: vi.fn().mockResolvedValue({ data: mockProblemas, error: null }),
-                };
-            } 
-            if (table === 'reportes') {
-                return {
-                    insert: insertMock,
-                };
-            }
-            if (table == 'detalle_reporte'){
-                return{
-                    insert: insertDetalleReporteMock,
-                };
-            }
-            return{};
-    });
-    (supabase.storage.from as any).mockReturnValue({
-        upload: vi.fn().mockResolvedValue({ error: null }),
-        getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: 'https://example.com/mock-image.jpg' }}),
-    });
 
-    vi.stubGlobal('alert', vi.fn());
-    wrapper = mount(CrearReporteComponent);
+        vi.mocked(selectOrder).mockResolvedValue({ data: mockDepartamentos, error: null });
+        vi.mocked(selectEqOrder).mockResolvedValue({ data: mockProblemas, error: null });
+        vi.mocked(uploadFoto).mockResolvedValue({ data: {}, error: null });
+        vi.mocked(getPublicUrl).mockResolvedValue({
+            data: { publicUrl: 'https://example.com/mock-image.jpg' },
+            error: null,
+        });
+        vi.mocked(insert).mockResolvedValue({ data: {}, error: null });
+
+        vi.stubGlobal('alert', vi.fn());
+        wrapper = mount(CrearReporteComponent);
     });
 
     afterEach(() => {
@@ -61,7 +37,7 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
     });
 
     it('PU-01: Cargar el cátalogo de departamentos', async () => {
-        expect(supabase.from).toHaveBeenCalledWith('departamentos');
+        expect(selectOrder).toHaveBeenCalledWith('departamentos', 'id');
         await wrapper.vm.$nextTick();
         expect(wrapper.vm.departamentos).toEqual(mockDepartamentos);
     });
@@ -72,10 +48,10 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
     });
 
     it('PU-03: Cargar el cátalogo de problemas al seleccionar un departamento', async () => {
-        vi.clearAllMocks();
+        vi.mocked(selectEqOrder).mockClear();
         wrapper.vm.form.departamento_id = 1;
         await wrapper.vm.onDepartamentoSeleccionado();
-        expect(supabase.from).toHaveBeenCalledWith('problemas');
+        expect(selectEqOrder).toHaveBeenCalledWith('problemas', 'departamento_id', 1, 'id');
         expect(wrapper.vm.problemas).toEqual(mockProblemas);
         expect(wrapper.vm.form.problema_id).toBe('');
     });
@@ -153,34 +129,36 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
         wrapper.vm.form.telefono = '6671234567';
         wrapper.vm.form.domicilio = 'Av. Álvaro Obregón 450';
         wrapper.vm.form.referencias = 'Frente al parque'
+        wrapper.vm.form.correo = 'angel@correo.com';
         wrapper.vm.form.latitud = 24.8091;
         wrapper.vm.form.longitud = -107.3940;
         const file = new File(['foto-prueba'], 'evidencia.jpg', { type: 'image/jpeg'});
         wrapper.vm.form.foto = file;
 
         await wrapper.vm.enviarReporte();
-        expect(supabase.storage.from).toHaveBeenCalledWith('fotos');
-        expect(supabase.from).toHaveBeenCalledWith('reportes');
-        expect(supabase.from).toHaveBeenCalledWith('detalle_reporte');
+        expect(uploadFoto).toHaveBeenCalled();
+        expect(insert).toHaveBeenCalledWith('reportes', expect.objectContaining({ nombre: 'Angel' }));
+        expect(insert).toHaveBeenCalledWith('detalle_reporte', expect.objectContaining({ estado_id: 1 }));
         expect(document.querySelector('.modal-reporte-exitoso')).not.toBeNull();
         expect(wrapper.vm.form.descripcion).toBe('');
     });
 
-    it('PU-12: Asignar nombre como anónimo', async () =>{
+    it('PU-12: Asignar nombre como "Ciudadano Honorable"', async () =>{
         wrapper.vm.form.departamento_id = 1;
         wrapper.vm.form.problema_id = 1;
         wrapper.vm.form.descripcion = 'Prueba de reporte';
         wrapper.vm.form.nombre = '';
         wrapper.vm.form.telefono = '6671234567';
         wrapper.vm.form.domicilio = 'Av. Álvaro Obregón 450';
-        wrapper.vm.form.referencias = 'Ferente al parque'
+        wrapper.vm.form.referencias = 'Frente al parque'
+        wrapper.vm.form.correo = '';
         wrapper.vm.form.latitud = 24.8091;
         wrapper.vm.form.longitud = -107.3940;
         const file = new File(['foto-prueba'], 'evidencia.jpg', { type: 'image/jpeg'});
         wrapper.vm.form.foto = file;
         await wrapper.vm.enviarReporte();
-        expect(insertMock).toHaveBeenCalledWith(expect.objectContaining({
-            nombre: 'Anónimo'
+        expect(insert).toHaveBeenCalledWith('reportes', expect.objectContaining({
+            nombre: 'Ciudadano Honorable'
         }))
     });
 
