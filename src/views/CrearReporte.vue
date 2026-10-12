@@ -281,6 +281,7 @@
             />
           </div>
           <span v-if="errores.foto" class="msg-error">{{ errores.foto }}</span>
+          <span class="validacion-AI"></span>
 
           <button name="enviar" type="submit" class="btn-enviar" :disabled="enviando">
             {{ enviando ? 'Enviando...' : 'Enviar Reporte' }}
@@ -295,9 +296,14 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { selectOrder, selectEqOrder, uploadFoto, insert, getPublicUrl } from '../services/supabaseController'
-
-
+import {
+  selectOrder,
+  selectEqOrder,
+  uploadFoto,
+  insert,
+  getPublicUrl,
+} from '../services/supabaseController'
+import { validarAI } from '../services/geoAIController'
 
 const mapContainer = ref<HTMLElement | null>(null)
 const map = ref<L.Map | null>(null)
@@ -509,7 +515,6 @@ const irAUbicacionActual = () => {
 const zoomIn = () => map.value?.zoomIn()
 const zoomOut = () => map.value?.zoomOut()
 
-
 const abrirPanel = () => {
   panelAbierto.value = !panelAbierto.value
   if (panelAbierto.value) {
@@ -520,10 +525,33 @@ const abrirPanel = () => {
 }
 
 const seleccionarFoto = (e: Event) => {
+  //Deshabilitar el boton de enviar reporte mientras se procesa la validacion de la AI
+  const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
+  if (submitBtn) submitBtn.disabled = true
   const input = e.target as HTMLInputElement
   if (input.files?.[0]) {
     form.value.foto = input.files[0]
     errores.value.foto = '' // Quitar alerta si selecciona
+    validarConAi(form.value.foto as File)
+  }
+  // Habilitar el boton enviar reporte
+  if (submitBtn) submitBtn.disabled = false
+}
+
+const validarConAi = async (file: File) => {
+  //Realizar la validacion de la AI de la foto y obtener el resultado
+  const spanValidacionAI = document.querySelector('.validacion-AI') as HTMLSpanElement
+  spanValidacionAI.textContent = `Validando tu foto con AI...`
+  const resultadoAI = await validarAI(file)
+  // Actualizar en el span de validacion AI con el resultado
+  if (spanValidacionAI) {
+    if (resultadoAI) {
+      spanValidacionAI.textContent = `${resultadoAI.data.message}`
+      spanValidacionAI.style.color = resultadoAI.type === 0 ? '#008998' : '#FF0000'
+    } else {
+      spanValidacionAI.textContent = 'Error al procesar la imagen'
+      spanValidacionAI.style.color = '#FF0000'
+    }
   }
 }
 
