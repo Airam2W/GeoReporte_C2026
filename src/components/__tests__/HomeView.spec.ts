@@ -2,7 +2,7 @@ import { mount, VueWrapper } from '@vue/test-utils'
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import HomeComponent from '@/views/HomeView.vue'
 import ReporteDetalleModal from '@/components/ReporteDetalleModal.vue'
-import { supabase } from '@/lib/supabase'
+import { selectEqSingle } from '@/services/supabaseController'
 import './setup'
 
 const {pushMock} = vi.hoisted(()=>{
@@ -23,34 +23,11 @@ vi.mock('@/logic/home', async () => {
     };
 });
 
-vi.mock('@/lib/supabase', () => ({
-    supabase: {
-        from: vi.fn(),
-        rpc: vi.fn(),
-        storage: {
-            from: vi.fn(),
-        },
-    },
-}));
-
 describe('Pruebas Unitarias del Módulo Home', () => {
     let wrapper: VueWrapper<any>;
-    let singleMock: any;
-    let eqMock: any;
-    let selectMock: any;
 
     beforeEach(() => {
         vi.clearAllMocks();
-
-        singleMock = vi.fn();
-        eqMock = vi.fn().mockReturnValue({ single: singleMock });
-        selectMock = vi.fn().mockReturnValue({ eq: eqMock });
-        (supabase.from as any).mockImplementation((table: string) => {
-            if (table === 'reportes') {
-                return { select: selectMock };
-            }
-            return {};
-        });
 
         vi.stubGlobal('alert', vi.fn());
         wrapper = mount(HomeComponent, {
@@ -76,18 +53,22 @@ describe('Pruebas Unitarias del Módulo Home', () => {
             referencias: null,
             foto_url: 'https://example.com/foto.jpg',
             fecha_creacion: '2026-03-15T00:00:00Z',
-            problemas: { nombre: 'Bache' },
+            problemas: { nombreamigable: 'Bache' },
             detalle_reporte: {
                 estado_id: 2, 
                 estadoreporte: {estado: 'En Proceso' }},
         };
-        singleMock.mockResolvedValueOnce({ data: mockReporte, error: null });
+        vi.mocked(selectEqSingle).mockResolvedValueOnce({ data: mockReporte, error: null });
 
         wrapper.vm.folioInput = mockReporte.folio;
         await wrapper.vm.ejecutarBusqueda();
 
-        expect(supabase.from).toHaveBeenCalledWith('reportes');
-        expect(eqMock).toHaveBeenCalledWith('folio', mockReporte.folio);
+        expect(selectEqSingle).toHaveBeenCalledWith(
+            'reportes',
+            'folio',
+            mockReporte.folio,
+            expect.any(Array),
+        );
         expect(wrapper.vm.reporteEncontrado).toEqual(
             expect.objectContaining({
                 folio: mockReporte.folio,
@@ -100,7 +81,7 @@ describe('Pruebas Unitarias del Módulo Home', () => {
 
 
     it('PU-2: Mostrar mensaje si el folio no existe', async () => {
-        singleMock.mockResolvedValueOnce({ data: null, error: { message: 'Filas no encontradas' } });
+        vi.mocked(selectEqSingle).mockResolvedValueOnce({ data: null, error: { message: 'Filas no encontradas' } });
 
         wrapper.vm.folioInput = 'FOLIO-INEXISTENTE';
         await wrapper.vm.ejecutarBusqueda();
@@ -113,11 +94,11 @@ describe('Pruebas Unitarias del Módulo Home', () => {
         wrapper.vm.folioInput = '   ';
         await wrapper.vm.ejecutarBusqueda();
 
-        expect(supabase.from).not.toHaveBeenCalled();
+        expect(selectEqSingle).not.toHaveBeenCalled();
         expect(wrapper.vm.errorBusqueda).toBe('Por favor, ingresa el folio de tu reporte.');
     });
 
-    it('PU-4: Si no hay reporte con ese estado, usa "Llegado" por defecto', async () => {
+    it('PU-4: Si no hay detalle_reporte, usa "Pendiente" por defecto', async () => {
         const mockReporte = {
             folio: 'ALU-BAC-20260315-153000-AB3F9',
             descripcion: 'Prueba de consulta de folio',
@@ -127,15 +108,15 @@ describe('Pruebas Unitarias del Módulo Home', () => {
             referencias: null,
             foto_url: 'https://example.com/foto.jpg',
             fecha_creacion: '2026-03-15T00:00:00Z',
-            problemas: { nombre: 'Bache' },
+            problemas: { nombreamigable: 'Bache' },
             detalle_reporte: null, 
         };
-        singleMock.mockResolvedValueOnce({ data: mockReporte, error: null });
+        vi.mocked(selectEqSingle).mockResolvedValueOnce({ data: mockReporte, error: null });
 
         wrapper.vm.folioInput = mockReporte.folio;
         await wrapper.vm.ejecutarBusqueda();
 
-        expect(wrapper.vm.reporteEncontrado.estado).toBe('Llegado');
+        expect(wrapper.vm.reporteEncontrado.estado).toBe('Pendiente');
     });
     it('PU-05: Navegación a la ruta /reporte', async () => {
         await wrapper.vm.irAReporte();

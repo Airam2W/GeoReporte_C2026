@@ -5,8 +5,13 @@ vi.mock('@/utils/alertas', () => ({
 	Toast: { fire: vi.fn().mockResolvedValue(undefined) },
 }))
 
+vi.mock('@/logic/redirectUser', () => ({
+	redireccionarUsuario: vi.fn(),
+}))
+
 import HomeView from '@/views/HomeView.vue'
-import { supabase } from '@/lib/supabase'
+import { callRpc } from '@/services/supabaseController'
+import { redireccionarUsuario } from '@/logic/redirectUser'
 import router from '@/router'
 import { menuAbierto } from '@/logic/home'
 import './setup' 
@@ -56,11 +61,11 @@ describe('Pruebas Unitarias del inicio de sesión', () => {
 
 		expect(modal.querySelector('#error-email')?.textContent).toBe('Ingresa un correo válido')
 		expect(email.classList.contains('input-error')).toBe(true)
-		expect(supabase.rpc).not.toHaveBeenCalled()
+		expect(callRpc).not.toHaveBeenCalled()
 	})
 
 	it('PU-LG-02: resalta correo y contraseña cuando las credenciales no responden', async () => {
-		vi.mocked(supabase.rpc).mockResolvedValue({ data: [], error: null } as never)
+		vi.mocked(callRpc).mockResolvedValue({ data: [], error: null })
 		const { wrapper, modal } = await abrirLogin()
 		const email = modal.querySelector('#login-email') as HTMLInputElement
 		const password = modal.querySelector('#login-password') as HTMLInputElement
@@ -70,7 +75,7 @@ describe('Pruebas Unitarias del inicio de sesión', () => {
 		modal.querySelector<HTMLButtonElement>('#login-submit')?.click()
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
-		expect(supabase.rpc).toHaveBeenCalledWith('login_usuario', {
+		expect(callRpc).toHaveBeenCalledWith('login_usuario', {
 			p_correo: 'admin@georeporte.mx',
 			p_contrasena: 'secreto123',
 		})
@@ -92,15 +97,13 @@ describe('Pruebas Unitarias del inicio de sesión', () => {
 
 		expect(modal.querySelector('#error-password')?.textContent).toBe('Debe tener al menos 6 caracteres')
 		expect(password.classList.contains('input-error')).toBe(true)
-		expect(supabase.rpc).not.toHaveBeenCalled()
+		expect(callRpc).not.toHaveBeenCalled()
 	})
 
-	it('PU-LG-04: navega al dashboard con credenciales correctas', async () => {
-		vi.mocked(supabase.rpc).mockResolvedValue({
-			data: [{ id: 1, nombre: 'Administrador', estado: 'Activo', tipo_id: 2}],
-			error: null,
-		} as never)
-		const pushSpy = vi.spyOn(router, 'push').mockResolvedValue(undefined)
+	it('PU-LG-04: guarda la sesión y redirige con credenciales correctas', async () => {
+		const usuarioMock = { id: 1, nombre: 'Administrador', estado: 'Activo', tipo_id: 2 }
+		vi.mocked(callRpc).mockResolvedValue({ data: [usuarioMock], error: null })
+
 		const { wrapper, modal } = await abrirLogin()
 		const email = modal.querySelector('#login-email') as HTMLInputElement
 		const password = modal.querySelector('#login-password') as HTMLInputElement
@@ -108,10 +111,33 @@ describe('Pruebas Unitarias del inicio de sesión', () => {
 		email.value = 'admin@georeporte.mx'
 		password.value = 'secreto123'
 		modal.querySelector<HTMLButtonElement>('#login-submit')?.click()
-		await vi.waitFor(() => expect(pushSpy).toHaveBeenCalledWith('/dashboard'))
 
-		expect(localStorage.getItem('adminSession')).toBe(JSON.stringify({ id: 1, nombre: 'Administrador', estado: 'Activo', tipo_id: 2 }))
+		await vi.waitFor(() => expect(redireccionarUsuario).toHaveBeenCalled())
+
+		expect(localStorage.getItem('adminSession')).toBe(JSON.stringify(usuarioMock))
 		expect(document.querySelector('.modal')).toBeNull()
+		wrapper.unmount()
+	})
+
+	it('PU-LG-05: bloquea el acceso si la cuenta está dada de baja', async () => {
+		vi.mocked(callRpc).mockResolvedValue({
+			data: [{ id: 1, nombre: 'Administrador', estado: 'Inactivo', tipo_id: 2 }],
+			error: null,
+		})
+
+		const { wrapper, modal } = await abrirLogin()
+		const email = modal.querySelector('#login-email') as HTMLInputElement
+		const password = modal.querySelector('#login-password') as HTMLInputElement
+
+		email.value = 'admin@georeporte.mx'
+		password.value = 'secreto123'
+		modal.querySelector<HTMLButtonElement>('#login-submit')?.click()
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect(modal.querySelector('#login-error-global')?.textContent).toBe(
+			'Esta cuenta ha sido dada de baja. Porfavor, contacta con el Director General',
+		)
+		expect(redireccionarUsuario).not.toHaveBeenCalled()
 		wrapper.unmount()
 	})
 })

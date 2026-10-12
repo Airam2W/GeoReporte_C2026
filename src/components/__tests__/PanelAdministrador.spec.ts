@@ -1,7 +1,7 @@
-import { mount, VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PanelAdministrador from '@/views/PanelAdministrador.vue'
-import { supabase } from '@/lib/supabase'
+import * as db from '@/services/supabaseController'
 import './setup'
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
@@ -35,7 +35,7 @@ const reportesMock = [
 		foto_url: null,
 		created_at: '2026-09-15T12:00:00Z',
 		problemas: { id: 1, nombre: 'Bache' },
-		detalle_reporte: { estado_id: 1, estadoreporte: { estado: 'Llegado' } },
+		detalle_reporte: { estado_id: 1, estadoreporte: { estado: 'Pendiente' } },
 	},
 	{
 		folio: 'ALU-LUZ-20260914-002-XYZ789',
@@ -47,7 +47,7 @@ const reportesMock = [
 		foto_url: null,
 		created_at: '2026-09-14T12:00:00Z',
 		problemas: { id: 2, nombre: 'Falla de iluminacion' },
-		detalle_reporte: { estado_id: 1, estadoreporte: { estado: 'Llegado' } },
+		detalle_reporte: { estado_id: 1, estadoreporte: { estado: 'Pendiente' } },
 	},
 	{
 		folio: 'ALU-DRE-20260913-003-QWE456',
@@ -65,10 +65,7 @@ const reportesMock = [
 
 describe('Pruebas del panel de filtros del administrador', () => {
 	let wrapper: VueWrapper<any>
-	let actualizarEqMock: any
-	let actualizarMock: any
 	let reportesEstado: any[]
-	let ultimaActualizacion: any
 
 	beforeEach(async () => {
 		vi.clearAllMocks()
@@ -77,7 +74,7 @@ describe('Pruebas del panel de filtros del administrador', () => {
 		const storage = new Map<string, string>([
 			[
 				'adminSession',
-				JSON.stringify({ id: 1, nombre: 'Administrador', departamento_id: 1 , tipo_id: 2}),
+				JSON.stringify({ id: 1, nombre: 'Administrador', departamento_id: 1, tipo_id: 2 }),
 			],
 		])
 
@@ -87,107 +84,71 @@ describe('Pruebas del panel de filtros del administrador', () => {
 			removeItem: (key: string) => storage.delete(key),
 		})
 
-		actualizarEqMock = vi.fn(async (columna: string, valor: any) => {
-			const reporte = reportesEstado.find((r: any) => r[columna] === valor)
-			if (reporte) {
-				if ('estado_id' in ultimaActualizacion) {
-					const estadoTexto =
-						ultimaActualizacion.estado_id === 3 ? 'Rechazado' :
-							ultimaActualizacion.estado_id === 1 ? 'Llegado' :
-								ultimaActualizacion.estado_id === 2 ? 'En Proceso' :
-									reporte.detalle_reporte.estadoreporte.estado
-					reporte.detalle_reporte = {
-						estado_id: ultimaActualizacion.estado_id,
-						estadoreporte: { estado: estadoTexto },
-					}
-				} else if ('estado' in ultimaActualizacion) {
-					reporte.detalle_reporte = {
-						estado_id: reporte.detalle_reporte?.estado_id,
-						estadoreporte: { estado: ultimaActualizacion.estado },
-					}
+		// selectEq(tabla, campo, valor, columnas)
+		vi.mocked(db.selectEq).mockImplementation(async (tabla: string) => {
+			if (tabla === 'problemas') {
+				return {
+					data: [
+						{ id: 1, nombre: 'Bache', departamento_id: 1 },
+						{ id: 2, nombre: 'Falla de iluminacion', departamento_id: 1 },
+					],
+					error: null,
 				}
 			}
-			return { error: null }
+			if (tabla === 'departamentos') {
+				return { data: [{ id: 1, nombre: 'Servicios Publicos' }], error: null }
+			}
+			return { data: [], error: null }
 		})
 
-		actualizarMock = vi.fn((payload: any) => {
-			ultimaActualizacion = payload
-			return { eq: actualizarEqMock }
+		// selectEqOrder(tabla, campo, valor, orderBy, columnas, ascending)
+		vi.mocked(db.selectEqOrder).mockImplementation(async () => ({
+			data: structuredClone(reportesEstado),
+			error: null,
+		}))
+
+		// selectEqSingle(tabla, campo, valor, columnas) -> id del estado por nombre
+		vi.mocked(db.selectEqSingle).mockImplementation(async (_tabla: string, _campo: string, valorEstado: any) => {
+			const mapaEstados: Record<string, number> = {
+				'Pendiente': 1,
+				'En Revisión': 2,
+				'Rechazado': 3,
+				'Finalizado': 4,
+				'Turnado': 5,
+				'Devuelto': 6,
+			}
+			return { data: { id: mapaEstados[valorEstado] ?? null }, error: null }
 		})
 
-			; (supabase.from as any).mockImplementation((table: string) => {
-				if (table === 'problemas') {
-					return {
-						select: vi.fn().mockReturnValue({
-							eq: vi.fn().mockResolvedValue({
-								data: [
-									{ id: 1, nombre: 'Bache', departamento_id: 1 },
-									{ id: 2, nombre: 'Falla de iluminacion', departamento_id: 1 },
-								],
-								error: null,
-							}),
-						}),
-					}
+		// updateEq(tabla, campo, valor, data)
+		vi.mocked(db.updateEq).mockImplementation(async (_tabla: string, columna: string, valor: any, payload: any) => {
+			const reporte = reportesEstado.find((r: any) => r[columna] === valor)
+			if (reporte && 'estado_id' in payload) {
+				const estadoTexto =
+					payload.estado_id === 3 ? 'Rechazado' :
+						payload.estado_id === 1 ? 'Pendiente' :
+							payload.estado_id === 2 ? 'En Revisión' :
+								payload.estado_id === 4 ? 'Finalizado' :
+									payload.estado_id === 5 ? 'Turnado' :
+										'Devuelto'
+				reporte.detalle_reporte = {
+					estado_id: payload.estado_id,
+					estadoreporte: { estado: estadoTexto },
 				}
-
-				if (table === 'departamentos') {
-					return {
-						select: vi.fn().mockReturnValue({
-							eq: vi.fn().mockResolvedValue({
-								data: [{ id: 1, nombre: 'Servicios Publicos' }],
-								error: null,
-							}),
-						}),
-					}
-				}
-
-				if (table === 'reportes') {
-					return {
-						select: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								order: vi.fn().mockImplementation(() =>
-									Promise.resolve({ data: structuredClone(reportesEstado), error: null }),
-								),
-							}),
-						}),
-					}
-				}
-
-				if (table === 'detalle_reporte') {
-					return {
-						update: actualizarMock,
-					}
-				}
-				if (table === 'estadoreporte') {
-					return {
-						select: vi.fn().mockReturnValue({
-							eq: vi.fn().mockImplementation((_columna: string, valorEstado: string) => {
-								const mapaEstados: Record<string, number> = {
-									'Llegado': 1,
-									'En Proceso': 2,
-									'Rechazado': 3,
-									'Finalizado': 4,
-								}
-								return {
-									single: vi.fn().mockResolvedValue({
-										data: { id: mapaEstados[valorEstado] ?? null },
-										error: null,
-									}),
-								}
-							}),
-						}),
-					}
-				}
-
-				return {}
-			})
+			}
+			return { data: null, error: null }
+		})
 
 		wrapper = mount(PanelAdministrador)
 		await vi.waitFor(() => expect(wrapper.vm.cargando).toBe(false))
+
+		// La vista arranca con el filtro de estado en "Pendiente"; se limpia para ver todos los reportes
+		wrapper.vm.filtros.estado = ''
+		await wrapper.vm.$nextTick()
 	})
 
 	afterEach(() => {
-		wrapper.unmount()
+		wrapper?.unmount()
 	})
 
 	it('PU-PA-01: encuentra un reporte por folio y lo muestra en la tabla', async () => {
@@ -264,9 +225,16 @@ describe('Pruebas del panel de filtros del administrador', () => {
 	})
 
 	it('PU-PA-08: carga los catálogos filtrando por el departamento del admin', async () => {
-		expect(supabase.from).toHaveBeenCalledWith('problemas')
-		expect(supabase.from).toHaveBeenCalledWith('departamentos')
-		expect(supabase.from).toHaveBeenCalledWith('reportes')
+		expect(db.selectEq).toHaveBeenCalledWith('problemas', 'departamento_id', 1, ['id', 'nombre', 'departamento_id'])
+		expect(db.selectEq).toHaveBeenCalledWith('departamentos', 'id', 1, ['id', 'nombre'])
+		expect(db.selectEqOrder).toHaveBeenCalledWith(
+			'reportes',
+			'departamento_id',
+			1,
+			'created_at',
+			expect.any(Array),
+			false,
+		)
 
 		const opciones = wrapper.findAll('select option')
 		expect(opciones.some((o) => o.text().includes('Bache'))).toBe(true)
@@ -298,8 +266,7 @@ describe('Pruebas del panel de filtros del administrador', () => {
 
 		await wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
 
-		expect(actualizarMock).toHaveBeenCalledWith({ estado_id: 3 })
-		expect(actualizarEqMock).toHaveBeenCalledWith('folio', 'ALU-BAC-20260915-001-ABC123')
+		expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'ALU-BAC-20260915-001-ABC123', { estado_id: 3 })
 
 		const reporte = wrapper.vm.reportes.find(
 			(rep: any) => rep.folio === 'ALU-BAC-20260915-001-ABC123',
@@ -314,34 +281,34 @@ describe('Pruebas del panel de filtros del administrador', () => {
 
 		await wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
 
-		expect(actualizarMock).not.toHaveBeenCalled()
+		expect(db.updateEq).not.toHaveBeenCalled()
 
 		const reporte = wrapper.vm.reportes.find(
 			(r: any) => r.folio === 'ALU-BAC-20260915-001-ABC123',
 		)
-		expect(reporte.estado).toBe('Llegado')
+		expect(reporte.estado).toBe('Pendiente')
 	})
 
 	it('PU-PA-13: si la BD falla al rechazar, el estado local no cambia', async () => {
-		actualizarEqMock.mockResolvedValueOnce({ error: { message: 'fallo' } })
+		vi.mocked(db.updateEq).mockResolvedValueOnce({ data: null, error: { message: 'fallo' } })
 
 		await wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
 
 		const reporte = wrapper.vm.reportes.find(
 			(r: any) => r.folio === 'ALU-BAC-20260915-001-ABC123',
 		)
-		expect(reporte.estado).toBe('Llegado')
+		expect(reporte.estado).toBe('Pendiente')
 	})
 
 	it('PU-PA-14: devolver un reporte cambia su estado al indicado', async () => {
-		await wrapper.vm.devolverReporte('ALU-DRE-20260913-003-QWE456', 'En Proceso')
+		await wrapper.vm.devolverReporte('ALU-DRE-20260913-003-QWE456', 'En Revisión')
 
-		expect(actualizarMock).toHaveBeenCalledWith({ estado_id: 2})
+		expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'ALU-DRE-20260913-003-QWE456', { estado_id: 2 })
 
 		const reporte = wrapper.vm.reportes.find(
 			(r: any) => r.folio === 'ALU-DRE-20260913-003-QWE456',
 		)
-		expect(reporte.estado).toBe('En Proceso')
+		expect(reporte.estado).toBe('En Revisión')
 	})
 	it('PU-PA-15: doble clic en rechazar dispara dos actualizaciones a la BD', async () => {
 		const Swal = (await import('sweetalert2')).default
@@ -353,19 +320,164 @@ describe('Pruebas del panel de filtros del administrador', () => {
 		expect(Swal.fire).toHaveBeenCalledTimes(2)
 		expect(Swal.fire).toHaveBeenCalledWith(
 			expect.objectContaining({ title: '¿Rechazar reporte?' }),)
-		expect(actualizarMock).toHaveBeenCalledTimes(1)
+		expect(db.updateEq).toHaveBeenCalledTimes(1)
 	})
-	it('PU-PA-16: doble clic en devolver a "Llegado" también dispara dos actualizaciones', async () => {
+	it('PU-PA-16: doble clic en devolver a "Pendiente" también dispara dos actualizaciones', async () => {
 		const Swal = (await import('sweetalert2')).default
 
-		const p1 = wrapper.vm.devolverReporte('ALU-BAC-20260915-001-ABC123', 'Llegado')
-		const p2 = wrapper.vm.devolverReporte('ALU-BAC-20260915-001-ABC123', 'Llegado')
+		const p1 = wrapper.vm.devolverReporte('ALU-BAC-20260915-001-ABC123', 'Pendiente')
+		const p2 = wrapper.vm.devolverReporte('ALU-BAC-20260915-001-ABC123', 'Pendiente')
 
 		await Promise.all([p1, p2])
 
 		expect(Swal.fire).toHaveBeenCalledTimes(2)
 		expect(Swal.fire).toHaveBeenCalledWith(
-			expect.objectContaining({ title: '¿Devolver a "Llegado"?' }),)
-		expect(actualizarMock).toHaveBeenCalledTimes(1)
+			expect.objectContaining({ title: '¿Devolver a "Pendiente"?' }),)
+		expect(db.updateEq).toHaveBeenCalledTimes(1)
+	})
+	it('PU-PA-17: por defecto el filtro de estado arranca en Pendiente', async () => {
+		const w = mount(PanelAdministrador)
+		await vi.waitFor(() => expect(w.vm.cargando).toBe(false))
+
+		expect(w.vm.filtros.estado).toBe('Pendiente')
+		w.unmount()
+	})
+
+	it('PU-PA-18: busca por domicilio', async () => {
+		wrapper.vm.filtros.busqueda = 'rosales'
+		await wrapper.vm.$nextTick()
+
+		const filas = wrapper.findAll('tbody tr.fila-datos')
+		expect(filas).toHaveLength(1)
+		expect(filas[0].text()).toContain('QWE456')
+	})
+
+	it('PU-PA-19: combina problema y estado', async () => {
+		wrapper.vm.filtros.problema = '1'
+		wrapper.vm.filtros.estado = 'Finalizado'
+		await wrapper.vm.$nextTick()
+		expect(wrapper.findAll('tbody tr.fila-datos')).toHaveLength(0)
+
+		wrapper.vm.filtros.estado = 'Pendiente'
+		await wrapper.vm.$nextTick()
+		const filas = wrapper.findAll('tbody tr.fila-datos')
+		expect(filas).toHaveLength(1)
+		expect(filas[0].text()).toContain('ABC123')
+	})
+
+	it('PU-PA-20: el botón Crear Reporte lleva a la pantalla de reporte', async () => {
+		await wrapper.find('.btn-large').trigger('click')
+
+		expect(pushMock).toHaveBeenCalledWith('/reporte')
+	})
+
+	it('PU-PA-21: Ver detalle abre el modal con el reporte seleccionado', async () => {
+		await wrapper.find('.btn-ver').trigger('click')
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.vm.modalVisible).toBe(true)
+		expect(wrapper.vm.reporteActivo.folio).toBe('ALU-BAC-20260915-001-ABC123')
+		expect(wrapper.text()).toContain('Detalle del Reporte')
+	})
+
+	it('PU-PA-22: cerrarModalVer oculta el modal', async () => {
+		wrapper.vm.abrirModalVer(wrapper.vm.reportes[0])
+		await wrapper.vm.$nextTick()
+		expect(wrapper.vm.modalVisible).toBe(true)
+
+		wrapper.vm.cerrarModalVer()
+		expect(wrapper.vm.modalVisible).toBe(false)
+	})
+
+	it('PU-PA-23: un reporte Pendiente muestra Asignar y Rechazar, pero no Devolver', async () => {
+		wrapper.vm.reportes[0].estado = 'Pendiente'
+		await wrapper.vm.$nextTick()
+
+		const fila = wrapper.findAll('tbody tr.fila-datos')[0]
+		expect(fila.find('.btn-asignar').exists()).toBe(true)
+		expect(fila.find('.btn-rechazar').exists()).toBe(true)
+		expect(fila.find('.btn-devolver').exists()).toBe(false)
+	})
+
+	it('PU-PA-24: un reporte Devuelto muestra Turnar, Devolver y Rechazar', async () => {
+		wrapper.vm.reportes[1].estado = 'Devuelto'
+		await wrapper.vm.$nextTick()
+
+		const fila = wrapper.findAll('tbody tr.fila-datos')[1]
+		expect(fila.find('.btn-asignar').attributes('title')).toBe('Turnar reporte')
+		expect(fila.find('.btn-devolver').exists()).toBe(true)
+		expect(fila.find('.btn-rechazar').exists()).toBe(true)
+	})
+
+	it('PU-PA-25: un reporte Finalizado solo permite Devolver a Pendiente', async () => {
+		const fila = wrapper.findAll('tbody tr.fila-datos')[2]
+
+		expect(fila.find('.btn-devolver').exists()).toBe(true)
+		expect(fila.find('.btn-rechazar').exists()).toBe(false)
+		expect(fila.find('.btn-asignar').exists()).toBe(false)
+	})
+
+	it('PU-PA-26: devolver a Pendiente desde el botón de la tabla actualiza la BD', async () => {
+		const fila = wrapper.findAll('tbody tr.fila-datos')[2]
+		await fila.find('.btn-devolver').trigger('click')
+
+		await vi.waitFor(() => {
+			expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'ALU-DRE-20260913-003-QWE456', { estado_id: 1 })
+		})
+	})
+
+	it('PU-PA-27: si el estado no existe en la BD, no actualiza y avisa del error', async () => {
+		const Swal = (await import('sweetalert2')).default
+		vi.mocked(db.selectEqSingle).mockResolvedValueOnce({ data: null, error: null })
+
+		await wrapper.vm.devolverReporte('ALU-DRE-20260913-003-QWE456', 'En Proceso')
+
+		expect(db.updateEq).not.toHaveBeenCalled()
+		expect(Swal.fire).toHaveBeenCalledWith(
+			expect.objectContaining({ text: 'No se encontró el estado en la base de datos.' }),
+		)
+	})
+
+	it('PU-PA-28: si la BD falla al devolver, avisa del error y el estado no cambia', async () => {
+		const Swal = (await import('sweetalert2')).default
+		vi.mocked(db.updateEq).mockResolvedValueOnce({ data: null, error: { message: 'fallo' } })
+
+		await wrapper.vm.devolverReporte('ALU-DRE-20260913-003-QWE456', 'Pendiente')
+
+		expect(Swal.fire).toHaveBeenCalledWith(
+			expect.objectContaining({
+				icon: 'error',
+				text: 'Hubo un error al actualizar el estado en la base de datos.',
+			}),
+		)
+		const reporte = wrapper.vm.reportes.find((r: any) => r.folio === 'ALU-DRE-20260913-003-QWE456')
+		expect(reporte.estado).toBe('Finalizado')
+	})
+
+	it('PU-PA-29: al rechazar muestra el mensaje de éxito', async () => {
+		const Swal = (await import('sweetalert2')).default
+
+		await wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
+
+		expect(Swal.fire).toHaveBeenCalledWith(
+			expect.objectContaining({ title: '¡Rechazado!', icon: 'success' }),
+		)
+	})
+	
+	it('PU-PA-30: cancelar el diálogo de devolver no consulta ni modifica la BD', async () => {
+		const Swal = (await import('sweetalert2')).default
+		vi.mocked(Swal.fire).mockResolvedValueOnce({ isConfirmed: false } as never)
+
+		await wrapper.vm.devolverReporte('ALU-DRE-20260913-003-QWE456')
+
+		expect(db.selectEqSingle).not.toHaveBeenCalled()
+		expect(db.updateEq).not.toHaveBeenCalled()
+	})
+
+	it('PU-PA-31: tras rechazar vuelve a cargar los reportes desde la BD', async () => {
+		await wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
+
+		// 1 carga inicial + 1 recarga después de actualizar
+		expect(db.selectEqOrder).toHaveBeenCalledTimes(2)
 	})
 })

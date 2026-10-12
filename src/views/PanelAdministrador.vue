@@ -712,8 +712,8 @@ const buscarEstadoId = async (estado: string): Promise<string | null> => {
   }
 }
 
-const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llegado') => {
-  if (foliosProcesando.value.has(folio)) return
+const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Pendiente') => {
+   if (foliosProcesando.value.has(folio)) return
   foliosProcesando.value.add(folio)
   try {
     const result = await Swal.fire({
@@ -867,7 +867,7 @@ defineExpose({
   rechazarReporte,
   devolverReporte,
   asignarReporte,
-  turnarReporte,
+  //turnarReporte,
   cerrarSesion,
 })
 </script>

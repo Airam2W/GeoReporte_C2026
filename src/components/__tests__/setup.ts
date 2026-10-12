@@ -18,15 +18,23 @@ vi.mock('leaflet', () => ({
   },
 }));
 
-// Mock global de Supabase
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
-    from: vi.fn(),
-    rpc: vi.fn(),
-    storage: {
-      from: vi.fn(),
-    },
-  },
+// Mock global del backend
+vi.mock('@/services/supabaseController', () => ({
+  selectAll: vi.fn(),
+  selectNeq: vi.fn(),
+  selectNeqOrder: vi.fn(),
+  deleteEq: vi.fn(),
+  selectIlike: vi.fn(),
+  selectIlikeMaybeSingle: vi.fn(),
+  selectEqSingle: vi.fn(),
+  selectEq: vi.fn(),
+  updateEq: vi.fn(),
+  callRpc: vi.fn(),
+  insert: vi.fn(),
+  selectOrder: vi.fn(),
+  selectEqOrder: vi.fn(),
+  uploadFoto: vi.fn(),
+  getPublicUrl: vi.fn(),
 }));
 
 // Mock de fetch global

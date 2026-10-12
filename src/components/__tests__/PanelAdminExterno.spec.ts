@@ -1,7 +1,7 @@
 import { mount, VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PanelAdminExterno from '@/views/PanelAdminExterno.vue'
-import { supabase } from '@/lib/supabase'
+import * as db from '@/services/supabaseController'
 import './setup'
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
@@ -32,7 +32,7 @@ const reportesMock = [
 		foto_url: null,
 		created_at: '2026-09-15T12:00:00Z',
 		problemas_externos: { id: 1, nombre: 'Bache', nombreamigable: 'Bache en vialidad' },
-		detalle_reporte: { estado_id: 1, estadoreporte: { estado: 'Llegado' }, updated_at: '2026-09-15T12:00:00Z' },
+		detalle_reporte: { estado_id: 1, estadoreporte: { estado: 'Pendiente' }, updated_at: '2026-09-15T12:00:00Z' },
 	},
 	{
 		folio: 'EXT-ALU-20260914-002-XYZ789',
@@ -75,9 +75,6 @@ const reportesMock = [
 describe('Pruebas del panel del administrador externo', () => {
 	let wrapper: VueWrapper<any>
 	let reportesEstado: any[]
-	let updateMock: ReturnType<typeof vi.fn>
-	let updateEqMock: ReturnType<typeof vi.fn>
-	let lastUpdatePayload: { estado_id: number }
 
 	beforeEach(async () => {
 		vi.clearAllMocks()
@@ -92,53 +89,36 @@ describe('Pruebas del panel del administrador externo', () => {
 			removeItem: (key: string) => storage.delete(key),
 		})
 
-		updateEqMock = vi.fn(async (column: string, value: string) => {
+		// selectEq(tabla, campo, valor, columnas)
+		vi.mocked(db.selectEq).mockImplementation(async (tabla: string) => {
+			if (tabla === 'problemas_externos') {
+				return {
+					data: [{ id: 1, nombre: 'Bache', nombreamigable: 'Bache en vialidad', departamento_externo_id: 10 }],
+					error: null,
+				}
+			}
+			if (tabla === 'departamentos_externos') {
+				return { data: [{ id: 10, departamento: 'Servicios Externos' }], error: null }
+			}
+			return { data: [], error: null }
+		})
+
+		// selectEqOrder(tabla, campo, valor, orderBy, columnas, ascending)
+		vi.mocked(db.selectEqOrder).mockImplementation(async () => ({
+			data: structuredClone(reportesEstado),
+			error: null,
+		}))
+
+		// updateEq(tabla, campo, valor, data)
+		vi.mocked(db.updateEq).mockImplementation(async (_tabla: string, column: string, value: any, payload: any) => {
 			const reporte = reportesEstado.find((item) => item[column] === value)
-			if (reporte) {
-				const estadoId = lastUpdatePayload.estado_id
+			if (reporte && 'estado_id' in payload) {
+				const estadoId = payload.estado_id
 				reporte.detalle_reporte.estado_id = estadoId
 				reporte.detalle_reporte.estadoreporte.estado =
-					estadoId === 1 ? 'Llegado' : estadoId === 2 ? 'En Proceso' : estadoId === 3 ? 'Rechazado' : 'Finalizado'
+					estadoId === 1 ? 'Pendiente' : estadoId === 2 ? 'En Proceso' : estadoId === 3 ? 'Rechazado' : 'Finalizado'
 			}
-			return { error: null }
-		})
-		updateMock = vi.fn((payload: { estado_id: number }) => {
-			lastUpdatePayload = payload
-			return { eq: updateEqMock }
-		})
-		;(supabase.from as any).mockImplementation((table: string) => {
-			if (table === 'problemas_externos') {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockResolvedValue({
-							data: [{ id: 1, nombre: 'Bache', nombreamigable: 'Bache en vialidad', departamento_externo_id: 10 }],
-							error: null,
-						}),
-					}),
-				}
-			}
-			if (table === 'departamentos_externos') {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockResolvedValue({ data: [{ id: 10, departamento: 'Servicios Externos' }], error: null }),
-					}),
-				}
-			}
-			if (table === 'reportes') {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							order: vi.fn().mockImplementation(() => Promise.resolve({ data: structuredClone(reportesEstado), error: null })),
-						}),
-					}),
-				}
-			}
-			if (table === 'detalle_reporte') {
-				return {
-					update: updateMock,
-				}
-			}
-			return {}
+			return { data: null, error: null }
 		})
 
 		wrapper = mount(PanelAdminExterno)
@@ -162,7 +142,7 @@ describe('Pruebas del panel del administrador externo', () => {
 
 	it('filtra reportes por Llegado, En Proceso, Rechazado y Finalizado', async () => {
 		for (const [estado, folio] of [
-			['Llegado', 'ABC123'],
+			['Pendiente', 'ABC123'],
 			['En Proceso', 'XYZ789'],
 			['Rechazado', 'QWE456'],
 			['Finalizado', 'LMN321'],
@@ -175,26 +155,30 @@ describe('Pruebas del panel del administrador externo', () => {
 	})
 
 	it('rechaza un reporte desde Ver y Actualizar Estado', async () => {
-		await wrapper.find('.btn-large').trigger('click')
+		wrapper.vm.filtros.estado = ''
+		await wrapper.vm.$nextTick()
+		await wrapper.find('.btn-accion').trigger('click') // botón "Ver detalle"
 		await wrapper.vm.$nextTick()
 		expect(wrapper.find('.modal-card').text()).toContain('Rechazar Reporte')
 
 		await wrapper.find('.modal-card .btn-peligroso').trigger('click')
-		await vi.waitFor(() => expect(updateEqMock).toHaveBeenCalledWith('folio', 'EXT-BAS-20260915-001-ABC123'))
-		expect(updateMock).toHaveBeenCalledWith({ estado_id: 3 })
+		await vi.waitFor(() =>
+			expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'EXT-BAS-20260915-001-ABC123', { estado_id: 3 }),
+		)
 	})
 
 	it('devuelve un reporte rechazado a Llegado', async () => {
 		wrapper.vm.filtros.estado = 'Rechazado'
 		await wrapper.vm.$nextTick()
-		await wrapper.find('.btn-large').trigger('click')
+		await wrapper.find('.btn-accion').trigger('click') // botón "Ver detalle"
 		await wrapper.vm.$nextTick()
 
 		const botonDevolver = wrapper.find('.modal-card .btn-primario')
-		expect(botonDevolver.text()).toContain('Devolver a Llegado')
+		expect(botonDevolver.text()).toContain('Devolver a Pendiente')
 		await botonDevolver.trigger('click')
 
-		await vi.waitFor(() => expect(updateEqMock).toHaveBeenCalledWith('folio', 'EXT-SEG-20260913-003-QWE456'))
-		expect(updateMock).toHaveBeenCalledWith({ estado_id: 1 })
+		await vi.waitFor(() =>
+			expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'EXT-SEG-20260913-003-QWE456', { estado_id: 1 }),
+		)
 	})
-})
+}) 
