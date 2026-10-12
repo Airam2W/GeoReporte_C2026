@@ -1314,8 +1314,12 @@ const cambiarEstadoUsuario = async (user: any, nuevoEstado: 'Alta' | 'Baja') => 
         fechabaja: new Date().toISOString(),
       })
 
-      if (error) {
-        throw new Error('No se pudo marcar la fecha de baja: ' + error.message)
+      if (!error) {
+        cerrarModalVer()
+        await cargarDatos()
+        Swal.fire('¡Actualizado!', `El usuario ahora está dado de ${nuevoEstado}.`, 'success')
+      } else {
+        Swal.fire('Error', 'No se pudo actualizar el estado.', 'error')
       }
     } else if (user.estadoadministrativo === 'Baja' && nuevoEstado === 'Alta') {
       const { error } = await updateEq('usuarios', 'id', user.id, {

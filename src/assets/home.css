@@ -474,27 +474,40 @@
 ========================================== */
 .password-container {
   position: relative;
-  margin-bottom: 12px;
 }
 
-.password-container input {
+/* Mayor especificidad que ".modal-contenido input[type=...]" para que el padding sí se aplique */
+.modal-contenido .password-container input[type='password'],
+.modal-contenido .password-container input[type='text'] {
   width: 100%;
-  padding-right: 40px;
+  padding-right: 44px;
 }
 
-.toggle-password {
+.modal-contenido .toggle-password {
   position: absolute;
-  right: 10px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  cursor: pointer;
-  font-size: 1.2rem;
-  line-height: 1;
-  color: var(--gris-claro);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border-radius: 6px;
+  color: #777;
+  font-size: inherit;
 }
 
-.toggle-password:hover {
-  color: #000;
+.modal-contenido .toggle-password:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--tinto);
+}
+
+.msg-error:empty {
+  display: none;
 }
 
 .input-error {

@@ -6,9 +6,24 @@ export const obtenerClaseEstado = (estado: string) => {
     'en revisión': 'badge-amarillo',
     finalizado: 'badge-verde',
     rechazado: 'badge-rojo',
-    turnado: 'badge-purpura'
+    turnado: 'badge-purpura',
+    'devuelto': 'badge-naranja',
+    'en proceso': 'badge-azul-claro',
   }
   return clases[estado] || 'badge-gris'
+}
+
+export const traducirEstado = (estado: string) => {
+  const traducciones: Record<string, string> = {
+    pendiente: 'Pendiente',
+    'en revisión': 'En Revisión',
+    finalizado: 'Finalizado',
+    rechazado: 'Rechazado',
+    turnado: 'En Revisión',
+    'Devuelto': 'En Revisión',
+    'En Proceso': 'En Proceso',
+  }
+  return traducciones[estado] || estado
 }
 
 export const formatearFechaLocal = (fechaString: string) => {

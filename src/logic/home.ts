@@ -1,5 +1,4 @@
 import router from '@/router'
-import { callRpc } from '../services/supabaseController'
 import { Toast } from '../utils/alertas'
 
 // export const verEstadoReporte = () => {
@@ -95,6 +94,21 @@ import { ref } from 'vue'
 import { redireccionarUsuario } from './redirectUser'
 export const menuAbierto = ref(false)
 export const menuRef = ref<HTMLElement | null>(null)
+import { callRpc, selectEq } from '../services/supabaseController'
+
+const ICONO_OJO_ABIERTO = `
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  </svg>`
+
+const ICONO_OJO_CERRADO = `
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+    <line x1="1" y1="1" x2="23" y2="23"></line>
+  </svg>`
 
 export const iniciarSesion = () => {
   // menuAbierto.value = false // Descomenta si tienes acceso a esta variable aquí
@@ -113,9 +127,12 @@ export const iniciarSesion = () => {
         <span id="error-email" class="msg-error" style="display: none; color: #e74c3c; font-size: 0.75rem; font-weight: 600; margin-top: 4px;"></span>
       </div>
 
-      <div class="password-container">
-        <input type="password" id="login-password" placeholder="Contraseña" />
-        <span id="toggle-password" class="toggle-password">👁</span>
+      <div style="margin-bottom: 12px; text-align: left;">
+        <div class="password-container" style="margin-bottom: 0;">
+          <input type="password" id="login-password" placeholder="Contraseña" />
+          <button type="button" id="toggle-password" class="toggle-password"
+            title="Mostrar contraseña" aria-label="Mostrar contraseña">${ICONO_OJO_CERRADO}</button>
+        </div>
         <span id="error-password" class="msg-error"></span>
       </div>
 
@@ -137,16 +154,15 @@ export const iniciarSesion = () => {
   const submitBtn = modal.querySelector('#login-submit') as HTMLButtonElement
   const cancelBtn = modal.querySelector('#login-cancel') as HTMLButtonElement
 
-  const togglePassword = modal.querySelector('#toggle-password') as HTMLSpanElement
+  const togglePassword = modal.querySelector('#toggle-password') as HTMLButtonElement
 
   togglePassword.addEventListener('click', () => {
-    if (passwordInput.type === 'password') {
-      passwordInput.type = 'text'
-      togglePassword.textContent = '⌣' // cambia el icono cuando se muestra
-    } else {
-      passwordInput.type = 'password'
-      togglePassword.textContent = '👁' // vuelve al ojo cuando se oculta
-    }
+    const visible = passwordInput.type === 'text'
+    passwordInput.type = visible ? 'password' : 'text'
+    togglePassword.innerHTML = visible ? ICONO_OJO_CERRADO : ICONO_OJO_ABIERTO
+    const texto = visible ? 'Mostrar contraseña' : 'Ocultar contraseña'
+    togglePassword.title = texto
+    togglePassword.setAttribute('aria-label', texto)
   })
 
   // Después de definir emailInput, passwordInput y submitBtn
@@ -239,6 +255,26 @@ export const iniciarSesion = () => {
         return
       }
 
+      // Si el usuario es Supervisor (tipo_id === 3), traer su id de la tabla "supervisores"
+      if (usuario.tipo_id === 3 || usuario.tipousuario_id === 3) {
+        const { data: supData, error: supError } = await selectEq(
+          'supervisores',
+          'usuario_id',
+          usuario.id,
+          ['id', 'departamento_id'],
+        )
+
+        if (!supError && supData && supData.length > 0) {
+          usuario.id_supervisor = supData[0].id
+          // Si el RPC no trae ya el departamento_id, lo tomamos de aquí también
+          if (!usuario.departamento_id) {
+            usuario.departamento_id = supData[0].departamento_id
+          }
+        } else {
+          console.error('No se pudo obtener el id de supervisor:', supError)
+        }
+      }
+
       localStorage.setItem('adminSession', JSON.stringify(usuario))
 
       // Para éxito
@@ -262,7 +298,6 @@ export const iniciarSesion = () => {
   cancelBtn.addEventListener('click', () => {
     document.body.removeChild(modal)
   })
-
 }
 
 // Detectar click fuera del menú

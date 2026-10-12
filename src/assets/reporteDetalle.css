@@ -229,6 +229,52 @@
   opacity: 0;
 }
 
+.notas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.nota-card {
+  padding: 10px 12px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-left: 3px solid #999;
+  border-radius: 8px;
+}
+
+.nota-rechazo { border-left-color: #c62828; }
+.nota-devuelto { border-left-color: #8b4513; }
+
+.nota-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.nota-titulo {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.nota-fecha {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.info-item .nota-texto {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #444;
+  white-space: pre-line; /* respeta saltos de línea escritos por el usuario */
+}
+
 @media (max-width: 768px) {
   .modal-grid {
     grid-template-columns: 1fr;

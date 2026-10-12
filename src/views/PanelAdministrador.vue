@@ -51,6 +51,21 @@
         </div>
       </header>
 
+      <!-- Botones de estado -->
+      <section class="estados-grid" aria-label="Filtrar reportes por estado">
+        <button
+          v-for="e in estados"
+          :key="e.valor"
+          type="button"
+          :class="['estado-btn', e.clase, { activo: filtros.estado === e.valor }]"
+          :aria-pressed="filtros.estado === e.valor"
+          @click="filtros.estado = e.valor"
+        >
+          <span class="estado-nombre">{{ e.valor }}</span>
+          <!--<span class="estado-conteo">{{ conteoPorEstado[e.valor] || 0 }}</span>-->
+        </button>
+      </section>
+
       <!-- Panel de Filtros -->
       <section class="filtros-card">
         <div class="filtro-grupo input-icono">
@@ -85,7 +100,7 @@
           </select>
         </div>
 
-        <div class="filtro-grupo">
+        <!--<div class="filtro-grupo">
           <select
             name="estado"
             id="estado"
@@ -99,7 +114,7 @@
             <option value="Finalizado" class="badge-verde">Finalizado</option>
             <option value="Rechazado" class="badge-rojo">Rechazado</option>
           </select>
-        </div>
+        </div>-->
       </section>
 
       <!-- Tabla de Datos -->
@@ -141,7 +156,11 @@
                 </button>
 
                 <button
-                  v-if="reporte.estado === 'Pendiente' || reporte.estado === 'Turnado'"
+                  v-if="
+                    reporte.estado === 'Pendiente' ||
+                    reporte.estado === 'Turnado' ||
+                    reporte.estado === 'Devuelto'
+                  "
                   class="btn-accion btn-asignar"
                   title="Asignar supervisor"
                   @click="asignarReporte(reporte.folio)"
@@ -196,6 +215,35 @@
       @devolver="devolverReporte"
       @turnar="turnarReporte"
     />
+
+    <TurnarReporteModal
+      :visible="modalTurnarVisible"
+      :folio="folioATurnar"
+      :departamentos-internos="departamentosInternos"
+      :departamentos-externos="departamentosExternos"
+      :guardando="guardandoTurnado"
+      @close="cerrarModalTurnar"
+      @confirm="confirmarTurnado"
+    />
+
+    <AsignarReporteModal
+      :visible="modalAsignarVisible"
+      :folio="folioAAsignar"
+      :departamento-nombre="admin?.departamento || ''"
+      :supervisores="supervisoresOpciones"
+      :guardando="guardandoAsignacion"
+      @close="cerrarModalAsignar"
+      @confirm="confirmarAsignacion"
+    />
+
+    <RechazarReporteModal
+      :visible="modalRechazarVisible"
+      :folio="folioARechazar"
+      :titulos="titulosRechazo"
+      :guardando="guardandoRechazo"
+      @close="cerrarModalRechazar"
+      @confirm="confirmarRechazo"
+    />
   </div>
 </template>
 
@@ -207,6 +255,27 @@ import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import Swal from 'sweetalert2'
 import { truncarTexto, obtenerClaseEstado } from '../logic/panelAdministrador'
 import { redireccionarUsuario } from '@/logic/redirectUser.ts'
+import TurnarReporteModal from '../components/TurnarReporteModal.vue'
+import { selectAll } from '../services/supabaseController'
+import AsignarReporteModal from '../components/AsignarReporteModal.vue'
+import RechazarReporteModal from '../components/RechazarReporteModal.vue'
+import { insert } from '../services/supabaseController' // agrégalo al import existente
+
+const titulosRechazo = ref<any[]>([])
+const modalRechazarVisible = ref(false)
+const folioARechazar = ref('')
+const guardandoRechazo = ref(false)
+
+const supervisoresOpciones = ref<any[]>([])
+const modalAsignarVisible = ref(false)
+const folioAAsignar = ref('')
+const guardandoAsignacion = ref(false)
+
+const departamentosInternos = ref<any[]>([])
+const departamentosExternos = ref<any[]>([])
+const modalTurnarVisible = ref(false)
+const folioATurnar = ref('')
+const guardandoTurnado = ref(false)
 
 const router = useRouter()
 const admin = ref<any>(null)
@@ -214,6 +283,24 @@ const cargando = ref(true)
 const reportes = ref<any[]>([])
 const problemasOpciones = ref<any[]>([])
 const foliosProcesando = ref(new Set<string>())
+
+const estados = [
+  { valor: 'Pendiente', clase: 'estado-azul' },
+  { valor: 'En Revisión', clase: 'estado-amarillo' },
+  { valor: 'Devuelto', clase: 'estado-cafe' },
+  { valor: 'Turnado', clase: 'estado-purpura' },
+  { valor: 'Finalizado', clase: 'estado-verde' },
+  { valor: 'Rechazado', clase: 'estado-rojo' },
+]
+
+// Cantidad de reportes por estado (se actualiza sola al recargar)
+const conteoPorEstado = computed(() => {
+  const conteo: Record<string, number> = {}
+  for (const r of reportes.value) {
+    conteo[r.estado] = (conteo[r.estado] || 0) + 1
+  }
+  return conteo
+})
 
 // Estado del Modal de Ver Reporte
 const modalVisible = ref(false)
@@ -277,6 +364,140 @@ const cargarCatalogos = async () => {
   } else if (deptData && deptData.length > 0) {
     admin.value.departamento = deptData[0].nombre
   }
+
+  const { data: internos } = await selectAll('departamentos', ['id', 'nombre', 'estado'])
+  const { data: externos } = await selectAll('departamentos_externos', [
+    'id',
+    'departamento',
+    'estado',
+  ])
+
+  // El departamento actual no tiene sentido como destino del turnado
+  departamentosInternos.value = (internos || []).filter(
+    (d: any) => d.id !== admin.value.departamento_id,
+  )
+  departamentosExternos.value = externos || []
+
+  const { data: supData, error: supError } = await selectEq(
+    'supervisores',
+    'departamento_id',
+    admin.value.departamento_id,
+    ['id', 'usuario_id', 'usuarios(nombre,apellido_p,apellido_m,estadoadministrativo)'],
+  )
+
+  if (supError) {
+    console.error('Error al cargar supervisores:', supError.message)
+  } else {
+    supervisoresOpciones.value = (supData || [])
+      .filter((s: any) => s.usuarios?.estadoadministrativo === 'Alta')
+      .map((s: any) => ({
+        id: s.id,
+        nombre:
+          `${s.usuarios?.nombre || ''} ${s.usuarios?.apellido_p || ''} ${s.usuarios?.apellido_m || ''}`.trim(),
+      }))
+  }
+
+  const { data: titulosData, error: titulosError } = await selectEq(
+    'titulo',
+    'categoria_historial_id',
+    2, // 2 = Rechazo
+    ['id', 'nombre'],
+  )
+
+  if (titulosError) {
+    console.error('Error al cargar títulos de rechazo:', titulosError.message)
+  } else {
+    titulosRechazo.value = titulosData || []
+  }
+}
+
+// Paso 1: solo abre el modal
+const turnarReporte = (folio: string | undefined) => {
+  if (!folio) return
+  cerrarModalVer() // por si se llamó desde el modal de detalle
+  folioATurnar.value = folio
+  modalTurnarVisible.value = true
+}
+
+const cerrarModalTurnar = () => {
+  modalTurnarVisible.value = false
+}
+
+// Paso 2: confirmación + guardado
+const confirmarTurnado = async (datos: any) => {
+  const folio = folioATurnar.value
+  if (foliosProcesando.value.has(folio)) return
+
+  const result = await Swal.fire({
+    title: '¿Turnar reporte?',
+    html: `El folio <b>${folio}</b> será turnado al administrador <b>${datos.administradorNombre}</b> del departamento <b>${datos.departamentoNombre}</b> (${datos.tipo.toLowerCase()}).`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#1a6b2f',
+    cancelButtonColor: '#888',
+    confirmButtonText: 'Sí, turnar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    customClass: { container: 'swal-difuminado' },
+  })
+
+  if (!result.isConfirmed) return
+
+  foliosProcesando.value.add(folio)
+  guardandoTurnado.value = true
+
+  try {
+    const cambios =
+      datos.tipo === 'Interno'
+        ? {
+            departamento_id: datos.departamento_id,
+            problema_id: datos.problema_id,
+          }
+        : {
+            departamento_id: null,
+            problema_id: null,
+            departamento_externo_id: datos.departamento_id,
+            problema_externo_id: datos.problema_id,
+          }
+
+    // 1. Cambiar departamento/problema en "reportes"
+    const { error } = await updateEq('reportes', 'folio', folio, cambios)
+
+    if (error) {
+      console.error('Error al turnar reporte:', error)
+      Swal.fire('Error', 'No se pudo turnar el reporte.', 'error')
+      return
+    }
+
+    // 2. Marcar el estado como Turnado (5) en "detalle_reporte"
+    const { error: errorEstado } = await updateEq('detalle_reporte', 'folio', folio, {
+      estado_id: 5, // 5 = Turnado
+    })
+
+    if (errorEstado) {
+      console.error('Error al actualizar el estado a Turnado:', errorEstado)
+      Swal.fire(
+        'Error',
+        'El reporte se turnó, pero no se pudo actualizar su estado a "Turnado".',
+        'error',
+      )
+      return
+    }
+
+    cerrarModalTurnar()
+    await cargarReportes()
+
+    Swal.fire({
+      title: '¡Turnado!',
+      text: `El reporte fue turnado a ${datos.departamentoNombre}.`,
+      icon: 'success',
+      confirmButtonColor: '#1a6b2f',
+      customClass: { container: 'swal-difuminado' },
+    })
+  } finally {
+    foliosProcesando.value.delete(folio)
+    guardandoTurnado.value = false
+  }
 }
 
 const cargarReportes = async () => {
@@ -297,18 +518,46 @@ const cargarReportes = async () => {
       'created_at',
       'problemas (id, nombre)',
       'detalle_reporte (estado_id, estadoreporte (estado))',
+      'historial_reporte (categoria_historial_id, notas, fecha, titulo(nombre))', // <-- nuevo
     ],
-    false, // 👈 false = descendente, true = ascendente
+    false,
   )
 
   if (!error && data) {
-    reportes.value = data.map((r) => ({
-      ...r,
-      estado: r.detalle_reporte?.estadoreporte?.estado || 'Pendiente',
-    }))
+    reportes.value = data.map((r: any) => {
+      // Puede venir como arreglo o como objeto único, según cómo esté definida la relación
+      const historial = Array.isArray(r.historial_reporte)
+        ? r.historial_reporte
+        : r.historial_reporte
+          ? [r.historial_reporte]
+          : []
+
+      return {
+        ...r,
+        estado: r.detalle_reporte?.estadoreporte?.estado || 'Pendiente',
+        notas_rechazo: notasPorCategoria(historial, 2), // arreglo, ya no texto
+        notas_devuelto: notasPorCategoria(historial, 1),
+      }
+    })
   }
   cargando.value = false
 }
+
+const formatearNota = (h: any) => {
+  const fecha = new Date(h.fecha)
+  return {
+    fecha: fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }),
+    hora: fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+    titulo: h.titulo?.nombre || 'Sin título',
+    notas: h.notas,
+  }
+}
+
+const notasPorCategoria = (historial: any[], categoria: number) =>
+  historial
+    .filter((h) => h.categoria_historial_id === categoria && h.notas)
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .map(formatearNota)
 
 // Filtros en tiempo real
 const reportesFiltrados = computed(() => {
@@ -357,13 +606,30 @@ const cerrarModalVer = () => {
   }, 300)
 }
 
-const rechazarReporte = async (folio: string) => {
+// Paso 1: solo abre el modal
+const rechazarReporte = (folio: string | undefined) => {
+  if (!folio) return
+  cerrarModalVer() // por si se llamó desde el modal de detalle
+  folioARechazar.value = folio
+  modalRechazarVisible.value = true
+}
+
+const cerrarModalRechazar = () => {
+  modalRechazarVisible.value = false
+}
+
+// Paso 2: confirmación + guardado
+const confirmarRechazo = async (datos: {
+  titulo_id: number | string
+  notas: string
+  tituloNombre: string
+}) => {
+  const folio = folioARechazar.value
   if (foliosProcesando.value.has(folio)) return
-  foliosProcesando.value.add(folio)
-  try {
+
   const result = await Swal.fire({
     title: '¿Rechazar reporte?',
-    text: `¿Estás seguro de que deseas rechazar el folio ${folio}? Esta acción lo marcará como rechazado.`,
+    html: `Se rechazará el reporte <b>${folio}</b> por el motivo <b>${datos.tituloNombre}</b>. Esta acción lo marcará como "Rechazado".`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#d33',
@@ -374,40 +640,55 @@ const rechazarReporte = async (folio: string) => {
     customClass: { container: 'swal-difuminado' },
   })
 
-  if (result.isConfirmed) {
-    const { error } = await updateEq(
-      'detalle_reporte', // tabla
-      'folio', // campo para eq
-      folio, // valor a comparar
-      { estado_id: 3 }, // data a actualizar
-    )
+  if (!result.isConfirmed) return
 
-    if (!error) {
-      //const index = reportes.value.findIndex((r) => r.folio === folio)
-      //if (index !== -1) reportes.value[index].estado = 'Rechazado'
-      await cargarReportes()
-      cerrarModalVer()
+  foliosProcesando.value.add(folio)
+  guardandoRechazo.value = true
 
-      Swal.fire({
-        title: '¡Rechazado!',
-        text: 'El reporte ha sido rechazado correctamente.',
-        icon: 'success',
-        confirmButtonColor: '#1a6b2f',
-      })
-    } else {
-      // Alerta de error
-      Swal.fire({
-        title: 'Error',
-        text: 'Hubo un error al rechazar el reporte en la base de datos.',
-        icon: 'error',
-        confirmButtonColor: '#1a6b2f',
-      })
-    } 
-  } 
-}
-    finally{
-      foliosProcesando.value.delete(folio);
+  try {
+    // 1. Registrar en el historial
+    const { error: errorHistorial } = await insert('historial_reporte', {
+      folio,
+      categoria_historial_id: 2, // 2 = Rechazo
+      titulo_id: datos.titulo_id,
+      notas: datos.notas,
+    })
+
+    if (errorHistorial) {
+      console.error('Error al guardar historial:', errorHistorial)
+      Swal.fire('Error', 'No se pudo registrar el rechazo en el historial.', 'error')
+      return
     }
+
+    // 2. Cambiar el estado a Rechazado (3)
+    const { error: errorDetalle } = await updateEq('detalle_reporte', 'folio', folio, {
+      estado_id: 3, // 3 = Rechazado
+    })
+
+    if (errorDetalle) {
+      console.error('Error al actualizar detalle_reporte:', errorDetalle)
+      Swal.fire(
+        'Error',
+        'El rechazo se registró en el historial, pero no se pudo actualizar el estado del reporte.',
+        'error',
+      )
+      return
+    }
+
+    cerrarModalRechazar()
+    await cargarReportes()
+
+    Swal.fire({
+      title: '¡Rechazado!',
+      text: 'El reporte ha sido rechazado correctamente.',
+      icon: 'success',
+      confirmButtonColor: '#1a6b2f',
+      customClass: { container: 'swal-difuminado' },
+    })
+  } finally {
+    foliosProcesando.value.delete(folio)
+    guardandoRechazo.value = false
+  }
 }
 
 const buscarEstadoId = async (estado: string): Promise<string | null> => {
@@ -432,88 +713,135 @@ const buscarEstadoId = async (estado: string): Promise<string | null> => {
 }
 
 const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Llegado') => {
-   if (foliosProcesando.value.has(folio)) return
+  if (foliosProcesando.value.has(folio)) return
   foliosProcesando.value.add(folio)
   try {
+    const result = await Swal.fire({
+      title: `¿Devolver a "${nuevoEstado}"?`,
+      text: `El folio ${folio} cambiará su estado a "${nuevoEstado}".`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#1a6b2f',
+      cancelButtonColor: '#888',
+      confirmButtonText: 'Sí, devolver',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true,
+      customClass: { container: 'swal-difuminado' },
+    })
+
+    if (result.isConfirmed) {
+      const estadoId = await buscarEstadoId(nuevoEstado)
+      if (!estadoId) {
+        Swal.fire({
+          title: 'Error',
+          text: 'No se encontró el estado en la base de datos.',
+          icon: 'error',
+          confirmButtonColor: '#1a6b2f',
+          customClass: { container: 'swal-difuminado' },
+        })
+        return
+      }
+
+      const { data, error } = await updateEq(
+        'detalle_reporte', // tabla
+        'folio', // campo para eq
+        folio, // valor a comparar
+        { estado_id: estadoId }, // data a actualizar
+      )
+
+      if (!error) {
+        //const index = reportes.value.findIndex((r) => r.folio === folio)
+        //if (index !== -1) reportes.value[index].estado = nuevoEstado
+        await cargarReportes()
+        cerrarModalVer()
+
+        Swal.fire({
+          title: '¡Actualizado!',
+          text: `El reporte ahora está en "${nuevoEstado}".`,
+          icon: 'success',
+          confirmButtonColor: '#1a6b2f',
+          customClass: { container: 'swal-difuminado' },
+        })
+      } else {
+        Swal.fire({
+          title: 'Error',
+          text: 'Hubo un error al actualizar el estado en la base de datos.',
+          icon: 'error',
+          confirmButtonColor: '#1a6b2f',
+          customClass: { container: 'swal-difuminado' },
+        })
+      }
+    }
+  } finally {
+    foliosProcesando.value.delete(folio)
+  }
+}
+
+// Paso 1: solo abre el modal
+const asignarReporte = (folio: string | undefined) => {
+  if (!folio) return
+  cerrarModalVer() // por si se llamó desde el modal de detalle
+  folioAAsignar.value = folio
+  modalAsignarVisible.value = true
+}
+
+const cerrarModalAsignar = () => {
+  modalAsignarVisible.value = false
+}
+
+// Paso 2: confirmación + guardado
+const confirmarAsignacion = async (datos: {
+  supervisor_id: number | string
+  supervisorNombre: string
+}) => {
+  const folio = folioAAsignar.value
+  if (foliosProcesando.value.has(folio)) return
+
   const result = await Swal.fire({
-    title: `¿Devolver a "${nuevoEstado}"?`,
-    text: `El folio ${folio} cambiará su estado a "${nuevoEstado}".`,
+    title: '¿Asignar reporte?',
+    html: `El folio <b>${folio}</b> será asignado al supervisor <b>${datos.supervisorNombre}</b>.`,
     icon: 'question',
     showCancelButton: true,
     confirmButtonColor: '#1a6b2f',
     cancelButtonColor: '#888',
-    confirmButtonText: 'Sí, devolver',
+    confirmButtonText: 'Sí, asignar',
     cancelButtonText: 'Cancelar',
     reverseButtons: true,
     customClass: { container: 'swal-difuminado' },
   })
 
-  if (result.isConfirmed) {
-    const estadoId = await buscarEstadoId(nuevoEstado)
-    if (!estadoId) {
-      Swal.fire({
-        title: 'Error',
-        text: 'No se encontró el estado en la base de datos.',
-        icon: 'error',
-        confirmButtonColor: '#1a6b2f',
-        customClass: { container: 'swal-difuminado' },
-      })
+  if (!result.isConfirmed) return
+
+  foliosProcesando.value.add(folio)
+  guardandoAsignacion.value = true
+
+  try {
+    // Un solo update: supervisor y estado 2 (En Revisión)
+    const { error } = await updateEq('detalle_reporte', 'folio', folio, {
+      supervisor_id: datos.supervisor_id,
+      estado_id: 2, // 2 = En Revisión
+    })
+
+    if (error) {
+      console.error('Error al asignar reporte:', error)
+      Swal.fire('Error', 'No se pudo asignar el reporte.', 'error')
       return
     }
 
-    const { data, error } = await updateEq(
-      'detalle_reporte', // tabla
-      'folio', // campo para eq
-      folio, // valor a comparar
-      { estado_id: estadoId }, // data a actualizar
-    )
+    cerrarModalAsignar()
+    await cargarReportes()
 
-    if (!error) {
-      //const index = reportes.value.findIndex((r) => r.folio === folio)
-      //if (index !== -1) reportes.value[index].estado = nuevoEstado
-      await cargarReportes()
-      cerrarModalVer()
-
-      Swal.fire({
-        title: '¡Actualizado!',
-        text: `El reporte ahora está en "${nuevoEstado}".`,
-        icon: 'success',
-        confirmButtonColor: '#1a6b2f',
-        customClass: { container: 'swal-difuminado' },
-      })
-    } else {
-      Swal.fire({
-        title: 'Error',
-        text: 'Hubo un error al actualizar el estado en la base de datos.',
-        icon: 'error',
-        confirmButtonColor: '#1a6b2f',
-        customClass: { container: 'swal-difuminado' },
-      })
-    }
-  }
-  }finally{
+    Swal.fire({
+      title: '¡Asignado!',
+      text: `El reporte fue asignado a ${datos.supervisorNombre}.`,
+      icon: 'success',
+      confirmButtonColor: '#1a6b2f',
+      customClass: { container: 'swal-difuminado' },
+    })
+  } finally {
     foliosProcesando.value.delete(folio)
+    guardandoAsignacion.value = false
   }
-}
-
-
-const asignarReporte = (folio: string | undefined) => {
-  //Desactivar el boton Asginar Reporte
-  const asignarBtn = document.querySelector('.btn-asignar') as HTMLButtonElement
-  asignarBtn.disabled = true
-
-  if (!folio) return
-  Swal.fire({
-    title: 'Asignar Supervisor',
-    text: `Aquí iría la lógica para asignar el folio ${folio}`,
-    icon: 'info',
-    confirmButtonColor: '#1a6b2f',
-    customClass: { container: 'swal-difuminado' },
-  })
-
-  // Reactivar el boton Asignar Reporte
-  asignarBtn.disabled = false
-  cerrarModalVer()
 }
 
 const irACrearReporte = () => {

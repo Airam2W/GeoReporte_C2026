@@ -45,6 +45,21 @@
         <p>Consulte el detalle de los reportes recibidos y actualice su estado de atención.</p>
       </header>
 
+      <!-- Botones de estado -->
+      <section class="estados-grid estados-grid--tres" aria-label="Filtrar reportes por estado">
+        <button
+          v-for="e in estados"
+          :key="e.valor"
+          type="button"
+          :class="['estado-btn', e.clase, { activo: filtros.estado === e.valor }]"
+          :aria-pressed="filtros.estado === e.valor"
+          @click="filtros.estado = e.valor"
+        >
+          <span class="estado-nombre">{{ e.valor }}</span>
+          <!--<span class="estado-conteo">{{ conteoPorEstado[e.valor] || 0 }}</span>-->
+        </button>
+      </section>
+
       <!-- Panel de Filtros -->
       <section class="filtros-card">
         <div class="filtro-grupo input-icono">
@@ -66,7 +81,7 @@
           />
         </div>
 
-        <div class="filtro-grupo">
+        <!--<div class="filtro-grupo">
           <select
             name="estado"
             id="estado"
@@ -77,7 +92,7 @@
             <option value="Finalizado" class="badge-verde">Finalizado</option>
             <option value="Rechazado" class="badge-rojo">Rechazado</option>
           </select>
-        </div>
+        </div>-->
       </section>
 
       <!-- Tabla de Datos -->
@@ -202,6 +217,19 @@ const cargando = ref(true)
 const reportes = ref<any[]>([])
 const foliosProcesando = ref(new Set<string>())
 const problemasOpciones = ref<any[]>([])
+const estados = [
+  { valor: 'Pendiente', clase: 'estado-azul' },
+  { valor: 'Finalizado', clase: 'estado-verde' },
+  { valor: 'Rechazado', clase: 'estado-rojo' },
+]
+
+const conteoPorEstado = computed(() => {
+  const conteo: Record<string, number> = {}
+  for (const r of reportes.value) {
+    conteo[r.estado] = (conteo[r.estado] || 0) + 1
+  }
+  return conteo
+})
 
 // Estado del Modal de Ver Reporte
 const modalVisible = ref(false)

@@ -16,7 +16,11 @@
             <div class="info-columna">
               <div class="info-item">
                 <label>Problema Reportado</label>
-                <p class="destacado">{{ reporte.problemas?.nombreamigable || reporte.problemas_externos?.nombreamigable }}</p>
+                <p class="destacado">
+                  {{
+                    reporte.problemas?.nombreamigable || reporte.problemas_externos?.nombreamigable
+                  }}
+                </p>
               </div>
 
               <div class="info-item">
@@ -27,7 +31,9 @@
               <div class="info-item">
                 <label>Ubicación</label>
                 <p>{{ reporte.domicilio }}</p>
-                <p v-if="reporte.referencias" class="referencias">Ref: {{ reporte.referencias || 'No proporcionadas' }}</p>
+                <p v-if="reporte.referencias" class="referencias">
+                  Ref: {{ reporte.referencias || 'No proporcionadas' }}
+                </p>
               </div>
 
               <div class="info-grupo-doble">
@@ -35,13 +41,11 @@
                   <label>Ciudadano</label>
                   <p>{{ reporte.nombre }}</p>
                 </div>
-                <div class="info-item"
-                v-if="esAdmin || esAdminEx">
+                <div class="info-item" v-if="esAdmin || esAdminEx || esSupervisor">
                   <label>Teléfono</label>
                   <p>{{ reporte.telefono }}</p>
                 </div>
-                <div class="info-item"
-                v-if="esAdmin || esAdminEx">
+                <div class="info-item" v-if="esAdmin || esAdminEx || esSupervisor">
                   <label>Correo Electrónico</label>
                   <p>{{ reporte.correo || 'No proporcionado' }}</p>
                 </div>
@@ -50,6 +54,54 @@
               <div class="info-item">
                 <label>Fecha de creación</label>
                 <p>{{ formatearFechaLocal(reporte.created_at) }}</p>
+              </div>
+
+              <div
+                class="info-item"
+                v-if="
+                  reporte.estado === 'Rechazado' &&
+                  (esAdmin || esAdminEx) &&
+                  reporte.notas_rechazo?.length
+                "
+              >
+                <label>Notas de Rechazo</label>
+                <div class="notas-lista">
+                  <article
+                    v-for="(n, i) in reporte.notas_rechazo"
+                    :key="i"
+                    class="nota-card nota-rechazo"
+                  >
+                    <header class="nota-meta">
+                      <span class="nota-titulo">{{ n.titulo }}</span>
+                      <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
+                    </header>
+                    <p class="nota-texto">{{ n.notas }}</p>
+                  </article>
+                </div>
+              </div>
+
+              <div
+                class="info-item"
+                v-if="
+                  reporte.estado === 'Devuelto' &&
+                  (esAdmin || esAdminEx) &&
+                  reporte.notas_devuelto?.length
+                "
+              >
+                <label>Notas de Devolución</label>
+                <div class="notas-lista">
+                  <article
+                    v-for="(n, i) in reporte.notas_devuelto"
+                    :key="i"
+                    class="nota-card nota-devuelto"
+                  >
+                    <header class="nota-meta">
+                      <span class="nota-titulo">{{ n.titulo }}</span>
+                      <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
+                    </header>
+                    <p class="nota-texto">{{ n.notas }}</p>
+                  </article>
+                </div>
               </div>
             </div>
 
@@ -61,12 +113,21 @@
                 <div v-else class="sin-foto">Sin imagen</div>
               </div>
 
-              <div class="estado-actual-box">
+              <div class="estado-actual-box" v-if="esAdmin || esAdminEx || esSupervisor">
                 <label>Estado Actual</label>
                 <span
                   :class="['badge badge-grande', obtenerClaseEstado(reporte.estado.toLowerCase())]"
                 >
                   {{ reporte.estado }}
+                </span>
+              </div>
+
+              <div class="estado-actual-box" v-if="!esAdmin && !esAdminEx && !esSupervisor">
+                <label>Estado Actual</label>
+                <span
+                  :class="['badge badge-grande', obtenerClaseEstado(reporte.estado.toLowerCase())]"
+                >
+                  {{ traducirEstado(reporte.estado) }}
                 </span>
               </div>
             </div>
@@ -76,17 +137,39 @@
         <div class="modal-footer">
           <button class="btn-secundario" @click="cerrar">Cerrar</button>
 
-          <button v-if="(!esAdmin && !esAdminEx)" class="btn-primario" @click="buscarReporte">
+          <button
+            v-if="!esAdmin && !esAdminEx && !esSupervisor"
+            class="btn-primario"
+            @click="buscarReporte"
+          >
             Buscar Otro Reporte
           </button>
 
           <template v-if="reporte">
             <button
-              v-if="(esAdmin || esAdminEx) && (reporte.estado === 'Pendiente' || reporte.estado === 'Turnado' )&& reporte.problemas?.nombre != null"
+              v-if="
+                (esAdmin || esAdminEx) &&
+                (reporte.estado === 'Pendiente' ||
+                  reporte.estado === 'Turnado' ||
+                  reporte.estado === 'Devuelto') &&
+                reporte.problemas?.nombre != null
+              "
               class="btn-primario"
               @click="$emit('asignar', reporte?.folio)"
             >
               Asignar Supervisor
+            </button>
+
+            <button
+              v-if="
+                esSupervisor &&
+                reporte.estado === 'Pendiente de Asignación' &&
+                reporte.problemas?.nombre != null
+              "
+              class="btn-primario"
+              @click="$emit('asignarJefe', reporte?.folio)"
+            >
+              Asignar Jefe
             </button>
 
             <button
@@ -98,7 +181,12 @@
             </button>
 
             <button
-              v-if="(esAdmin || esAdminEx) && (reporte.estado === 'Finalizado' || reporte.estado === 'Devuelto' || reporte.estado === 'Rechazado')"
+              v-if="
+                (esAdmin || esAdminEx) &&
+                (reporte.estado === 'Finalizado' ||
+                  reporte.estado === 'Devuelto' ||
+                  reporte.estado === 'Rechazado')
+              "
               class="btn-primario"
               @click="$emit('devolver', reporte?.folio, 'Pendiente')"
             >
@@ -106,7 +194,18 @@
             </button>
 
             <button
-              v-if="(esAdmin || esAdminEx) && (reporte.estado  === 'Pendiente' || reporte.estado === 'Devuelto')"
+              v-if="esSupervisor && reporte.estado === 'Pendiente de Asignación'"
+              class="btn-primario"
+              @click="$emit('devolverRep', reporte?.folio, 'Devuelto')"
+            >
+              Devolver Reporte
+            </button>
+
+            <button
+              v-if="
+                (esAdmin || esAdminEx) &&
+                (reporte.estado === 'Pendiente' || reporte.estado === 'Devuelto')
+              "
               class="btn-peligroso"
               @click="$emit('rechazar', reporte?.folio)"
             >
@@ -128,9 +227,23 @@
 </template>
 
 <script setup lang="ts">
-import { formatearFechaLocal, obtenerClaseEstado } from '../logic/reporteDetalleModal'
+import {
+  formatearFechaLocal,
+  obtenerClaseEstado,
+  traducirEstado,
+} from '../logic/reporteDetalleModal'
 
-const emit = defineEmits(['close', 'asignar', 'rechazar', 'buscar', 'devolver', 'turnar', 'finalizar'])
+const emit = defineEmits([
+  'close',
+  'asignar',
+  'asignarJefe',
+  'rechazar',
+  'buscar',
+  'devolver',
+  'devolverRep',
+  'turnar',
+  'finalizar',
+])
 
 const cerrar = () => {
   emit('close')
@@ -160,8 +273,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  esSupervisor: {
+    type: Boolean,
+    default: false,
+  },
 })
-
 </script>
 
-<style src="../assets/reporteDetalle.css"/>
+<style src="../assets/reporteDetalle.css" />

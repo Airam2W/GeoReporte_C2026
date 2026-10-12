@@ -12,6 +12,9 @@ export const redireccionarUsuario = () => {
       case 2:
         openSession = '/dashboard';
         break;
+      case 3:
+        openSession = '/supervisor';
+        break;
       case 6:
         openSession = '/external';
         break;
