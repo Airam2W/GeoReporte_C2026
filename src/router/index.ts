@@ -5,6 +5,7 @@ import PanelAdministrador from '../views/PanelAdministrador.vue'
 import PanelDirector from '../views/PanelDirector.vue'
 import PanelAdminExterno from '@/views/PanelAdminExterno.vue'
 import PanelSupervisor from '@/views/PanelSupervisor.vue'
+import PanelJefe from '@/views/PanelJefe.vue'
 
 const routes = [
   { path: '/', component: HomeView },
@@ -12,7 +13,8 @@ const routes = [
   { path: '/dashboard', component: PanelAdministrador },
   { path: '/management', component: PanelDirector },
   { path: '/external', component: PanelAdminExterno },
-  { path: '/supervisor', component: PanelSupervisor }
+  { path: '/supervisor', component: PanelSupervisor },
+  { path: '/jefe', component: PanelJefe },
 ]
 
 const router = createRouter({
@@ -21,9 +23,9 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const adminSession = localStorage.getItem('adminSession')
+  const userSession = localStorage.getItem('userSession')
 
-  if (to.path === '/dashboard' && !adminSession) {
+  if (to.path === '/dashboard' && !userSession) {
     next('/') // no hay sesión -> redirige al home
   } else {
     next() // hay sesión -> deja pasar

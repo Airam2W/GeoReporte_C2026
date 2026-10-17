@@ -526,8 +526,8 @@ const abrirPanel = () => {
 
 const seleccionarFoto = (e: Event) => {
   //Deshabilitar el boton de enviar reporte mientras se procesa la validacion de la AI
-  const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
-  if (submitBtn) submitBtn.disabled = true
+  const submitBtn = document.getElementsByName('enviar')[0] as HTMLButtonElement
+  submitBtn.disabled = true
   const input = e.target as HTMLInputElement
   if (input.files?.[0]) {
     form.value.foto = input.files[0]
@@ -542,6 +542,7 @@ const validarConAi = async (file: File) => {
   //Realizar la validacion de la AI de la foto y obtener el resultado
   const spanValidacionAI = document.querySelector('.validacion-AI') as HTMLSpanElement
   spanValidacionAI.textContent = `Validando tu foto con AI...`
+  spanValidacionAI.style.color = '#000000'
   const resultadoAI = await validarAI(file)
   // Actualizar en el span de validacion AI con el resultado
   if (spanValidacionAI) {
@@ -710,22 +711,104 @@ const enviarReporte = async () => {
 
 // Mostrar modal de reporte exitoso
 const mostrarModalReporteExitoso = (reporte: any) => {
+  const escapar = (t: string) =>
+    String(t ?? '').replace(
+      /[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+    )
+
+  const departamento = escapar(
+    departamentos.value.find((d) => d.id === reporte.departamento_id)?.nombre || 'No disponible',
+  )
+  const problema = escapar(
+    problemas.value.find((p) => p.id === reporte.problema_id)?.nombre || 'No disponible',
+  )
+  const folio = escapar(reporte.folio)
+
+  const ICONO_COPIAR = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`
+  const ICONO_CHECK = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
+
   const modal = document.createElement('div')
   modal.className = 'modal-reporte-exitoso'
   modal.innerHTML = `
-    <div class="modal-contenido">
-      <h2>¡Reporte enviado con éxito!</h2>
-      <p>Folio: <strong>${reporte.folio}</strong></p>
-      <p>Departamento: <strong>${departamentos.value.find((d) => d.id === reporte.departamento_id)?.nombre || ''}</strong></p>
-      <p>Problema: <strong>${problemas.value.find((p) => p.id === reporte.problema_id)?.nombre || ''}</strong></p>
-      <button id="cerrar-modal">Cerrar</button>
+    <div class="exito-card" role="dialog" aria-modal="true" aria-labelledby="exito-titulo">
+      <div class="exito-header">
+        <div class="exito-icono">${ICONO_CHECK}</div>
+        <h2 id="exito-titulo">Reporte enviado con éxito</h2>
+        <p>Gracias por ayudarnos a mejorar Culiacán.</p>
+      </div>
+
+      <div class="exito-body">
+        <span class="exito-label">Tu número de folio</span>
+        <div class="exito-folio">
+          <code id="exito-folio-texto">${folio}</code>
+          <button type="button" id="copiar-folio" class="exito-copiar" title="Copiar folio" aria-label="Copiar folio">
+            ${ICONO_COPIAR}
+          </button>
+        </div>
+        <p class="exito-aviso" id="exito-aviso">Guárdalo para consultar el estado de tu reporte.</p>
+
+        <dl class="exito-datos">
+          <div><dt>Departamento</dt><dd>${departamento}</dd></div>
+          <div><dt>Problema</dt><dd>${problema}</dd></div>
+        </dl>
+      </div>
+
+      <div class="exito-footer">
+        <button type="button" id="cerrar-modal" class="exito-cerrar">Cerrar</button>
+      </div>
     </div>
   `
   document.body.appendChild(modal)
 
-  const cerrarBtn = modal.querySelector('#cerrar-modal') as HTMLButtonElement
-  cerrarBtn.addEventListener('click', () => {
-    document.body.removeChild(modal)
+  const cerrar = () => {
+    if (modal.parentNode) document.body.removeChild(modal)
+  }
+
+  modal.querySelector('#cerrar-modal')!.addEventListener('click', cerrar)
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) cerrar()
+  })
+
+  const copiarBtn = modal.querySelector('#copiar-folio') as HTMLButtonElement
+  const aviso = modal.querySelector('#exito-aviso') as HTMLElement
+  const avisoOriginal = aviso.textContent
+
+  copiarBtn.addEventListener('click', async () => {
+    let ok = false
+    try {
+      await navigator.clipboard.writeText(reporte.folio)
+      ok = true
+    } catch {
+      // Respaldo para navegadores sin clipboard API o sin HTTPS
+      const temp = document.createElement('textarea')
+      temp.value = reporte.folio
+      temp.style.position = 'fixed'
+      temp.style.opacity = '0'
+      document.body.appendChild(temp)
+      temp.select()
+      try {
+        ok = document.execCommand('copy')
+      } catch {
+        ok = false
+      }
+      document.body.removeChild(temp)
+    }
+
+    aviso.textContent = ok
+      ? '¡Folio copiado al portapapeles!'
+      : 'No se pudo copiar. Selecciónalo y cópialo manualmente.'
+    aviso.classList.toggle('exito-aviso--ok', ok)
+    if (ok) {
+      copiarBtn.innerHTML = ICONO_CHECK
+      copiarBtn.classList.add('copiado')
+    }
+    setTimeout(() => {
+      aviso.textContent = avisoOriginal
+      aviso.classList.remove('exito-aviso--ok')
+      copiarBtn.innerHTML = ICONO_COPIAR
+      copiarBtn.classList.remove('copiado')
+    }, 2500)
   })
 }
 

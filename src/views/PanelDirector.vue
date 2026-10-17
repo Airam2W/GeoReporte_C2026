@@ -557,7 +557,7 @@ const { mostrarCargando, ocultarCargando } = useCargando()
 
 onMounted(async () => {
   mostrarCargando() // Mostrar el indicador de carga al iniciar
-  const sessionData = localStorage.getItem('adminSession')
+  const sessionData = localStorage.getItem('userSession')
   if (!sessionData) {
     router.push('/')
     return
@@ -1337,7 +1337,7 @@ const cambiarEstadoUsuario = async (user: any, nuevoEstado: 'Alta' | 'Baja') => 
   }
 }
 const cerrarSesion = () => {
-  localStorage.removeItem('adminSession')
+  localStorage.removeItem('userSession')
   router.push('/')
 }
 </script>

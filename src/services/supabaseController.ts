@@ -149,13 +149,13 @@ export async function selectEqOrder(
 
 // ------------------ Storage ------------------
 
-export async function uploadFoto(filePath: string, file: File) {
+export async function uploadFoto(filePath: string, file: File, bucket = 'fotos') {
   const formData = new FormData()
   formData.append('filePath', filePath)
   formData.append('file', file)
 
   try {
-    const res = await fetch(`${API_URL}/storage/fotos/upload`, {
+    const res = await fetch(`${API_URL}/storage/${bucket}/upload`, {
       method: 'POST',
       body: formData,
     })
@@ -165,8 +165,8 @@ export async function uploadFoto(filePath: string, file: File) {
   }
 }
 
-export async function getPublicUrl(filePath: string) {
-  return request(`/storage/fotos/publicUrl`, {
+export async function getPublicUrl(filePath: string, bucket = 'fotos') {
+  return request(`/storage/${bucket}/publicUrl`, {
     method: 'POST',
     body: JSON.stringify({ filePath }),
   })

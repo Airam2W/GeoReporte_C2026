@@ -1,0 +1,84 @@
+/* ==========================================
+   BOTONES DE ESTADO (compartido entre paneles)
+========================================== */
+.estados-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* Variante de 3 columnas (panel del supervisor y del administrador externo) */
+.estados-grid.estados-grid--tres {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.estado-btn {
+  --color: #616161;
+  --fondo: #f5f5f5;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--fondo);
+  color: var(--color);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+.estado-btn:hover { border-color: var(--color); }
+.estado-btn:active { transform: scale(0.98); }
+.estado-btn:focus-visible { outline: 3px solid var(--color); outline-offset: 2px; }
+
+.estado-btn.activo {
+  background: var(--color);
+  color: white;
+  border-color: var(--color);
+}
+
+.estado-conteo {
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.estado-btn.activo .estado-conteo { background: rgba(255, 255, 255, 0.25); }
+
+.estado-azul    { --color: #1976d2; --fondo: #e3f2fd; }
+.estado-amarillo{ --color: #f57f17; --fondo: #fff8e1; }
+.estado-teal    { --color: #00796b; --fondo: #e0f2f1; }
+.estado-cafe    { --color: #8b4513; --fondo: #f5f5dc; }
+.estado-purpura { --color: #571897; --fondo: #dac5e8; }
+.estado-verde   { --color: #2e7d32; --fondo: #e8f5e9; }
+.estado-rojo    { --color: #c62828; --fondo: #ffebee; }
+
+/* Móvil */
+@media (max-width: 600px) {
+  .estados-grid,
+  .estados-grid.estados-grid--tres { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+
+  .estado-btn {
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 4px;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    text-align: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .estados-grid { grid-template-columns: repeat(2, 1fr); }
+  .estados-grid.estados-grid--tres { grid-template-columns: repeat(3, 1fr); }
+}

@@ -14,9 +14,9 @@ app.use(router)
 
 app.mount('#app')
 
-const adminSession = localStorage.getItem('adminSession')
-if (adminSession) {
-  const session = JSON.parse(adminSession)
+const userSession = localStorage.getItem('userSession')
+if (userSession) {
+  const session = JSON.parse(userSession)
   router.push(
     session.tipo_id === 1
       ? '/management'
@@ -24,8 +24,10 @@ if (adminSession) {
         ? '/dashboard'
         : session.tipo_id === 3
           ? '/supervisor'
-          : session.tipo_id === 6
-            ? '/external'
-            : '/',
+          : session.tipo_id === 4
+            ? '/jefe'
+            : session.tipo_id === 6
+              ? '/external'
+                : '/',
   )
 }

@@ -18,7 +18,9 @@ export const obtenerClaseEstado = (estado: string): string => {
     finalizado: 'badge-verde',
     rechazado: 'badge-rojo',
     turnado: 'badge-purpura',
-    devuelto: 'badge-cafe'
+    devuelto: 'badge-cafe',
+    'en proceso': 'badge-teal',
+    'pendiente de finalización': 'badge-rosa',
   }
   return clases[estado] || 'badge-gris'
 }

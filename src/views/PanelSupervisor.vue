@@ -51,6 +51,21 @@
         </div>
       </header>
 
+      <!-- Botones de estado -->
+      <section class="estados-grid" aria-label="Filtrar reportes por estado">
+        <button
+          v-for="e in estados"
+          :key="e.valor"
+          type="button"
+          :class="['estado-btn', e.clase, { activo: filtros.estado === e.valor }]"
+          :aria-pressed="filtros.estado === e.valor"
+          @click="filtros.estado = e.valor"
+        >
+          <span class="estado-nombre">{{ e.valor }}</span>
+          <span class="estado-conteo">{{ conteoPorEstado[e.valor] || 0 }}</span>
+        </button>
+      </section>
+
       <!-- Panel de Filtros -->
       <section class="filtros-card">
         <div class="filtro-grupo input-icono">
@@ -68,7 +83,7 @@
           <input
             v-model="filtros.busqueda"
             type="text"
-            placeholder="Buscar por folio, nombre, teléfono o dirección..."
+            placeholder="Buscar por folio o dirección..."
           />
         </div>
 
@@ -104,7 +119,6 @@
               <th>FOLIO</th>
               <th>PROBLEMA</th>
               <th>DOMICILIO</th>
-              <th>CIUDADANO</th>
               <th>JEFE ASIGNADO</th>
               <th class="text-center">ACCIONES</th>
             </tr>
@@ -120,14 +134,16 @@
               <td class="font-mono">#{{ reporte.folio.split('-')[4] || reporte.folio }}</td>
               <td class="font-bold">{{ reporte.problemas?.nombre }}</td>
               <td :title="reporte.domicilio">{{ truncarTexto(reporte.domicilio, 25) }}</td>
-              <td>
-                <div class="ciudadano-info">
-                  <span>{{ reporte.nombre }}</span>
-                  <small>{{ reporte.telefono }}</small>
-                </div>
-              </td>
               <td>{{ reporte.jefe }}</td>
               <td class="acciones-celda">
+                <button
+                  class="btn-accion btn-pdf"
+                  title="Descargar PDF"
+                  @click="descargarPDF(reporte)"
+                >
+                  📄
+                </button>
+
                 <button
                   class="btn-accion btn-ver"
                   title="Ver detalle"
@@ -168,6 +184,7 @@
       @asignarJefe="asignarReporte"
       @rechazar="rechazarReporte"
       @devolverRep="abrirModalDevolucion"
+      @descargar-pdf="descargarPDF"
     />
 
     <DevolucionReporteModal
@@ -178,6 +195,16 @@
       @close="cerrarModalDevolucion"
       @confirm="confirmarDevolucion"
     />
+
+    <AsignarJefeModal
+      :visible="modalAsignarJefeVisible"
+      :folio="folioAAsignar"
+      :problema="problemaAAsignar"
+      :jefes="jefesActivos"
+      :guardando="guardandoAsignacion"
+      @close="cerrarModalAsignarJefe"
+      @confirm="confirmarAsignacionJefe"
+    />
   </div>
 </template>
 
@@ -187,8 +214,15 @@ import { useRouter } from 'vue-router'
 import { selectEq, selectEqOrder, updateEq, selectEqSingle } from '../services/supabaseController'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import Swal from 'sweetalert2'
-import { truncarTexto, obtenerClaseEstado } from '../logic/panelAdministrador'
-import { redireccionarUsuario } from '@/logic/redirectUser.ts'
+import { truncarTexto } from '../logic/panelAdministrador'
+import { redireccionarUsuario } from '../logic/redirectUser'
+import { generarPdfReporte } from '../logic/reportePdf'
+import AsignarJefeModal from '../components/AsignarJefeModal.vue'
+
+const modalAsignarJefeVisible = ref(false)
+const folioAAsignar = ref('')
+const problemaAAsignar = ref('')
+const guardandoAsignacion = ref(false)
 
 const router = useRouter()
 const supervisor = ref<any>(null)
@@ -214,8 +248,22 @@ const filtros = ref({
   busqueda: '',
   fecha: '',
   problema: '',
-  estado: '',
+  estado: 'Pendiente de Asignación',
   jefe: '',
+})
+
+const estados = [
+  { valor: 'Pendiente de Asignación', clase: 'estado-azul' },
+  { valor: 'Asignado', clase: 'estado-amarillo' },
+  { valor: 'Pendiente de Finalización', clase: 'estado-verde' },
+]
+
+const conteoPorEstado = computed(() => {
+  const conteo: Record<string, number> = {}
+  for (const r of reportes.value) {
+    conteo[r.estado] = (conteo[r.estado] || 0) + 1
+  }
+  return conteo
 })
 
 import { useCargando } from '../composable/useCargando'
@@ -223,7 +271,7 @@ const { mostrarCargando, ocultarCargando } = useCargando()
 
 onMounted(async () => {
   mostrarCargando() // Mostrar el indicador de carga al iniciar
-  const sessionData = localStorage.getItem('adminSession')
+  const sessionData = localStorage.getItem('userSession')
   if (!sessionData) {
     router.push('/')
     return
@@ -241,6 +289,21 @@ onMounted(async () => {
 
   ocultarCargando() // Ocultar el indicador de carga después de cargar los datos
 })
+
+const descargarPDF = async (reporte: any) => {
+  mostrarCargando()
+  try {
+    await generarPdfReporte(reporte, {
+      departamento: supervisor.value?.departamento,
+      supervisor: supervisor.value?.nombre,
+    })
+  } catch (error) {
+    console.error('Error al generar el PDF:', error)
+    Swal.fire('Error', 'No se pudo generar el PDF del reporte.', 'error')
+  } finally {
+    ocultarCargando()
+  }
+}
 
 const cargarCatalogos = async () => {
   // Traer solo problemas del departamento del supervisor
@@ -276,7 +339,7 @@ const cargarCatalogos = async () => {
     'jefes',
     'supervisor_id',
     supervisor.value.id_supervisor,
-    ['id', 'usuario_id', 'usuarios(nombre,apellido_p,apellido_m)'],
+    ['id', 'usuario_id', 'usuarios(nombre,apellido_p,apellido_m,estadoadministrativo)'],
   )
 
   if (jefesError) {
@@ -284,6 +347,7 @@ const cargarCatalogos = async () => {
   } else {
     jefesOpciones.value = (jefesData || []).map((j: any) => ({
       id: j.id,
+      estado: j.usuarios?.estadoadministrativo,
       nombre:
         `${j.usuarios?.nombre || ''} ${j.usuarios?.apellido_p || ''} ${j.usuarios?.apellido_m || ''}`.trim(),
     }))
@@ -313,8 +377,6 @@ const cargarReportes = async () => {
     [
       'folio',
       'descripcion',
-      'nombre',
-      'telefono',
       'domicilio',
       'referencias',
       'foto_url',
@@ -330,21 +392,20 @@ const cargarReportes = async () => {
       .filter((r: any) => r.detalle_reporte?.supervisor_id === supervisor.value.id_supervisor)
       .map((r: any) => {
         const jefeUsuario = r.detalle_reporte?.jefes?.usuarios
+        const estadoId = r.detalle_reporte?.estado_id
+
+        let estado = 'Pendiente de Asignación'
+        if (estadoId === 8) estado = 'Pendiente de Finalización'
+        else if (estadoId === 7) estado = 'Asignado'
 
         return {
           ...r,
           jefe: jefeUsuario
             ? `${jefeUsuario.nombre} ${jefeUsuario.apellido_p} ${jefeUsuario.apellido_m || ''}`.trim()
             : 'SIN ASIGNAR',
-          estado: r.detalle_reporte?.jefe_id ? 'Asignado' : 'Pendiente de Asignación',
+          estado,
         }
       })
-
-    // Ordena: primero "Pendiente de Asignación", luego "Asignado"
-    reportesMapeados.sort((a, b) => {
-      const prioridad = (estado: string) => (estado === 'Pendiente de Asignación' ? 0 : 1)
-      return prioridad(a.estado) - prioridad(b.estado)
-    })
 
     reportes.value = reportesMapeados
   } else if (error) {
@@ -354,15 +415,14 @@ const cargarReportes = async () => {
   cargando.value = false
 }
 
+const jefesActivos = computed(() => jefesOpciones.value.filter((j) => j.estado === 'Alta'))
+
 // Filtros en tiempo real
 const reportesFiltrados = computed(() => {
   return reportes.value.filter((r) => {
     const q = filtros.value.busqueda.toLowerCase()
     const coincideBusqueda =
-      r.folio.toLowerCase().includes(q) ||
-      r.nombre.toLowerCase().includes(q) ||
-      r.domicilio.toLowerCase().includes(q) ||
-      r.telefono.includes(q)
+      r.folio.toLowerCase().includes(q) || r.domicilio.toLowerCase().includes(q)
 
     const coincideProblema =
       filtros.value.problema === '' || r.problemas?.id == filtros.value.problema
@@ -562,42 +622,76 @@ const confirmarDevolucion = async (formData: { titulo_id: number | string; notas
     guardandoDevolucion.value = false
   }
 }
+// Paso 1: solo abre el modal
+const asignarReporte = (folio: string) => {
+  if (!folio) return
+  const reporte = reportes.value.find((r) => r.folio === folio)
+  cerrarModalVer() // por si se llamó desde el modal de detalle
+  folioAAsignar.value = folio
+  problemaAAsignar.value = reporte?.problemas?.nombre || ''
+  modalAsignarJefeVisible.value = true
+}
 
-const asignarReporte = async (folio: string) => {
+const cerrarModalAsignarJefe = () => {
+  modalAsignarJefeVisible.value = false
+}
+
+// Paso 2: confirmación + guardado
+const confirmarAsignacionJefe = async (datos: { jefe_id: number | string; jefeNombre: string }) => {
+  const folio = folioAAsignar.value
   if (foliosProcesando.value.has(folio)) return
+
+  const result = await Swal.fire({
+    title: '¿Asignar reporte?',
+    html: `El reporte <b>${folio}</b> se asignará al jefe <b>${datos.jefeNombre}</b>.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#1a6b2f',
+    cancelButtonColor: '#888',
+    confirmButtonText: 'Sí, asignar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    customClass: { container: 'swal-difuminado' },
+  })
+
+  if (!result.isConfirmed) return
+
   foliosProcesando.value.add(folio)
+  guardandoAsignacion.value = true
+
   try {
-    const result = await Swal.fire({
-      title: '¿Asignar Jefe?',
-      text: `El folio ${folio} será asignado a un jefe.`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#1a6b2f',
-      cancelButtonColor: '#888',
-      confirmButtonText: 'Sí, asignar',
-      cancelButtonText: 'Cancelar',
-      reverseButtons: true,
-      customClass: { container: 'swal-difuminado' },
+    // Un solo update: jefe, estado En Proceso (7) y fecha de inicio
+    const { error } = await updateEq('detalle_reporte', 'folio', folio, {
+      jefe_id: datos.jefe_id,
+      estado_id: 7, // 7 = En Proceso
+      fecha_inicio: new Date().toISOString(),
     })
 
-    if (result.isConfirmed) {
-      // Aquí iría la lógica para asignar el reporte a un jefe
-      // 
-
-      // Simulación de éxito
-      await cargarReportes()
-      cerrarModalVer()
-
+    if (error) {
+      console.error('Error al asignar reporte:', error)
       Swal.fire({
-        title: '¡Asignado!',
-        text: `El reporte ha sido asignado correctamente.`,
-        icon: 'success',
+        title: 'Error',
+        text: 'No se pudo asignar el reporte.',
+        icon: 'error',
         confirmButtonColor: '#1a6b2f',
         customClass: { container: 'swal-difuminado' },
       })
+      return
     }
+
+    cerrarModalAsignarJefe()
+    await cargarReportes()
+
+    Swal.fire({
+      title: '¡Asignado!',
+      text: `El reporte fue asignado a ${datos.jefeNombre}.`,
+      icon: 'success',
+      confirmButtonColor: '#1a6b2f',
+      customClass: { container: 'swal-difuminado' },
+    })
   } finally {
     foliosProcesando.value.delete(folio)
+    guardandoAsignacion.value = false
   }
 }
 
@@ -606,7 +700,7 @@ const irACrearReporte = () => {
 }
 
 const cerrarSesion = () => {
-  localStorage.removeItem('adminSession')
+  localStorage.removeItem('userSession')
   router.push('/')
 }
 
@@ -630,4 +724,5 @@ defineExpose({
 })
 </script>
 
+<style src="../assets/estadosBotones.css"></style>
 <style src="../assets/panelSupervisor.css"></style>

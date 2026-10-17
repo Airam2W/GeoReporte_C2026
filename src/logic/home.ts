@@ -275,7 +275,26 @@ export const iniciarSesion = () => {
         }
       }
 
-      localStorage.setItem('adminSession', JSON.stringify(usuario))
+      // Si el usuario es Jefe (tipo_id === 4), traer su id y su departamento
+      if (usuario.tipo_id === 4 || usuario.tipousuario_id === 4) {
+        const { data: jefeData, error: jefeError } = await selectEq(
+          'jefes',
+          'usuario_id',
+          usuario.id,
+          ['id', 'supervisor_id', 'supervisores(departamento_id)'],
+        )
+
+        if (!jefeError && jefeData && jefeData.length > 0) {
+          usuario.id_jefe = jefeData[0].id
+          if (!usuario.departamento_id) {
+            usuario.departamento_id = jefeData[0].supervisores?.departamento_id
+          }
+        } else {
+          console.error('No se pudo obtener el id de jefe:', jefeError)
+        }
+      }
+
+      localStorage.setItem('userSession', JSON.stringify(usuario))
 
       // Para éxito
       //Toast.fire({

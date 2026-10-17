@@ -8,7 +8,8 @@ export const obtenerClaseEstado = (estado: string) => {
     rechazado: 'badge-rojo',
     turnado: 'badge-purpura',
     'devuelto': 'badge-naranja',
-    'en proceso': 'badge-azul-claro',
+    'en proceso': 'badge-teal',
+    'pendiente de finalización': 'badge-rosa',
   }
   return clases[estado] || 'badge-gris'
 }
@@ -22,6 +23,7 @@ export const traducirEstado = (estado: string) => {
     turnado: 'En Revisión',
     'Devuelto': 'En Revisión',
     'En Proceso': 'En Proceso',
+    'Pendiente de Finalización': 'En Proceso',
   }
   return traducciones[estado] || estado
 }

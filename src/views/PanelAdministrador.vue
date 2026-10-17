@@ -62,7 +62,7 @@
           @click="filtros.estado = e.valor"
         >
           <span class="estado-nombre">{{ e.valor }}</span>
-          <!--<span class="estado-conteo">{{ conteoPorEstado[e.valor] || 0 }}</span>-->
+          <span class="estado-conteo">{{ conteoPorEstado[e.valor] || 0 }}</span>
         </button>
       </section>
 
@@ -90,6 +90,27 @@
         <div class="filtro-grupo">
           <input v-model="filtros.fecha" type="date" title="Filtrar por fecha" />
         </div>
+
+        <template v-if="esEnProceso">
+          <div class="filtro-grupo">
+            <select v-model="filtros.supervisor">
+              <option value="">Todos los supervisores</option>
+              <option v-for="s in supervisoresTodos" :key="s.id" :value="s.id">
+                {{ s.nombre }}
+              </option>
+            </select>
+          </div>
+
+          <div class="filtro-grupo">
+            <select v-model="filtros.jefe" :disabled="!filtros.supervisor">
+              <option value="">Todos los jefes</option>
+              <option value="SIN_ASIGNAR">SIN ASIGNAR</option>
+              <option v-for="j in jefesDelSupervisor" :key="j.id" :value="j.id">
+                {{ j.nombre }}
+              </option>
+            </select>
+          </div>
+        </template>
 
         <div class="filtro-grupo">
           <select v-model="filtros.problema">
@@ -126,6 +147,8 @@
               <th>PROBLEMA</th>
               <th>DOMICILIO</th>
               <th>CIUDADANO</th>
+              <th v-if="esEnProceso">SUPERVISOR ASIGNADO</th>
+              <th v-if="esEnProceso">JEFE ASIGNADO</th>
               <th class="text-center">ACCIONES</th>
             </tr>
           </thead>
@@ -146,6 +169,8 @@
                   <small>{{ reporte.telefono }}</small>
                 </div>
               </td>
+              <td v-if="esEnProceso">{{ reporte.supervisor }}</td>
+              <td v-if="esEnProceso">{{ reporte.jefe }}</td>
               <td class="acciones-celda">
                 <button
                   class="btn-accion btn-ver"
@@ -248,7 +273,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { selectEq, selectEqOrder, updateEq, selectEqSingle } from '../services/supabaseController'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
@@ -287,6 +312,7 @@ const foliosProcesando = ref(new Set<string>())
 const estados = [
   { valor: 'Pendiente', clase: 'estado-azul' },
   { valor: 'En Revisión', clase: 'estado-amarillo' },
+  { valor: 'En Proceso', clase: 'estado-teal' },
   { valor: 'Devuelto', clase: 'estado-cafe' },
   { valor: 'Turnado', clase: 'estado-purpura' },
   { valor: 'Finalizado', clase: 'estado-verde' },
@@ -311,14 +337,46 @@ const filtros = ref({
   fecha: '',
   problema: '',
   estado: 'Pendiente',
+  supervisor: '',
+  jefe: '',
 })
+
+// Al cambiar de supervisor, el jefe elegido ya no aplica
+watch(
+  () => filtros.value.supervisor,
+  () => {
+    filtros.value.jefe = ''
+  },
+)
+
+// Fuera de "En Proceso" estos filtros no se ven, así que se limpian
+watch(
+  () => filtros.value.estado,
+  (e) => {
+    if (e !== 'En Proceso') {
+      filtros.value.supervisor = ''
+      filtros.value.jefe = ''
+    }
+  },
+)
+
+const supervisoresTodos = ref<any[]>([])
+const jefesTodos = ref<any[]>([])
+
+const esEnProceso = computed(() => filtros.value.estado === 'En Proceso')
+const columnasTabla = computed(() => (esEnProceso.value ? 7 : 5))
+
+// Solo los jefes del supervisor elegido
+const jefesDelSupervisor = computed(() =>
+  jefesTodos.value.filter((j) => j.supervisor_id == filtros.value.supervisor),
+)
 
 import { useCargando } from '../composable/useCargando'
 const { mostrarCargando, ocultarCargando } = useCargando()
 
 onMounted(async () => {
   mostrarCargando() // Mostrar el indicador de carga al iniciar
-  const sessionData = localStorage.getItem('adminSession')
+  const sessionData = localStorage.getItem('userSession')
   if (!sessionData) {
     router.push('/')
     return
@@ -388,13 +446,35 @@ const cargarCatalogos = async () => {
   if (supError) {
     console.error('Error al cargar supervisores:', supError.message)
   } else {
-    supervisoresOpciones.value = (supData || [])
-      .filter((s: any) => s.usuarios?.estadoadministrativo === 'Alta')
-      .map((s: any) => ({
-        id: s.id,
-        nombre:
-          `${s.usuarios?.nombre || ''} ${s.usuarios?.apellido_p || ''} ${s.usuarios?.apellido_m || ''}`.trim(),
-      }))
+    supervisoresTodos.value = (supData || []).map((s: any) => ({
+      id: s.id,
+      estado: s.usuarios?.estadoadministrativo,
+      nombre:
+        `${s.usuarios?.nombre || ''} ${s.usuarios?.apellido_p || ''} ${s.usuarios?.apellido_m || ''}`.trim(),
+    }))
+
+    supervisoresOpciones.value = supervisoresTodos.value.filter((s) => s.estado === 'Alta')
+
+    // Jefes que dependen de los supervisores de este departamento
+    const idsSupervisores = supervisoresTodos.value.map((s) => s.id)
+    const { data: jefesData, error: jefesError } = await selectAll('jefes', [
+      'id',
+      'supervisor_id',
+      'usuarios(nombre,apellido_p,apellido_m)',
+    ])
+
+    if (jefesError) {
+      console.error('Error al cargar jefes:', jefesError.message)
+    } else {
+      jefesTodos.value = (jefesData || [])
+        .filter((j: any) => idsSupervisores.includes(j.supervisor_id))
+        .map((j: any) => ({
+          id: j.id,
+          supervisor_id: j.supervisor_id,
+          nombre:
+            `${j.usuarios?.nombre || ''} ${j.usuarios?.apellido_p || ''} ${j.usuarios?.apellido_m || ''}`.trim(),
+        }))
+    }
   }
 
   const { data: titulosData, error: titulosError } = await selectEq(
@@ -517,11 +597,13 @@ const cargarReportes = async () => {
       'foto_url',
       'created_at',
       'problemas (id, nombre)',
-      'detalle_reporte (estado_id, estadoreporte (estado))',
-      'historial_reporte (categoria_historial_id, notas, fecha, titulo(nombre))', // <-- nuevo
+      'historial_reporte (categoria_historial_id, notas, fecha, titulo(nombre))',
+      'detalle_reporte (estado_id, estadoreporte (estado), supervisor_id, jefe_id, supervisores (usuarios (nombre, apellido_p, apellido_m)), jefes (usuarios (nombre, apellido_p, apellido_m)))',
     ],
     false,
   )
+
+  if (error) console.error('Error al cargar reportes:', error.message)
 
   if (!error && data) {
     reportes.value = data.map((r: any) => {
@@ -532,10 +614,17 @@ const cargarReportes = async () => {
           ? [r.historial_reporte]
           : []
 
+      const nombreDe = (u: any) =>
+        u ? `${u.nombre || ''} ${u.apellido_p || ''} ${u.apellido_m || ''}`.trim() : 'SIN ASIGNAR'
+
       return {
         ...r,
-        estado: r.detalle_reporte?.estadoreporte?.estado || 'Pendiente',
-        notas_rechazo: notasPorCategoria(historial, 2), // arreglo, ya no texto
+        estado: [7, 8].includes(r.detalle_reporte?.estado_id)
+          ? 'En Proceso'
+          : r.detalle_reporte?.estadoreporte?.estado || 'Pendiente',
+        supervisor: nombreDe(r.detalle_reporte?.supervisores?.usuarios),
+        jefe: nombreDe(r.detalle_reporte?.jefes?.usuarios),
+        notas_rechazo: notasPorCategoria(historial, 2),
         notas_devuelto: notasPorCategoria(historial, 1),
       }
     })
@@ -589,7 +678,24 @@ const reportesFiltrados = computed(() => {
       coincideFecha = fechaFormateadaLocal === filtros.value.fecha
     }
 
-    return coincideBusqueda && coincideProblema && coincideEstado && coincideFecha
+    const coincideSupervisor =
+      filtros.value.supervisor === '' ||
+      r.detalle_reporte?.supervisor_id == filtros.value.supervisor
+
+    const coincideJefe =
+      filtros.value.jefe === '' ||
+      (filtros.value.jefe === 'SIN_ASIGNAR'
+        ? !r.detalle_reporte?.jefe_id
+        : r.detalle_reporte?.jefe_id == filtros.value.jefe)
+
+    return (
+      coincideBusqueda &&
+      coincideProblema &&
+      coincideEstado &&
+      coincideFecha &&
+      coincideSupervisor &&
+      coincideJefe
+    )
   })
 })
 
@@ -713,7 +819,7 @@ const buscarEstadoId = async (estado: string): Promise<string | null> => {
 }
 
 const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Pendiente') => {
-   if (foliosProcesando.value.has(folio)) return
+  if (foliosProcesando.value.has(folio)) return
   foliosProcesando.value.add(folio)
   try {
     const result = await Swal.fire({
@@ -849,7 +955,7 @@ const irACrearReporte = () => {
 }
 
 const cerrarSesion = () => {
-  localStorage.removeItem('adminSession')
+  localStorage.removeItem('userSession')
   router.push('/')
 }
 
@@ -872,4 +978,5 @@ defineExpose({
 })
 </script>
 
+<style src="../assets/estadosBotones.css"></style>
 <style src="../assets/panelAdministrador.css"></style>

@@ -56,7 +56,7 @@
           @click="filtros.estado = e.valor"
         >
           <span class="estado-nombre">{{ e.valor }}</span>
-          <!--<span class="estado-conteo">{{ conteoPorEstado[e.valor] || 0 }}</span>-->
+          <span class="estado-conteo">{{ conteoPorEstado[e.valor] || 0 }}</span>
         </button>
       </section>
 
@@ -247,7 +247,7 @@ const { mostrarCargando, ocultarCargando } = useCargando()
 
 onMounted(async () => {
   mostrarCargando() // Mostrar el indicador de carga al iniciar
-  const sessionData = localStorage.getItem('adminSession')
+  const sessionData = localStorage.getItem('userSession')
   if (!sessionData) {
     router.push('/')
     return
@@ -456,7 +456,7 @@ const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Pendi
 }
 
 const cerrarSesion = () => {
-  localStorage.removeItem('adminSession')
+  localStorage.removeItem('userSession')
   router.push('/')
 }
 
@@ -478,4 +478,5 @@ defineExpose({
 })
 </script>
 
+<style src="../assets/estadosBotones.css"></style>
 <style src="../assets/panelAdministrador.css" />

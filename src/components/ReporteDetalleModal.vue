@@ -37,23 +37,41 @@
               </div>
 
               <div class="info-grupo-doble">
-                <div class="info-item">
+                <div class="info-item" v-if="esAdmin || esAdminEx">
                   <label>Ciudadano</label>
                   <p>{{ reporte.nombre }}</p>
                 </div>
-                <div class="info-item" v-if="esAdmin || esAdminEx || esSupervisor">
+                <div class="info-item" v-if="esAdmin || esAdminEx">
                   <label>Teléfono</label>
                   <p>{{ reporte.telefono }}</p>
                 </div>
-                <div class="info-item" v-if="esAdmin || esAdminEx || esSupervisor">
+                <div class="info-item" v-if="esAdmin || esAdminEx">
                   <label>Correo Electrónico</label>
                   <p>{{ reporte.correo || 'No proporcionado' }}</p>
+                </div>
+                <div class="info-item" v-if="esAdmin || esJefe">
+                  <label>Supervisor Asignado</label>
+                  <p>{{ reporte.supervisor || 'No proporcionado' }}</p>
+                </div>
+                <div class="info-item" v-if="esSupervisor || esAdmin">
+                  <label>Jefe Asignado</label>
+                  <p>{{ reporte.jefe || 'No proporcionado' }}</p>
                 </div>
               </div>
 
               <div class="info-item">
                 <label>Fecha de creación</label>
                 <p>{{ formatearFechaLocal(reporte.created_at) }}</p>
+              </div>
+
+              <div class="info-item">
+                <label>Fecha de Inicio</label>
+                <p>{{ "Todavia no definida" }}</p>
+              </div>
+
+              <div class="info-item">
+                <label>Fecha de Cierre</label>
+                <p>{{ "Todavia no definida" }}</p>
               </div>
 
               <div
@@ -113,7 +131,7 @@
                 <div v-else class="sin-foto">Sin imagen</div>
               </div>
 
-              <div class="estado-actual-box" v-if="esAdmin || esAdminEx || esSupervisor">
+              <div class="estado-actual-box" v-if="esAdmin || esAdminEx || esSupervisor || esJefe">
                 <label>Estado Actual</label>
                 <span
                   :class="['badge badge-grande', obtenerClaseEstado(reporte.estado.toLowerCase())]"
@@ -122,7 +140,7 @@
                 </span>
               </div>
 
-              <div class="estado-actual-box" v-if="!esAdmin && !esAdminEx && !esSupervisor">
+              <div class="estado-actual-box" v-if="!esAdmin && !esAdminEx && !esSupervisor && !esJefe">
                 <label>Estado Actual</label>
                 <span
                   :class="['badge badge-grande', obtenerClaseEstado(reporte.estado.toLowerCase())]"
@@ -136,6 +154,14 @@
 
         <div class="modal-footer">
           <button class="btn-secundario" @click="cerrar">Cerrar</button>
+
+          <button
+            class="btn-primario"
+            title="Descargar PDF"
+            @click="$emit('descargar-pdf', reporte)"
+          >
+            Descargar PDF
+          </button>
 
           <button
             v-if="!esAdmin && !esAdminEx && !esSupervisor"
@@ -243,6 +269,7 @@ const emit = defineEmits([
   'devolverRep',
   'turnar',
   'finalizar',
+  'descargar-pdf',
 ])
 
 const cerrar = () => {
@@ -274,6 +301,10 @@ const props = defineProps({
     default: false,
   },
   esSupervisor: {
+    type: Boolean,
+    default: false,
+  },
+  esJefe: {
     type: Boolean,
     default: false,
   },

@@ -1,0 +1,34 @@
+textarea {
+ width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+  outline: none;
+}
+textarea:focus { border-color: #621132; }
+
+.archivo-oculto { display: none; }
+
+.zona-foto {
+  width: 100%;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: #fafafa;
+  border: 2px dashed #c9bfae;
+  border-radius: 10px;
+  color: #666;
+  font-size: 0.95rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+.zona-foto:hover { border-color: #621132; background: #f5e9ee; }
+.zona-foto span { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 16px; }
+.zona-foto small { color: #999; font-size: 0.75rem; }
+.zona-foto img { width: 100%; max-height: 240px; object-fit: contain; } 

@@ -1,0 +1,3 @@
+ALTER TABLE detalle_reporte
+ADD COLUMN fecha_inicio TIMESTAMP NULL,
+ADD COLUMN fecha_cierre TIMESTAMP NULL;

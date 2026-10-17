@@ -1,4 +1,3 @@
-
 /* ==========================================
    DISEÑO DEL DASHBOARD Y TABLA
 ========================================== */
@@ -25,6 +24,7 @@
   align-items: center;
   gap: 10px;
 }
+
 .topbar-logo h1 {
   font-size: 1.2rem;
   font-weight: 600;
@@ -36,19 +36,23 @@
   align-items: center;
   gap: 16px;
 }
+
 .user-info {
   display: flex;
   flex-direction: column;
   text-align: right;
 }
+
 .user-name {
   font-weight: 600;
   font-size: 0.95rem;
 }
+
 .user-dept {
   font-size: 0.75rem;
   opacity: 0.8;
 }
+
 .btn-logout {
   background: rgba(255, 255, 255, 0.1);
   border: none;
@@ -58,6 +62,7 @@
   cursor: pointer;
   transition: 0.2s;
 }
+
 .btn-logout:hover {
   background: rgba(255, 255, 255, 0.2);
 }
@@ -67,11 +72,13 @@
   margin: 0 auto;
   padding: 32px 24px;
 }
+
 .content-header h2 {
   font-size: 1.8rem;
   color: #621132;
   margin-bottom: 4px;
 }
+
 .content-header p {
   color: #666;
   margin-bottom: 24px;
@@ -89,11 +96,13 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border: 1px solid #eaeaea;
 }
+
 .filtro-grupo {
   flex: 1;
   min-width: 200px;
   position: relative;
 }
+
 .filtro-grupo input,
 .filtro-grupo select {
   width: 100%;
@@ -104,15 +113,18 @@
   outline: none;
   transition: 0.2s;
 }
+
 .filtro-grupo input:focus,
 .filtro-grupo select:focus {
   border-color: #621132;
 }
+
 .input-icono svg {
   position: absolute;
   left: 12px;
   top: 12px;
 }
+
 .input-icono input {
   padding-left: 36px;
 }
@@ -126,11 +138,13 @@
   border: 1px solid #eaeaea;
   overflow-x: auto;
 }
+
 .tabla-reportes {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
 }
+
 .tabla-reportes th {
   background: #f9fafb;
   padding: 14px 16px;
@@ -140,14 +154,17 @@
   font-weight: 600;
   border-bottom: 2px solid #eaeaea;
 }
+
 .tabla-reportes td {
   padding: 14px 16px;
   border-bottom: 1px solid #f0f0f0;
   vertical-align: middle;
 }
+
 .fila-datos:hover {
   background-color: #f4faf4;
 }
+
 .fila-vacia td {
   text-align: center;
   padding: 32px;
@@ -158,18 +175,22 @@
   font-family: monospace;
   color: #666;
 }
+
 .font-bold {
   font-weight: 600;
   color: #222;
 }
+
 .ciudadano-info {
   display: flex;
   flex-direction: column;
 }
+
 .ciudadano-info small {
   color: #777;
   font-size: 0.8rem;
 }
+
 .text-center {
   text-align: center;
 }
@@ -182,34 +203,42 @@
   font-weight: 600;
   display: inline-block;
 }
+
 .badge-grande {
   padding: 8px 16px;
   font-size: 1rem;
 }
+
 .badge-azul {
   background: #e3f2fd;
   color: #1976d2;
 }
+
 .badge-amarillo {
   background: #fff8e1;
   color: #f57f17;
 }
+
 .badge-verde {
   background: #e8f5e9;
   color: #2e7d32;
 }
+
 .badge-rojo {
   background: #ffebee;
   color: #c62828;
 }
+
 .badge-purpura {
   background: #dac5e8;
   color: #571897;
 }
+
 .badge-cafe {
   background: #f5f5dc;
   color: #8b4513;
 }
+
 .badge-gris {
   background: #f5f5f5;
   color: #616161;
@@ -222,13 +251,16 @@
   vertical-align: middle;
   width: 1%;
 }
+
 .acciones-celda .btn-accion {
   display: inline-flex;
   vertical-align: middle;
 }
-.acciones-celda .btn-accion + .btn-accion {
+
+.acciones-celda .btn-accion+.btn-accion {
   margin-left: 8px;
 }
+
 .btn-accion {
   width: 32px;
   height: 32px;
@@ -241,12 +273,15 @@
   background: #f5f5f5;
   transition: 0.2s;
 }
+
 .btn-ver:hover {
   background: #e3f2fd;
 }
+
 .btn-asignar:hover {
   background: #fff8e1;
 }
+
 .btn-rechazar:hover {
   background: #ffebee;
 }
@@ -290,6 +325,7 @@
   align-items: center;
   z-index: 1000;
 }
+
 .modal-card {
   background: white;
   width: 90%;
@@ -301,6 +337,7 @@
   overflow: hidden;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
+
 .modal-header {
   padding: 20px 24px;
   border-bottom: 1px solid #eee;
@@ -309,17 +346,20 @@
   align-items: center;
   background: #fafafa;
 }
+
 .modal-header h3 {
   margin: 0;
   font-size: 1.4rem;
   color: #621132;
 }
+
 .folio-text {
   margin: 4px 0 0;
   color: #666;
   font-family: monospace;
   font-size: 0.9rem;
 }
+
 .btn-cerrar {
   background: none;
   border: none;
@@ -327,6 +367,7 @@
   color: #aaa;
   cursor: pointer;
 }
+
 .btn-cerrar:hover {
   color: #333;
 }
@@ -336,6 +377,7 @@
   overflow-y: auto;
   flex: 1;
 }
+
 .modal-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -347,6 +389,7 @@
   flex-direction: column;
   gap: 16px;
 }
+
 .info-item label {
   display: block;
   font-size: 0.8rem;
@@ -355,16 +398,19 @@
   font-weight: 600;
   margin-bottom: 4px;
 }
+
 .info-item p {
   margin: 0;
   font-size: 1rem;
   color: #222;
 }
+
 .info-item .destacado {
   font-weight: 700;
   font-size: 1.1rem;
   color: #621132;
 }
+
 .descripcion-box {
   background: #f9f9f9;
   padding: 12px;
@@ -374,12 +420,14 @@
   line-height: 1.5;
   color: #444;
 }
+
 .referencias {
   font-size: 0.85rem !important;
   color: #666 !important;
   margin-top: 4px !important;
   font-style: italic;
 }
+
 .info-grupo-doble {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -391,6 +439,7 @@
   flex-direction: column;
   gap: 16px;
 }
+
 .foto-columna label {
   display: block;
   font-size: 0.8rem;
@@ -398,6 +447,7 @@
   text-transform: uppercase;
   font-weight: 600;
 }
+
 .foto-contenedor {
   width: 100%;
   aspect-ratio: 4/3;
@@ -408,11 +458,13 @@
   align-items: center;
   justify-content: center;
 }
+
 .foto-contenedor img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+
 .sin-foto {
   color: #aaa;
   font-style: italic;
@@ -425,6 +477,7 @@
   text-align: center;
   border: 1px solid #eee;
 }
+
 .estado-actual-box label {
   margin-bottom: 8px;
 }
@@ -437,6 +490,7 @@
   gap: 12px;
   background: #fafafa;
 }
+
 .btn-secundario,
 .btn-primario {
   padding: 10px 20px;
@@ -446,17 +500,21 @@
   border: none;
   transition: 0.2s;
 }
+
 .btn-secundario {
   background: #e0e0e0;
   color: #333;
 }
+
 .btn-secundario:hover {
   background: #d0d0d0;
 }
+
 .btn-primario {
   background: #621132;
   color: white;
 }
+
 .btn-primario:hover {
   background: #d5c98a;
 }
@@ -478,6 +536,7 @@
 .fade-leave-active {
   transition: opacity 0.3s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
@@ -488,11 +547,14 @@
   -webkit-backdrop-filter: blur(4px);
 }
 
+
 @media (max-width: 768px) {
   .modal-grid {
     grid-template-columns: 1fr;
   }
+
   .info-grupo-doble {
     grid-template-columns: 1fr;
   }
+
 }
