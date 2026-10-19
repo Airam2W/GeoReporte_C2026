@@ -45,16 +45,19 @@
         <p>{{ jefe.departamento }}</p>
       </header>
 
-      <!-- Contador general -->
-      <section class="contador-card" aria-live="polite">
-        <div class="contador-numero">{{ reportes.length }}</div>
-        <div class="contador-texto">
-          <strong>Reportes asignados</strong>
-          <small v-if="reportesFiltrados.length !== reportes.length">
-            Mostrando {{ reportesFiltrados.length }} con los filtros aplicados
-          </small>
-          <small v-else>Total a tu cargo</small>
-        </div>
+      <!-- Botones de estado -->
+      <section class="estados-grid estados-grid--dos" aria-label="Filtrar reportes por estado">
+        <button
+          v-for="e in estados"
+          :key="e.valor"
+          type="button"
+          :class="['estado-btn', e.clase, { activo: filtros.estado === e.valor }]"
+          :aria-pressed="filtros.estado === e.valor"
+          @click="filtros.estado = e.valor"
+        >
+          <span class="estado-nombre">{{ e.valor }}</span>
+          <span class="estado-conteo">{{ conteoPorEstado[e.valor] || 0 }}</span>
+        </button>
       </section>
 
       <!-- Filtros -->
@@ -171,6 +174,8 @@
       :esJefe="true"
       @close="cerrarModalVer"
       @descargar-pdf="descargarPDF"
+      @actualizarAvance="actualizarAvance"
+      @enviarPeticionFinalizacion="finalizarReporte"
     />
 
     <EvidenciaReporteModal
@@ -215,7 +220,9 @@ const titulosModal = computed(() =>
   modoEvidencia.value === 'finalizar' ? tituloFinalizacion.value : titulosAvance.value,
 )
 const encabezadoModal = computed(() =>
-  modoEvidencia.value === 'finalizar' ? 'Enviar Petición de Finalización' : 'Enviar Avance de Reporte',
+  modoEvidencia.value === 'finalizar'
+    ? 'Enviar Petición de Finalización'
+    : 'Enviar Avance de Reporte',
 )
 
 const { mostrarCargando, ocultarCargando } = useCargando()
@@ -234,6 +241,20 @@ const filtros = ref({
   busqueda: '',
   fecha: '',
   problema: '',
+  estado: 'En Proceso',
+})
+
+const estados = [
+  { valor: 'En Proceso', clase: 'estado-teal' },
+  { valor: 'Pendiente de Finalización', clase: 'estado-verde' },
+]
+
+const conteoPorEstado = computed(() => {
+  const conteo: Record<string, number> = {}
+  for (const r of reportes.value) {
+    conteo[r.estado_jefe] = (conteo[r.estado_jefe] || 0) + 1
+  }
+  return conteo
 })
 
 onMounted(async () => {
@@ -294,29 +315,53 @@ const cargarReportes = async () => {
       'foto_url',
       'created_at',
       'problemas(id,nombre)',
-      'detalle_reporte(estado_id,estadoreporte(estado),jefe_id,supervisor_id,supervisores(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
+      'detalle_reporte(estado_id,fecha_inicio,fecha_cierre,estadoreporte(estado),jefe_id,supervisor_id,supervisores(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
+      'historial_reporte(categoria_historial_id,notas,fecha,foto_url,titulo(nombre))',
     ],
     false,
   )
 
   if (!error && data) {
-    reportes.value = data
-      .filter((r: any) => r.detalle_reporte?.jefe_id === jefe.value.id_jefe)
+    const mapeados = data
+      .filter(
+        (r: any) =>
+          r.detalle_reporte?.jefe_id === jefe.value.id_jefe &&
+          [7, 8].includes(r.detalle_reporte?.estado_id),
+      )
       .map((r: any) => {
         const s = r.detalle_reporte?.supervisores?.usuarios
-        const j = r.detalle_reporte?.jefe_id === jefe.value.id_jefe ? jefe.value : null
+        const historial = Array.isArray(r.historial_reporte)
+          ? r.historial_reporte
+          : r.historial_reporte
+            ? [r.historial_reporte]
+            : []
+
         return {
           ...r,
-          jefe: j
-            ? `${j.nombre || ''} ${j.apellido_p || ''} ${j.apellido_m || ''}`.trim()
-            : 'No disponible',
+          jefe: jefe.value.nombre,
           supervisor: s
             ? `${s.nombre || ''} ${s.apellido_p || ''} ${s.apellido_m || ''}`.trim()
             : 'No disponible',
           estado: r.detalle_reporte?.estadoreporte?.estado || '',
-          // Ordenar de los estado 7 (En Proceso) primero y 8 (Pendiente de Finalización) después, luego los demás
+          estado_jefe:
+            r.detalle_reporte?.estado_id === 8 ? 'Pendiente de Finalización' : r.detalle_reporte?.estado_id === 7 ? 'En Proceso' : 'Otro',
+          fecha_inicio: r.detalle_reporte?.fecha_inicio || null,
+          fecha_cierre: r.detalle_reporte?.fecha_cierre || null,
+          notas_avances: notasPorCategoria(historial, 4),
+          notas_finalizacion: notasPorCategoria(historial, 3),
+          notas_finales_finalizacion: notasPorCategoria(historial, 5),
+          notas_denegacion: notasPorCategoria(historial, 6),
         }
       })
+
+    // Primero los estado 7 (En Proceso), luego los 8; el resto al final
+    const prioridad = (r: any) => {
+      const id = r.detalle_reporte?.estado_id
+      return id === 7 ? 0 : id === 8 ? 1 : 2
+    }
+    mapeados.sort((a: any, b: any) => prioridad(a) - prioridad(b))
+
+    reportes.value = mapeados
   } else if (error) {
     console.error('Error al cargar reportes:', error.message)
     Swal.fire('Error', 'No se pudieron cargar los reportes.', 'error')
@@ -330,6 +375,23 @@ const cargarReportes = async () => {
 
   cargando.value = false
 }
+
+const formatearNota = (h: any) => {
+  const fecha = new Date(h.fecha)
+  return {
+    fecha: fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }),
+    hora: fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+    titulo: h.titulo?.nombre || 'Sin título',
+    notas: h.notas,
+    foto_url: h.foto_url || '',
+  }
+}
+
+const notasPorCategoria = (historial: any[], categoria: number) =>
+  historial
+    .filter((h) => h.categoria_historial_id === categoria)
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .map(formatearNota)
 
 const reportesFiltrados = computed(() => {
   return reportes.value.filter((r) => {
@@ -348,7 +410,9 @@ const reportesFiltrados = computed(() => {
       coincideFecha = local === filtros.value.fecha
     }
 
-    return coincideBusqueda && coincideProblema && coincideFecha
+    const coincideEstado = r.estado_jefe === filtros.value.estado
+
+    return coincideBusqueda && coincideProblema && coincideFecha && coincideEstado
   })
 })
 
@@ -487,5 +551,6 @@ const cerrarSesion = () => {
 }
 </script>
 
+<style src="../assets/estadosBotones.css"></style>
 <style src="../assets/panelSupervisor.css"></style>
 <style src="../assets/panelJefe.css"></style>

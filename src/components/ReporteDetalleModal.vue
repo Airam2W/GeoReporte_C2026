@@ -64,14 +64,14 @@
                 <p>{{ formatearFechaLocal(reporte.created_at) }}</p>
               </div>
 
-              <div class="info-item">
+              <div class="info-item" v-if="verSeguimiento">
                 <label>Fecha de Inicio</label>
-                <p>{{ "Todavia no definida" }}</p>
+                <p>{{ formatearFechaOpcional(reporte.fecha_inicio, 'Aún no ha iniciado') }}</p>
               </div>
 
-              <div class="info-item">
+              <div class="info-item" v-if="verSeguimiento">
                 <label>Fecha de Cierre</label>
-                <p>{{ "Todavia no definida" }}</p>
+                <p>{{ formatearFechaOpcional(reporte.fecha_cierre, 'Aún no ha finalizado') }}</p>
               </div>
 
               <div
@@ -121,26 +121,131 @@
                   </article>
                 </div>
               </div>
-            </div>
 
-            <!-- Columna Foto -->
-            <div class="foto-columna">
-              <label>Evidencia Fotográfica</label>
-              <div class="foto-contenedor">
-                <img v-if="reporte.foto_url" :src="reporte.foto_url" alt="Evidencia" />
-                <div v-else class="sin-foto">Sin imagen</div>
-              </div>
+              <!-- Columna Foto -->
+              <div class="foto-columna">
+                <label>Evidencia Fotográfica</label>
+                <div class="foto-contenedor">
+                  <img v-if="reporte.foto_url" :src="reporte.foto_url" alt="Evidencia" />
+                  <div v-else class="sin-foto">Sin imagen</div>
+                </div>
 
-              <div class="estado-actual-box" v-if="esAdmin || esAdminEx || esSupervisor || esJefe">
-                <label>Estado Actual</label>
-                <span
-                  :class="['badge badge-grande', obtenerClaseEstado(reporte.estado.toLowerCase())]"
+                <div
+                  class="estado-actual-box"
+                  v-if="esAdmin || esAdminEx || esSupervisor || esJefe"
                 >
-                  {{ reporte.estado }}
-                </span>
+                  <label>Estado Actual</label>
+                  <span
+                    :class="[
+                      'badge badge-grande',
+                      obtenerClaseEstado(reporte.estado.toLowerCase()),
+                    ]"
+                  >
+                    {{ reporte.estado }}
+                  </span>
+                </div>
               </div>
 
-              <div class="estado-actual-box" v-if="!esAdmin && !esAdminEx && !esSupervisor && !esJefe">
+                <div
+                  class="info-item"
+                  v-if="
+                    (esAdmin || esSupervisor || esJefe) &&
+                    reporte.notas_finales_finalizacion?.length
+                  "
+                >
+                  <label>Registro Final de finalización</label>
+                  <div class="notas-lista">
+                    <article
+                      v-for="(n, i) in reporte.notas_finales_finalizacion"
+                      :key="i"
+                      class="nota-card nota-finalizacion"
+                    >
+                      <header class="nota-meta">
+                        <span class="nota-titulo">{{ n.titulo }}</span>
+                        <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
+                      </header>
+                      <p class="nota-texto">{{ n.notas }}</p>
+                      <a v-if="n.foto_url" :href="n.foto_url" target="_blank" rel="noopener">
+                        <img :src="n.foto_url" alt="Registro de finalización" class="nota-foto" />
+                      </a>
+                    </article>
+                  </div>
+                </div>
+
+                <div
+                  class="info-item"
+                  v-if="(esSupervisor || esJefe) && reporte.notas_denegacion?.length"
+                >
+                  <label>Registro de Denegación</label>
+                  <div class="notas-lista">
+                    <article
+                      v-for="(n, i) in reporte.notas_denegacion"
+                      :key="i"
+                      class="nota-card nota-finalizacion"
+                    >
+                      <header class="nota-meta">
+                        <span class="nota-titulo">{{ n.titulo }}</span>
+                        <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
+                      </header>
+                      <p class="nota-texto">{{ n.notas }}</p>
+                      <a v-if="n.foto_url" :href="n.foto_url" target="_blank" rel="noopener">
+                        <img :src="n.foto_url" alt="Registro de finalización" class="nota-foto" />
+                      </a>
+                    </article>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                class="info-item"
+                v-if="(esJefe || esSupervisor) && reporte.notas_finalizacion?.length"
+              >
+                <label>Petición de finalización</label>
+                <div class="notas-lista">
+                  <article
+                    v-for="(n, i) in reporte.notas_finalizacion"
+                    :key="i"
+                    class="nota-card nota-finalizacion"
+                  >
+                    <header class="nota-meta">
+                      <span class="nota-titulo">{{ n.titulo }}</span>
+                      <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
+                    </header>
+                    <p class="nota-texto">{{ n.notas }}</p>
+                    <a v-if="n.foto_url" :href="n.foto_url" target="_blank" rel="noopener">
+                      <img :src="n.foto_url" alt="Evidencia de finalización" class="nota-foto" />
+                    </a>
+                  </article>
+                </div>
+              </div>
+
+              <div
+                class="info-item"
+                v-if="(esJefe || esSupervisor || esAdmin) && reporte.notas_avances?.length"
+              >
+                <label>Avances registrados</label>
+                <div class="notas-lista">
+                  <article
+                    v-for="(n, i) in reporte.notas_avances"
+                    :key="i"
+                    class="nota-card nota-avance"
+                  >
+                    <header class="nota-meta">
+                      <span class="nota-titulo">{{ n.titulo }}</span>
+                      <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
+                    </header>
+                    <p class="nota-texto">{{ n.notas }}</p>
+                    <a v-if="n.foto_url" :href="n.foto_url" target="_blank" rel="noopener">
+                      <img :src="n.foto_url" alt="Evidencia del avance" class="nota-foto" />
+                    </a>
+                  </article>
+                </div>
+              </div>
+
+              <div
+                class="estado-actual-box"
+                v-if="!esAdmin && !esAdminEx && !esSupervisor && !esJefe"
+              >
                 <label>Estado Actual</label>
                 <span
                   :class="['badge badge-grande', obtenerClaseEstado(reporte.estado.toLowerCase())]"
@@ -148,7 +253,6 @@
                   {{ traducirEstado(reporte.estado) }}
                 </span>
               </div>
-            </div>
           </div>
         </div>
 
@@ -164,7 +268,7 @@
           </button>
 
           <button
-            v-if="!esAdmin && !esAdminEx && !esSupervisor"
+            v-if="!esAdmin && !esAdminEx && !esSupervisor && !esJefe"
             class="btn-primario"
             @click="buscarReporte"
           >
@@ -228,6 +332,22 @@
             </button>
 
             <button
+              v-if="esJefe && reporte.estado === 'En Proceso'"
+              class="btn-primario"
+              @click="$emit('actualizarAvance', reporte)"
+            >
+              Actualizar Avance
+            </button>
+
+            <button
+              v-if="esJefe && reporte.estado === 'En Proceso'"
+              class="btn-primario"
+              @click="$emit('enviarPeticionFinalizacion', reporte)"
+            >
+              Enviar Petición de Finalización
+            </button>
+
+            <button
               v-if="
                 (esAdmin || esAdminEx) &&
                 (reporte.estado === 'Pendiente' || reporte.estado === 'Devuelto')
@@ -245,6 +365,14 @@
             >
               Finalizar Reporte
             </button>
+
+            <button
+              v-if="esSupervisor && reporte.estado === 'Pendiente de Finalización'"
+              class="btn-primario"
+              @click="$emit('finalizarSupervisor', reporte)"
+            >
+              Finalizar Reporte
+            </button>
           </template>
         </div>
       </div>
@@ -259,6 +387,9 @@ import {
   traducirEstado,
 } from '../logic/reporteDetalleModal'
 
+const formatearFechaOpcional = (valor: string | null | undefined, vacio: string) =>
+  valor ? formatearFechaLocal(valor) : vacio
+
 const emit = defineEmits([
   'close',
   'asignar',
@@ -268,8 +399,11 @@ const emit = defineEmits([
   'devolver',
   'devolverRep',
   'turnar',
+  'enviarPeticionFinalizacion',
+  'actualizarAvance',
   'finalizar',
   'descargar-pdf',
+  'finalizarSupervisor',
 ])
 
 const cerrar = () => {

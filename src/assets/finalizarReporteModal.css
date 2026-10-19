@@ -1,0 +1,45 @@
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+  outline: none;
+}
+textarea:focus { border-color: #621132; }
+
+.foto-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.foto-box img { display: block; width: 100%; max-height: 260px; object-fit: contain; }
+.sin-foto { color: #aaa; font-style: italic; padding: 24px; }
+
+.btn-peligroso {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: #c62828;
+  color: #fff;
+  transition: 0.2s;
+}
+.btn-peligroso:hover { background: #b71c1c; }
+.btn-peligroso:disabled,
+.btn-primario:disabled,
+.btn-secundario:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Móvil: botones apilados */
+@media (max-width: 480px) {
+  .modal-footer { flex-direction: column-reverse; }
+  .modal-footer button { width: 100%; }
+}

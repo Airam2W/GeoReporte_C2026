@@ -169,6 +169,15 @@
                 >
                   ↩️
                 </button>
+
+                <button
+                  v-if="reporte.estado === 'Pendiente de Finalización'"
+                  class="btn-accion btn-finalizar"
+                  title="Finalizar Reporte"
+                  @click="abrirModalFinalizar(reporte)"
+                >
+                  ✅
+                </button>
               </td>
             </tr>
           </tbody>
@@ -185,6 +194,7 @@
       @rechazar="rechazarReporte"
       @devolverRep="abrirModalDevolucion"
       @descargar-pdf="descargarPDF"
+      @finalizarSupervisor="abrirModalFinalizar"
     />
 
     <DevolucionReporteModal
@@ -205,6 +215,18 @@
       @close="cerrarModalAsignarJefe"
       @confirm="confirmarAsignacionJefe"
     />
+
+    <FinalizarReporteModal
+      :visible="modalFinalizarVisible"
+      :folio="folioAFinalizar"
+      :categoria-nombre="categoriaFinalizacion"
+      :notas-iniciales="notasFinalizar"
+      :foto-url="fotoFinalizar"
+      :guardando="guardandoFinalizar"
+      @close="cerrarModalFinalizar"
+      @aceptar="(n: string) => resolverFinalizacion('aceptar', n)"
+      @denegar="(n: string) => resolverFinalizacion('denegar', n)"
+    />
   </div>
 </template>
 
@@ -218,6 +240,15 @@ import { truncarTexto } from '../logic/panelAdministrador'
 import { redireccionarUsuario } from '../logic/redirectUser'
 import { generarPdfReporte } from '../logic/reportePdf'
 import AsignarJefeModal from '../components/AsignarJefeModal.vue'
+import FinalizarReporteModal from '../components/FinalizarReporteModal.vue'
+
+const modalFinalizarVisible = ref(false)
+const folioAFinalizar = ref('')
+const jefeAFinalizar = ref('')
+const notasFinalizar = ref('')
+const fotoFinalizar = ref('')
+const categoriaFinalizacion = ref('')
+const guardandoFinalizar = ref(false)
 
 const modalAsignarJefeVisible = ref(false)
 const folioAAsignar = ref('')
@@ -365,6 +396,13 @@ const cargarCatalogos = async () => {
   } else {
     titulosDevolucion.value = titulosData || []
   }
+
+  const { data: catData, error: catError } = await selectEq('categoria_historial', 'id', 3, [
+    'id',
+    'nombre',
+  ])
+  if (catError) console.error('Error al cargar categoría:', catError.message)
+  else categoriaFinalizacion.value = catData?.[0]?.nombre || ''
 }
 
 const cargarReportes = async () => {
@@ -382,7 +420,8 @@ const cargarReportes = async () => {
       'foto_url',
       'created_at',
       'problemas(id,nombre)',
-      'detalle_reporte(estado_id,estadoreporte(estado),jefe_id,supervisor_id,jefes(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
+      'detalle_reporte(estado_id,fecha_inicio,fecha_cierre,estadoreporte(estado),jefe_id,supervisor_id,supervisores(usuario_id,usuarios(nombre,apellido_p,apellido_m)), jefes(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
+      'historial_reporte(categoria_historial_id,notas,fecha,foto_url,titulo(nombre))',
     ],
     false, // false = descendente
   )
@@ -393,9 +432,16 @@ const cargarReportes = async () => {
       .map((r: any) => {
         const jefeUsuario = r.detalle_reporte?.jefes?.usuarios
         const estadoId = r.detalle_reporte?.estado_id
+        const s = r.detalle_reporte?.supervisores?.usuarios
+        const historial = Array.isArray(r.historial_reporte)
+          ? r.historial_reporte
+          : r.historial_reporte
+            ? [r.historial_reporte]
+            : []
 
-        let estado = 'Pendiente de Asignación'
-        if (estadoId === 8) estado = 'Pendiente de Finalización'
+        let estado = ''
+        if (estadoId === 2) estado = 'Pendiente de Asignación'
+        else if (estadoId === 8) estado = 'Pendiente de Finalización'
         else if (estadoId === 7) estado = 'Asignado'
 
         return {
@@ -404,6 +450,15 @@ const cargarReportes = async () => {
             ? `${jefeUsuario.nombre} ${jefeUsuario.apellido_p} ${jefeUsuario.apellido_m || ''}`.trim()
             : 'SIN ASIGNAR',
           estado,
+          supervisor: s
+            ? `${s.nombre} ${s.apellido_p} ${s.apellido_m || ''}`.trim()
+            : 'SIN ASIGNAR',
+          fecha_inicio: r.detalle_reporte?.fecha_inicio || null,
+          fecha_cierre: r.detalle_reporte?.fecha_cierre || null,
+          notas_avances: notasPorCategoria(historial, 4),
+          notas_finalizacion: notasPorCategoria(historial, 3),
+          notas_finales_finalizacion: notasPorCategoria(historial, 5),
+          notas_denegacion: notasPorCategoria(historial, 6),
         }
       })
 
@@ -414,6 +469,23 @@ const cargarReportes = async () => {
   }
   cargando.value = false
 }
+
+const formatearNota = (h: any) => {
+  const fecha = new Date(h.fecha)
+  return {
+    fecha: fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }),
+    hora: fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+    titulo: h.titulo?.nombre || 'Sin título',
+    notas: h.notas,
+    foto_url: h.foto_url || '',
+  }
+}
+
+const notasPorCategoria = (historial: any[], categoria: number) =>
+  historial
+    .filter((h) => h.categoria_historial_id === categoria)
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .map(formatearNota)
 
 const jefesActivos = computed(() => jefesOpciones.value.filter((j) => j.estado === 'Alta'))
 
@@ -512,6 +584,92 @@ const rechazarReporte = async (folio: string) => {
     }
   } finally {
     foliosProcesando.value.delete(folio)
+  }
+}
+
+// Paso 1: abre el modal con las notas y la foto que envió el jefe
+const abrirModalFinalizar = (reporte: any) => {
+  const ultima = reporte.notas_finalizacion?.[0] // la más reciente
+  folioAFinalizar.value = reporte.folio
+  jefeAFinalizar.value = reporte.jefe
+  notasFinalizar.value = ultima?.notas || ''
+  fotoFinalizar.value = ultima?.foto_url || ''
+  modalFinalizarVisible.value = true
+}
+
+const cerrarModalFinalizar = () => {
+  modalFinalizarVisible.value = false
+}
+
+// Paso 2: aceptar o denegar
+const resolverFinalizacion = async (decision: 'aceptar' | 'denegar', notas: string) => {
+  const folio = folioAFinalizar.value
+  if (foliosProcesando.value.has(folio)) return
+  const acepta = decision === 'aceptar'
+
+  const result = await Swal.fire({
+    title: acepta ? '¿Aceptar finalización?' : '¿Denegar finalización?',
+    html: acepta
+      ? `Aceptarás la finalización del reporte <b>${folio}</b> hecha por el jefe <b>${jefeAFinalizar.value}</b>.`
+      : `Denegarás la finalización del reporte <b>${folio}</b> hecha por el jefe <b>${jefeAFinalizar.value}</b>. El reporte regresará a "Asignado".`,
+    icon: acepta ? 'question' : 'warning',
+    showCancelButton: true,
+    confirmButtonColor: acepta ? '#1a6b2f' : '#d33',
+    cancelButtonColor: '#888',
+    confirmButtonText: acepta ? 'Sí, aceptar' : 'Sí, denegar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    customClass: { container: 'swal-difuminado' },
+  })
+  if (!result.isConfirmed) return
+
+  foliosProcesando.value.add(folio)
+  guardandoFinalizar.value = true
+
+  try {
+    // 1. Historial: 5/9 = aceptación, 6/10 = denegación
+    const { error: errorHistorial } = await insert('historial_reporte', {
+      folio,
+      categoria_historial_id: acepta ? 5 : 6,
+      titulo_id: acepta ? 9 : 10,
+      notas,
+      foto_url: fotoFinalizar.value || null,
+    })
+    if (errorHistorial) {
+      console.error('Error al guardar historial:', errorHistorial)
+      Swal.fire('Error', 'No se pudo registrar la decisión en el historial.', 'error')
+      return
+    }
+
+    // 2. Estado: 4 = Finalizado (con fecha de cierre), 7 = En Proceso
+    const cambios = acepta
+      ? { estado_id: 4, fecha_cierre: new Date().toISOString() }
+      : { estado_id: 7 }
+
+    const { error: errorDetalle } = await updateEq('detalle_reporte', 'folio', folio, cambios)
+    if (errorDetalle) {
+      console.error('Error al actualizar detalle_reporte:', errorDetalle)
+      Swal.fire(
+        'Error',
+        'La decisión se registró en el historial, pero no se pudo actualizar el estado del reporte.',
+        'error',
+      )
+      return
+    }
+
+    cerrarModalFinalizar()
+    await cargarReportes()
+
+    Swal.fire({
+      title: acepta ? '¡Reporte finalizado!' : 'Finalización denegada',
+      text: acepta ? 'El reporte quedó como finalizado.' : 'El reporte regresó a "Asignado".',
+      icon: 'success',
+      confirmButtonColor: '#1a6b2f',
+      customClass: { container: 'swal-difuminado' },
+    })
+  } finally {
+    foliosProcesando.value.delete(folio)
+    guardandoFinalizar.value = false
   }
 }
 

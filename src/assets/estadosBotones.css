@@ -62,6 +62,12 @@
 .estado-verde   { --color: #2e7d32; --fondo: #e8f5e9; }
 .estado-rojo    { --color: #c62828; --fondo: #ffebee; }
 
+.estados-grid.estados-grid--dos {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+
+
 /* Móvil */
 @media (max-width: 600px) {
   .estados-grid,
@@ -76,9 +82,13 @@
     line-height: 1.2;
     text-align: center;
   }
+
+  .estados-grid.estados-grid--dos { grid-template-columns: repeat(2, 1fr); }
 }
+
 
 @media (max-width: 380px) {
   .estados-grid { grid-template-columns: repeat(2, 1fr); }
   .estados-grid.estados-grid--tres { grid-template-columns: repeat(3, 1fr); }
+  .estados-grid.estados-grid--dos { grid-template-columns: repeat(2, 1fr); }
 }

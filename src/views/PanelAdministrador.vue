@@ -279,7 +279,7 @@ import { selectEq, selectEqOrder, updateEq, selectEqSingle } from '../services/s
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import Swal from 'sweetalert2'
 import { truncarTexto, obtenerClaseEstado } from '../logic/panelAdministrador'
-import { redireccionarUsuario } from '@/logic/redirectUser.ts'
+import { redireccionarUsuario } from '../logic/redirectUser'
 import TurnarReporteModal from '../components/TurnarReporteModal.vue'
 import { selectAll } from '../services/supabaseController'
 import AsignarReporteModal from '../components/AsignarReporteModal.vue'
@@ -597,8 +597,8 @@ const cargarReportes = async () => {
       'foto_url',
       'created_at',
       'problemas (id, nombre)',
-      'historial_reporte (categoria_historial_id, notas, fecha, titulo(nombre))',
-      'detalle_reporte (estado_id, estadoreporte (estado), supervisor_id, jefe_id, supervisores (usuarios (nombre, apellido_p, apellido_m)), jefes (usuarios (nombre, apellido_p, apellido_m)))',
+      'detalle_reporte(estado_id,fecha_inicio,fecha_cierre,estadoreporte(estado),jefe_id,supervisor_id,supervisores(usuario_id,usuarios(nombre,apellido_p,apellido_m)),jefes(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
+      'historial_reporte(categoria_historial_id,notas,fecha,foto_url,titulo(nombre))',
     ],
     false,
   )
@@ -624,8 +624,13 @@ const cargarReportes = async () => {
           : r.detalle_reporte?.estadoreporte?.estado || 'Pendiente',
         supervisor: nombreDe(r.detalle_reporte?.supervisores?.usuarios),
         jefe: nombreDe(r.detalle_reporte?.jefes?.usuarios),
-        notas_rechazo: notasPorCategoria(historial, 2),
-        notas_devuelto: notasPorCategoria(historial, 1),
+        notas_rechazo: notasPorCategoriaRD(historial, 2),
+        notas_devuelto: notasPorCategoriaRD(historial, 1),
+        fecha_inicio: r.detalle_reporte?.fecha_inicio || null,
+        fecha_cierre: r.detalle_reporte?.fecha_cierre || null,
+        notas_avances: notasPorCategoria(historial, 4),
+        notas_finalizacion: notasPorCategoria(historial, 3),
+        notas_finales_finalizacion: notasPorCategoria(historial, 5),
       }
     })
   }
@@ -639,14 +644,31 @@ const formatearNota = (h: any) => {
     hora: fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
     titulo: h.titulo?.nombre || 'Sin título',
     notas: h.notas,
+    foto_url: h.foto_url || '',
   }
 }
 
 const notasPorCategoria = (historial: any[], categoria: number) =>
   historial
-    .filter((h) => h.categoria_historial_id === categoria && h.notas)
+    .filter((h) => h.categoria_historial_id === categoria)
     .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
     .map(formatearNota)
+
+const formatearNotaRD = (h: any) => {
+  const fecha = new Date(h.fecha)
+  return {
+    fecha: fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }),
+    hora: fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+    titulo: h.titulo?.nombre || 'Sin título',
+    notas: h.notas,
+  }
+}
+
+const notasPorCategoriaRD = (historial: any[], categoria: number) =>
+  historial
+    .filter((h) => h.categoria_historial_id === categoria && h.notas)
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .map(formatearNotaRD)
 
 // Filtros en tiempo real
 const reportesFiltrados = computed(() => {
