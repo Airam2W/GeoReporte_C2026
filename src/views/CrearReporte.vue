@@ -297,10 +297,11 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
-  selectOrder,
-  selectEqOrder,
+  obtenerDepartamentosOrdenadosPorId,
+  obtenerProblemasPorDepartamentoID,
   uploadFoto,
-  insert,
+  crearReporte,
+  crearDetalleReporte,
   getPublicUrl,
 } from '../services/supabaseController'
 import { validarAI } from '../services/geoAIController'
@@ -352,7 +353,7 @@ const form = ref({
 
 // 1. Cargar departamentos al iniciar
 const cargarDepartamentos = async () => {
-  const { data, error } = await selectOrder('departamentos', 'id')
+  const { data, error } = await obtenerDepartamentosOrdenadosPorId()
   if (!error && data) {
     departamentos.value = data
   } else {
@@ -368,12 +369,9 @@ const onDepartamentoSeleccionado = async () => {
 
   if (!form.value.departamento_id) return
 
-  const { data, error } = await selectEqOrder(
-    'problemas', // tabla
-    'departamento_id', // campo para eq
-    form.value.departamento_id, // valor a comparar
-    'id', // campo para ordenar
-  )
+  
+
+  const { data, error } = await obtenerProblemasPorDepartamentoID(form.value.departamento_id)
 
   if (!error && data) {
     problemas.value = data
@@ -668,7 +666,7 @@ const enviarReporte = async () => {
     }
 
     // 2. Insertar los datos en la tabla 'reportes'
-    const { data, error: insertReporteError } = await insert('reportes', {
+    const { data, error: insertReporteError } = await crearReporte({
       folio: folioGenerado,
       departamento_id: form.value.departamento_id,
       problema_id: form.value.problema_id,
@@ -682,7 +680,7 @@ const enviarReporte = async () => {
     })
 
     // 3. Insertar los datos en la tabla 'reportesExistentes'
-    const { error: insertReporteExistenteError } = await insert('detalle_reporte', {
+    const { error: insertReporteExistenteError } = await crearDetalleReporte( {
       folio: folioGenerado,
       estado_id: 1,
     })

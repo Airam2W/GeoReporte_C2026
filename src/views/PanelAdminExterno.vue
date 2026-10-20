@@ -209,7 +209,7 @@ import Swal from 'sweetalert2'
 import { obtenerClaseEstado } from '../logic/panelAdministrador'
 import { redireccionarUsuario } from '../logic/redirectUser.ts'
 import { formatearFecha } from '@/logic/reporteDetalleModal.ts'
-import { selectEq, selectEqOrder, updateEq } from '../services/supabaseController'
+import { esperarUsuario, selectEq, selectEqOrder, updateEq, obtenerProblematicasExternasPorID } from '../services/supabaseController'
 
 const router = useRouter()
 const admin = ref<any>(null)
@@ -261,6 +261,7 @@ onMounted(async () => {
     return
   }
 
+  await esperarUsuario(2000).catch(() => null); // Espera máx 2 segundos
   await cargarCatalogos()
   await cargarReportes()
   ocultarCargando() // Ocultar el indicador de carga después de cargar los datos
@@ -268,17 +269,14 @@ onMounted(async () => {
 
 const cargarCatalogos = async () => {
   // Traer solo problemas del departamento del admin
-  const { data: problemasData, error: problemasError } = await selectEq(
-    'problemas_externos',
-    'departamento_externo_id',
-    admin.value.departamento_id,
-    ['id', 'nombre', 'nombreamigable', 'departamento_externo_id'],
-  )
-
+  const { data: problemasData, error: problemasError } = await obtenerProblematicasExternasPorID(admin.value.departamento_id)
+  
   if (problemasError) {
-    console.error('Error al cargar problemas:', problemasError.message)
+    console.error('Error al cargar problemas:', problemasError)
+    console.log('Problemas data:', problemasData)
   } else {
     problemasOpciones.value = problemasData || []
+    console.log('Problemas data:', problemasData)
   }
 
   // Traer nombre del departamento para mostrarlo en el header

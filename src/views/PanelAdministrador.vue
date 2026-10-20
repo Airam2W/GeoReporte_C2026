@@ -275,7 +275,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { selectEq, selectEqOrder, updateEq, selectEqSingle } from '../services/supabaseController'
+import { esperarUsuario, selectEq, selectEqOrder, updateEq, selectEqSingle } from '../services/supabaseController'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import Swal from 'sweetalert2'
 import { truncarTexto, obtenerClaseEstado } from '../logic/panelAdministrador'
@@ -389,6 +389,7 @@ onMounted(async () => {
     return
   }
 
+  await esperarUsuario(2000).catch(() => null); // Espera máx 2 segundos
   await cargarCatalogos()
   await cargarReportes()
   ocultarCargando() // Ocultar el indicador de carga después de cargar los datos

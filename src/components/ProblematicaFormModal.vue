@@ -108,7 +108,7 @@
 <script setup lang="ts">
 import { ref, watch, defineProps, defineEmits } from 'vue'
 import Swal from 'sweetalert2'
-import { selectIlike } from '../services/supabaseController'
+import { obtenerProblematicasInternasPorNombre, obtenerProblematicasExternasPorNombre } from '../services/supabaseController'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -183,27 +183,23 @@ const guardar = async () => {
   const nombreNormalizado = form.value.nombre.trim()
 
   const [resInternas, resExternas] = await Promise.all([
-    selectIlike('problemas', 'nombre', nombreNormalizado, ['id', 'nombre']),
-    selectIlike('problemas_externos', 'nombre', nombreNormalizado, ['id', 'nombre']),
+    obtenerProblematicasInternasPorNombre(nombreNormalizado),
+    obtenerProblematicasExternasPorNombre(nombreNormalizado),
   ])
 
+  // Si cualquiera de las dos peticiones regresa un error (como el 400 o 401 del backend)
   if (resInternas.error || resExternas.error) {
-    console.error('Error al validar nombre duplicado:', resInternas.error || resExternas.error)
-  } else {
-    const duplicadoInterna = resInternas.data?.find(
-      (p) => !(form.value.tipo === 'Interno' && String(p.id) === String(form.value.id)),
-    )
+    console.error('Error en validación:', resInternas.error || resExternas.error)
 
-    const duplicadoExterna = resExternas.data?.find(
-      (p) => !(form.value.tipo === 'Externo' && String(p.id) === String(form.value.id)),
-    )
+    // Mostramos el mensaje exacto que viene del backend (ej: "Valor de búsqueda ya existe...")
+    const mensajeBackend = resInternas.error || resExternas.error
 
-    if (duplicadoInterna || duplicadoExterna) {
-      errores.value.nombre = esEdicion.value
-        ? 'No se puede modificar la problemática: ya existe otra problemática (interna o externa) con este nombre.'
-        : 'No se puede crear la problemática: ya existe una problemática (interna o externa) con este nombre.'
-      return
-    }
+    errores.value.nombre =
+      mensajeBackend ||
+      (esEdicion.value
+        ? 'No se puede modificar la problemática: ya existe otra problemática con este nombre.'
+        : 'No se puede crear la problemática: ya existe una problemática con este nombre.')
+    return
   }
 
   const result = await Swal.fire({

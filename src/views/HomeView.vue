@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { iniciarSesion, menuAbierto, menuRef } from '../logic/home'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
-import { selectEqSingle } from '../services/supabaseController'
+import { obtenerReportePorFolio } from '../services/supabaseController'
 import { onMounted, onUnmounted } from 'vue'
 
 
@@ -53,21 +53,10 @@ const ejecutarBusqueda = async () => {
 
   errorBusqueda.value = ''
 
-  const { data, error } = await selectEqSingle('reportes', 'folio', folioInput.value.trim(), [
-    'folio',
-    'descripcion',
-    'nombre',
-    'telefono',
-    'domicilio',
-    'referencias',
-    'foto_url',
-    'created_at',
-    'problemas (nombreamigable)',
-    'detalle_reporte ( estado_id, estadoreporte (estado) )',
-  ])
+  const { data, error } = await obtenerReportePorFolio(folioInput.value.trim())
 
   if (error || !data) {
-    errorBusqueda.value = 'No se encontró ningún reporte con ese folio.'
+    errorBusqueda.value = error || 'No se encontró ningún reporte con ese folio.'
     console.log(!error, 'Error al buscar reporte:', error, 'Data:', data)
     return
   }

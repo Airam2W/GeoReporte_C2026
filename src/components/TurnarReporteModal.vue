@@ -86,7 +86,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { selectEq } from '../services/supabaseController'
+import { obtenerProblematicasInternasPorID, obtenerProblematicasExternasPorID, obtenerAdministradoresInternosPorID, obtenerAdministradoresExternosPorID } from '../services/supabaseController'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -165,18 +165,8 @@ watch(
     const esInterno = form.value.tipo === 'Interno'
 
     const [resProblemas, resAdmins] = await Promise.all([
-      selectEq(
-        esInterno ? 'problemas' : 'problemas_externos',
-        esInterno ? 'departamento_id' : 'departamento_externo_id',
-        depId,
-        ['id', 'nombre', 'estado'],
-      ),
-      selectEq(
-        esInterno ? 'administradores' : 'personal_externo',
-        esInterno ? 'departamento_id' : 'dep_externo_id',
-        depId,
-        ['id', 'usuario_id', 'usuarios(nombre,apellido_p,apellido_m,estadoadministrativo)'],
-      ),
+      esInterno ? obtenerProblematicasInternasPorID(depId) : obtenerProblematicasExternasPorID(depId),
+      esInterno ? obtenerAdministradoresInternosPorID(depId) : obtenerAdministradoresExternosPorID(depId),
     ])
 
     if (resProblemas.error) console.error('Error al cargar problemas:', resProblemas.error.message)

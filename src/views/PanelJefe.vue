@@ -207,6 +207,7 @@ import {
   insert,
   uploadFoto,
   getPublicUrl,
+  esperarUsuario,
 } from '../services/supabaseController'
 
 const modalEvidenciaVisible = ref(false)
@@ -273,6 +274,7 @@ onMounted(async () => {
       return
     }
 
+    await esperarUsuario(2000).catch(() => null); // Espera máx 2 segundos
     await cargarCatalogos()
     await cargarReportes()
   } finally {

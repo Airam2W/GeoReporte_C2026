@@ -491,6 +491,7 @@ import {
   insert,
   deleteEq,
   callRpc,
+  esperarUsuario,
 } from '../services/supabaseController'
 import Swal from 'sweetalert2'
 import UsuarioDetalleModal from '../components/UsuarioDetalleModal.vue'
@@ -571,6 +572,7 @@ onMounted(async () => {
   }
   director.value = sesion
 
+  await esperarUsuario(2000).catch(() => null); // Espera máx 2 segundos
   await cargarCatalogos()
   await cargarDatos()
   await cargarDepartamentos()

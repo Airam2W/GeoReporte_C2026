@@ -66,7 +66,10 @@
 <script setup lang="ts">
 import { ref, watch, defineProps, defineEmits } from 'vue'
 import Swal from 'sweetalert2'
-import { selectIlike } from '../services/supabaseController'
+import {
+  obtenerDepartamentosinternosPorNombre,
+  obtenerDepartamentosExternosPorNombre,
+} from '../services/supabaseController'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -132,32 +135,26 @@ const guardar = async () => {
   const nombreNormalizado = form.value.nombre.trim()
 
   const [resInternos, resExternos] = await Promise.all([
-    selectIlike('departamentos', 'nombre', nombreNormalizado, ['id', 'nombre']),
-    selectIlike('departamentos_externos', 'departamento', nombreNormalizado, [
-      'id',
-      'departamento',
-    ]),
+    obtenerDepartamentosinternosPorNombre(nombreNormalizado),
+    obtenerDepartamentosExternosPorNombre(nombreNormalizado),
   ])
 
+  // Si cualquiera de las dos peticiones regresa un error (como el 400 o 401 del backend)
   if (resInternos.error || resExternos.error) {
-    console.error('Error al validar nombre duplicado:', resInternos.error || resExternos.error)
-  } else {
-    const duplicadoInterno = resInternos.data?.find(
-      (d) => !(form.value.tipo === 'Interno' && String(d.id) === String(form.value.id)),
-    )
+    console.error('Error en validación:', resInternos.error || resExternos.error)
 
-    const duplicadoExterno = resExternos.data?.find(
-      (d) => !(form.value.tipo === 'Externo' && String(d.id) === String(form.value.id)),
-    )
+    // Mostramos el mensaje exacto que viene del backend (ej: "Valor de búsqueda ya existe...")
+    const mensajeBackend = resInternos.error || resExternos.error
 
-    if (duplicadoInterno || duplicadoExterno) {
-      errores.value.nombre = esEdicion.value
-        ? 'No se puede modificar el departamento: ya existe otro departamento (interno o externo) con este nombre.'
-        : 'No se puede crear el departamento: ya existe un departamento (interno o externo) con este nombre.'
-      return
-    }
+    errores.value.nombre =
+      mensajeBackend ||
+      (esEdicion.value
+        ? 'No se puede modificar el departamento: ya existe otro departamento con este nombre.'
+        : 'No se puede crear el departamento: ya existe un departamento con este nombre.')
+    return
   }
 
+  // Si todo salió bien y no hay errores, procedemos con la alerta de confirmación (Swal)
   const result = await Swal.fire({
     title: esEdicion.value ? '¿Actualizar departamento?' : '¿Agregar departamento?',
     html: `Estás a punto de ${esEdicion.value ? 'actualizar' : 'crear'} el departamento <b>${form.value.nombre}</b> (${form.value.tipo}).`,

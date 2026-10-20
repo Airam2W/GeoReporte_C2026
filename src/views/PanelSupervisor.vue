@@ -233,7 +233,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { selectEq, selectEqOrder, updateEq, selectEqSingle } from '../services/supabaseController'
+import { selectEq, selectEqOrder, updateEq, selectEqSingle, esperarUsuario } from '../services/supabaseController'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import Swal from 'sweetalert2'
 import { truncarTexto } from '../logic/panelAdministrador'
@@ -315,6 +315,7 @@ onMounted(async () => {
     return
   }
 
+  await esperarUsuario(2000).catch(() => null); // Espera máx 2 segundos
   await cargarCatalogos()
   await cargarReportes()
 

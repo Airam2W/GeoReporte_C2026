@@ -210,7 +210,7 @@
 
 <script setup lang="ts">
 import { ref, watch, defineProps, defineEmits } from 'vue'
-import { selectIlikeMaybeSingle } from '../services/supabaseController'
+import { obtenerCorreoUnico } from '../services/supabaseController'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -326,18 +326,11 @@ const guardar = async () => {
   if (!esValido) return
 
   // --- Validación de correo duplicado contra la base de datos ---
-  const { data: existente, error: errorCheck } = await selectIlikeMaybeSingle(
-    'usuarios',
-    'correo',
-    form.value.correo.trim(),
-  )
+  const { error: errorCheck } = await obtenerCorreoUnico(form.value.correo.trim())
 
   if (errorCheck) {
-    console.error('Error al validar correo duplicado:', errorCheck)
-  } else if (existente && String(existente.id) !== String(form.value.id)) {
-    errores.value.correo = esEdicion.value
-      ? 'No se puede modificar el usuario: este correo ya está registrado por otro usuario.'
-      : 'No se puede crear el usuario: este correo ya está registrado.'
+    const mensajeBackend = errorCheck || 'Error al verificar el correo'
+    errores.value.correo = mensajeBackend
     return
   }
 
