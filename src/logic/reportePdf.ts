@@ -50,6 +50,7 @@ const cargarImagen = (url: string): Promise<{ data: string; w: number; h: number
     img.src = url
   })
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const generarPdfReporte = async (reporte: any, opciones: OpcionesPdf = {}) => {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   let y = 0
