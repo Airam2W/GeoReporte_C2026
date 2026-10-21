@@ -35,6 +35,7 @@ vi.mock('@/services/supabaseController', () => ({
   selectEqOrder: vi.fn(),
   uploadFoto: vi.fn(),
   getPublicUrl: vi.fn(),
+  esperarUsuario: vi.fn(),
 }));
 
 // Mock de fetch global
