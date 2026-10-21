@@ -20,6 +20,7 @@ vi.mock('leaflet', () => ({
 
 // Mock global del backend
 vi.mock('@/services/supabaseController', () => ({
+  // Genéricas
   selectAll: vi.fn(),
   selectNeq: vi.fn(),
   selectNeqOrder: vi.fn(),
@@ -35,7 +36,30 @@ vi.mock('@/services/supabaseController', () => ({
   selectEqOrder: vi.fn(),
   uploadFoto: vi.fn(),
   getPublicUrl: vi.fn(),
-  esperarUsuario: vi.fn(),
+  esperarUsuario: vi.fn().mockResolvedValue(null),
+
+  obtenerDepartamentosOrdenadosPorId: vi.fn(),
+  obtenerProblemasPorDepartamentoID: vi.fn(),
+  crearReporte: vi.fn(),
+  crearDetalleReporte: vi.fn(),
+  obtenerReportePorFolio: vi.fn(),
+  obtenerDepartamentosinternosPorNombre: vi.fn(),
+  obtenerDepartamentosExternosPorNombre: vi.fn(),
+  obtenerProblematicasInternasPorNombre: vi.fn(),
+  obtenerProblematicasExternasPorNombre: vi.fn(),
+  obtenerProblematicasInternasPorID: vi.fn(),
+  obtenerProblematicasExternasPorID: vi.fn(),
+  obtenerAdministradoresInternosPorID: vi.fn(),
+  obtenerAdministradoresExternosPorID: vi.fn(),
+  obtenerCorreoUnico: vi.fn(),
+  obtenerUsuarioPorCorreoYContrasena: vi.fn(),
+  obtenerSupervisorIDPorUsuarioID: vi.fn(),
+  obtenerJefeIDPorUsuarioID: vi.fn(),
+}));
+
+// Mock de la validación con IA de la foto (CrearReporte)
+vi.mock('@/services/geoAIController', () => ({
+  validarAI: vi.fn().mockResolvedValue({ type: 0, data: { message: 'Imagen válida' } }),
 }));
 
 // Mock de fetch global

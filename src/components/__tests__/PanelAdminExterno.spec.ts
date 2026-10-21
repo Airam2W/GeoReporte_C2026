@@ -1,4 +1,4 @@
-import { mount, VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PanelAdminExterno from '@/views/PanelAdminExterno.vue'
 import * as db from '@/services/supabaseController'
@@ -80,8 +80,9 @@ describe('Pruebas del panel del administrador externo', () => {
 		vi.clearAllMocks()
 		reportesEstado = structuredClone(reportesMock)
 
+		// La sesión ahora vive en "userSession" y el panel exige tipo_id === 6
 		const storage = new Map([
-			['adminSession', JSON.stringify({ id: 6, nombre: 'Administrador Externo', departamento_id: 10, tipo_id: 6 })],
+			['userSession', JSON.stringify({ id: 6, nombre: 'Administrador Externo', departamento_id: 10, tipo_id: 6 })],
 		])
 		vi.stubGlobal('localStorage', {
 			getItem: (key: string) => storage.get(key) ?? null,
@@ -89,14 +90,16 @@ describe('Pruebas del panel del administrador externo', () => {
 			removeItem: (key: string) => storage.delete(key),
 		})
 
+		vi.mocked(db.esperarUsuario).mockResolvedValue(null)
+
+		// Los problemas del departamento ahora salen de obtenerProblematicasExternasPorID(departamento_id)
+		vi.mocked(db.obtenerProblematicasExternasPorID).mockResolvedValue({
+			data: [{ id: 1, nombre: 'Bache', nombreamigable: 'Bache en vialidad', departamento_externo_id: 10 }],
+			error: null,
+		})
+
 		// selectEq(tabla, campo, valor, columnas)
 		vi.mocked(db.selectEq).mockImplementation(async (tabla: string) => {
-			if (tabla === 'problemas_externos') {
-				return {
-					data: [{ id: 1, nombre: 'Bache', nombreamigable: 'Bache en vialidad', departamento_externo_id: 10 }],
-					error: null,
-				}
-			}
 			if (tabla === 'departamentos_externos') {
 				return { data: [{ id: 10, departamento: 'Servicios Externos' }], error: null }
 			}
@@ -127,6 +130,17 @@ describe('Pruebas del panel del administrador externo', () => {
 
 	afterEach(() => wrapper.unmount())
 
+	// Busca un botón dentro del modal por su texto (el primer .btn-primario es "Descargar PDF")
+	const botonDelModal = (texto: string) =>
+		wrapper.findAll('.modal-card button').find((b) => b.text().includes(texto))
+
+	it('carga el departamento, los problemas y los reportes turnados', () => {
+		expect(db.obtenerProblematicasExternasPorID).toHaveBeenCalledWith(10)
+		expect(db.selectEqOrder).toHaveBeenCalledWith('reportes', 'departamento_externo_id', 10, 'created_at', expect.any(Array), false)
+		expect(wrapper.vm.admin.departamento).toBe('Servicios Externos')
+		expect(wrapper.vm.reportes).toHaveLength(4)
+	})
+
 	it('busca reportes por folio y otras características', async () => {
 		wrapper.vm.filtros.estado = ''
 		wrapper.vm.filtros.busqueda = 'luminaria apagada'
@@ -140,45 +154,67 @@ describe('Pruebas del panel del administrador externo', () => {
 		expect(wrapper.find('tbody tr.fila-datos').text()).toContain('Bache en vialidad')
 	})
 
-	it('filtra reportes por Llegado, En Proceso, Rechazado y Finalizado', async () => {
+	it('solo ofrece los estados Pendiente, Finalizado y Rechazado', () => {
+		const botones = wrapper.findAll('.estado-btn')
+		expect(botones).toHaveLength(3)
+		expect(botones.map((b) => b.text())).toEqual([
+			expect.stringContaining('Pendiente'),
+			expect.stringContaining('Finalizado'),
+			expect.stringContaining('Rechazado'),
+		])
+	})
+
+	it('filtra reportes por Pendiente, Finalizado y Rechazado desde los botones de estado', async () => {
 		for (const [estado, folio] of [
 			['Pendiente', 'ABC123'],
-			['En Proceso', 'XYZ789'],
-			['Rechazado', 'QWE456'],
 			['Finalizado', 'LMN321'],
+			['Rechazado', 'QWE456'],
 		]) {
-			wrapper.vm.filtros.estado = estado
-			await wrapper.vm.$nextTick()
+			const boton = wrapper.findAll('.estado-btn').find((b) => b.text().includes(estado))!
+			await boton.trigger('click')
+			expect(wrapper.vm.filtros.estado).toBe(estado)
 			expect(wrapper.findAll('tbody tr.fila-datos')).toHaveLength(1)
 			expect(wrapper.find('tbody tr.fila-datos').text()).toContain(folio)
 		}
 	})
 
-	it('rechaza un reporte desde Ver y Actualizar Estado', async () => {
+	it('rechaza un reporte desde Ver detalle', async () => {
 		wrapper.vm.filtros.estado = ''
 		await wrapper.vm.$nextTick()
 		await wrapper.find('.btn-accion').trigger('click') // botón "Ver detalle"
 		await wrapper.vm.$nextTick()
 		expect(wrapper.find('.modal-card').text()).toContain('Rechazar Reporte')
 
-		await wrapper.find('.modal-card .btn-peligroso').trigger('click')
+		await botonDelModal('Rechazar Reporte')!.trigger('click')
 		await vi.waitFor(() =>
 			expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'EXT-BAS-20260915-001-ABC123', { estado_id: 3 }),
 		)
 	})
 
-	it('devuelve un reporte rechazado a Llegado', async () => {
+	it('devuelve un reporte rechazado a Pendiente', async () => {
 		wrapper.vm.filtros.estado = 'Rechazado'
 		await wrapper.vm.$nextTick()
 		await wrapper.find('.btn-accion').trigger('click') // botón "Ver detalle"
 		await wrapper.vm.$nextTick()
 
-		const botonDevolver = wrapper.find('.modal-card .btn-primario')
-		expect(botonDevolver.text()).toContain('Devolver a Pendiente')
-		await botonDevolver.trigger('click')
+		const botonDevolver = botonDelModal('Devolver a Pendiente')
+		expect(botonDevolver).toBeDefined()
+		await botonDevolver!.trigger('click')
 
 		await vi.waitFor(() =>
 			expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'EXT-SEG-20260913-003-QWE456', { estado_id: 1 }),
 		)
 	})
-}) 
+
+	it('finaliza un reporte pendiente desde la tabla', async () => {
+		await wrapper.find('button[title="Finalizar reporte"]').trigger('click')
+		await flushPromises()
+		expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'EXT-BAS-20260915-001-ABC123', { estado_id: 4 })
+	})
+
+	it('cierra sesión y redirige al inicio', async () => {
+		await wrapper.vm.cerrarSesion()
+		expect(localStorage.getItem('userSession')).toBeNull()
+		expect(pushMock).toHaveBeenCalledWith('/')
+	})
+})

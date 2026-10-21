@@ -64,24 +64,28 @@ describe('Pruebas del panel del administrador', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks()
 		reportesEstado = structuredClone(reportesMock)
-		const storage = new Map([['adminSession', JSON.stringify({ id: 1, nombre: 'Administrador', departamento_id: 1, tipo_id: 2 })]])
+
+		// La sesión ahora vive en "userSession" y el panel exige tipo_id === 2
+		const storage = new Map([['userSession', JSON.stringify({ id: 1, nombre: 'Administrador', departamento_id: 1, tipo_id: 2 })]])
 		vi.stubGlobal('localStorage', {
 			getItem: (key: string) => storage.get(key) ?? null,
 			setItem: (key: string, value: string) => storage.set(key, value),
 			removeItem: (key: string) => storage.delete(key),
 		})
 
+		vi.mocked(db.esperarUsuario).mockResolvedValue(null)
 		vi.mocked(db.selectEq).mockImplementation(async (tabla: string) => {
 			if (tabla === 'problemas') return { data: [{ id: 1, nombre: 'Bache', departamento_id: 1 }, { id: 2, nombre: 'Falla de iluminacion', departamento_id: 1 }], error: null }
-		if (tabla === 'departamentos') return { data: [{ id: 1, nombre: 'Servicios Publicos' }], error: null }
-		if (tabla === 'supervisores') return { data: [], error: null }
-		if (tabla === 'titulo') return { data: [{ id: 7, nombre: 'No procedente' }], error: null }
-		return { data: [], error: null }
+			if (tabla === 'departamentos') return { data: [{ id: 1, nombre: 'Servicios Publicos' }], error: null }
+			if (tabla === 'supervisores') return { data: [], error: null }
+			if (tabla === 'titulo') return { data: [{ id: 7, nombre: 'No procedente' }], error: null }
+			return { data: [], error: null }
 		})
-		vi.mocked(db.selectAll).mockImplementation(async (tabla: string) => ({
-			data: tabla === 'departamentos' ? [{ id: 2, nombre: 'Obras Publicas', estado: 'Alta' }] : [{ id: 10, departamento: 'Proveedor Externo', estado: 'Alta' }],
-			error: null,
-		}))
+		vi.mocked(db.selectAll).mockImplementation(async (tabla: string) => {
+			if (tabla === 'departamentos') return { data: [{ id: 2, nombre: 'Obras Publicas', estado: 'Alta' }], error: null }
+			if (tabla === 'departamentos_externos') return { data: [{ id: 10, departamento: 'Proveedor Externo', estado: 'Alta' }], error: null }
+			return { data: [], error: null } // jefes, etc.
+		})
 		vi.mocked(db.selectEqOrder).mockImplementation(async () => ({ data: structuredClone(reportesEstado), error: null }))
 		vi.mocked(db.selectEqSingle).mockImplementation(async (_tabla, _campo, estado: string) => ({
 			data: { id: { Pendiente: 1, 'En Revisión': 2, Rechazado: 3, Finalizado: 4, Turnado: 5, Devuelto: 6 }[estado] }, error: null,
@@ -111,7 +115,7 @@ describe('Pruebas del panel del administrador', () => {
 
 	it('filtra por folio, ciudadano, teléfono, domicilio, fecha y problema', async () => {
 		wrapper.vm.filtros.estado = ''
-		for (const [filtro, esperado] of [['busqueda', 'Maria'], ['busqueda', '6671234567'], ['busqueda', 'Rosales'], ['fecha', '2026-09-15'], ['problema', '2']]) {
+		for (const [filtro, esperado] of [['busqueda', 'ABC123'], ['busqueda', 'Maria'], ['busqueda', '6671234567'], ['busqueda', 'Rosales'], ['fecha', '2026-09-15'], ['problema', '2']]) {
 			wrapper.vm.filtros.busqueda = ''
 			wrapper.vm.filtros.fecha = ''
 			wrapper.vm.filtros.problema = ''
@@ -156,7 +160,7 @@ describe('Pruebas del panel del administrador', () => {
 		await wrapper.find('#formRechazo textarea').setValue('No procede')
 		await wrapper.find('#formRechazo').trigger('submit.prevent')
 		await flushPromises()
-		expect(db.insert).toHaveBeenCalledWith('historial_reporte', expect.objectContaining({ folio: 'ALU-BAC-20260915-001-ABC123', titulo_id: 7, notas: 'No procede' }))
+		expect(db.insert).toHaveBeenCalledWith('historial_reporte', expect.objectContaining({ folio: 'ALU-BAC-20260915-001-ABC123', categoria_historial_id: 2, titulo_id: 7, notas: 'No procede' }))
 		expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'ALU-BAC-20260915-001-ABC123', { estado_id: 3 })
 	})
 
@@ -171,7 +175,7 @@ describe('Pruebas del panel del administrador', () => {
 
 	it('cierra sesión y redirige al inicio', async () => {
 		await wrapper.vm.cerrarSesion()
-		expect(localStorage.getItem('adminSession')).toBeNull()
+		expect(localStorage.getItem('userSession')).toBeNull()
 		expect(pushMock).toHaveBeenCalledWith('/')
 	})
 

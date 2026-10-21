@@ -24,6 +24,7 @@ vi.mock('sweetalert2', () => {
 	}
 })
 
+// Roles reales: 2 = Administrador, 3 = Supervisor, 4 = Jefe, 5 = Trabajador, 6 = Personal externo
 const usuariosMock = [
 	{
 		id: 10,
@@ -33,7 +34,7 @@ const usuariosMock = [
 		apellido_m: 'Lopez',
 		estadoadministrativo: 'Alta',
 		tipousuario_id: 2,
-		tipousuario: { nombre: 'Supervisor' },
+		tipousuario: { nombre: 'Administrador' },
 		administradores: [{ created_at: '2026-09-15T12:00:00Z', departamentos: { id: 1, nombre: 'Servicios Publicos' } }],
 		supervisores: [],
 	},
@@ -45,7 +46,7 @@ const usuariosMock = [
 		apellido_m: 'Soto',
 		estadoadministrativo: 'Baja',
 		tipousuario_id: 3,
-		tipousuario: { nombre: 'Director de Departamento' },
+		tipousuario: { nombre: 'Supervisor' },
 		administradores: [],
 		supervisores: [{ created_at: '2026-09-14T12:00:00Z', departamentos: { id: 2, nombre: 'Obras Publicas' } }],
 	},
@@ -57,7 +58,7 @@ const usuariosMock = [
 		apellido_m: 'Perez',
 		estadoadministrativo: 'Alta',
 		tipousuario_id: 2,
-		tipousuario: { nombre: 'Supervisor' },
+		tipousuario: { nombre: 'Administrador' },
 		administradores: [{ created_at: '2026-09-13T12:00:00Z', departamentos: { id: 2, nombre: 'Obras Publicas' } }],
 		supervisores: [],
 	},
@@ -71,8 +72,9 @@ describe('Pruebas del panel del director general', () => {
 		vi.clearAllMocks()
 		usuariosState = structuredClone(usuariosMock)
 
+		// La sesión ahora vive en "userSession" y el panel exige tipo_id === 1
 		const storage = new Map<string, string>([
-			['adminSession', JSON.stringify({ id: 1, nombre: 'Director General', tipo_id: 1 })],
+			['userSession', JSON.stringify({ id: 1, nombre: 'Director General', tipo_id: 1 })],
 		])
 
 		vi.stubGlobal('localStorage', {
@@ -81,11 +83,13 @@ describe('Pruebas del panel del director general', () => {
 			removeItem: (key: string) => storage.delete(key),
 		})
 
+		vi.mocked(db.esperarUsuario).mockResolvedValue(null)
+
 		// selectNeq(tabla, campo, valor, columnas) -> tipos de usuario
 		vi.mocked(db.selectNeq).mockResolvedValue({
 			data: [
-				{ id: 2, nombre: 'Supervisor' },
-				{ id: 3, nombre: 'Director de Departamento' },
+				{ id: 2, nombre: 'Administrador' },
+				{ id: 3, nombre: 'Supervisor' },
 			],
 			error: null,
 		})
@@ -118,17 +122,29 @@ describe('Pruebas del panel del director general', () => {
 					{ id: 2, nombre: 'Obras Publicas', nombreamigable: 'Obras Publicas', estado: 'Alta' },
 				],
 				departamentos_externos: [{ id: 1, departamento: 'Proveedor Externo', estado: 'Alta' }],
-				problemas: [],
-				problemas_externos: [],
+				problemas: [
+					{
+						id: 1, nombre: 'Bache', nombreamigable: 'Bache en vialidad', departamento_id: 1,
+						departamentos: { id: 1, nombre: 'Servicios Publicos' }, estado: 'Alta',
+					},
+				],
+				problemas_externos: [
+					{
+						id: 5, nombre: 'Fuga', nombreamigable: 'Fuga de agua', departamento_externo_id: 1,
+						departamentos_externos: { id: 1, departamento: 'Proveedor Externo' }, estado: 'Alta',
+					},
+				],
 			}
 			return { data: structuredClone(datos[tabla] ?? []), error: null }
 		})
 
-		// selectIlike(tabla, campo, valor, columnas) -> validación de nombre duplicado en los formularios (sin duplicados)
-		vi.mocked(db.selectIlike).mockResolvedValue({ data: [], error: null })
-
-		// selectIlikeMaybeSingle(tabla, campo, valor) -> validación de correo duplicado (sin duplicado)
-		vi.mocked(db.selectIlikeMaybeSingle).mockResolvedValue({ data: null, error: null })
+		// Validaciones de duplicados de los formularios (sin duplicados => error: null)
+		const sinError = { data: [], error: null }
+		vi.mocked(db.obtenerDepartamentosinternosPorNombre).mockResolvedValue(sinError)
+		vi.mocked(db.obtenerDepartamentosExternosPorNombre).mockResolvedValue(sinError)
+		vi.mocked(db.obtenerProblematicasInternasPorNombre).mockResolvedValue(sinError)
+		vi.mocked(db.obtenerProblematicasExternasPorNombre).mockResolvedValue(sinError)
+		vi.mocked(db.obtenerCorreoUnico).mockResolvedValue({ data: null, error: null })
 
 		// updateEq(tabla, campo, valor, data)
 		vi.mocked(db.updateEq).mockImplementation(async (tabla: string, campo: string, valor: any, payload: any) => {
@@ -167,7 +183,7 @@ describe('Pruebas del panel del director general', () => {
 
 		const filas = wrapper.findAll('tbody tr.fila-datos')
 		expect(filas).toHaveLength(1)
-		expect(filas[0].text()).toContain('Director de Departamento')
+		expect(filas[0].text()).toContain('Supervisor')
 	})
 
 	it('PU-PD-03: filtra personal por departamento', async () => {
@@ -218,6 +234,10 @@ describe('Pruebas del panel del director general', () => {
 		await modal.find('select[name="departamento"]').setValue('2')
 		await modal.find('form').trigger('submit.prevent')
 
+		// El formulario valida el correo con obtenerCorreoUnico antes de emitir "save"
+		await vi.waitFor(() => {
+			expect(db.obtenerCorreoUnico).toHaveBeenCalledWith('ana.garcia@culiacan.gob.mx')
+		})
 		await vi.waitFor(() => {
 			expect(db.callRpc).toHaveBeenCalledWith('guardar_usuario', {
 				p_id: 10,
@@ -232,6 +252,7 @@ describe('Pruebas del panel del director general', () => {
 			})
 		})
 	})
+
 	it('PU-PD-07: redirige al inicio si no hay sesión', async () => {
 		vi.stubGlobal('localStorage', {
 			getItem: () => null,
@@ -249,9 +270,10 @@ describe('Pruebas del panel del director general', () => {
 	it('PU-PD-08: cerrarSesion limpia la sesión y redirige al inicio', async () => {
 		await wrapper.vm.cerrarSesion()
 
-		expect(localStorage.getItem('adminSession')).toBeNull()
+		expect(localStorage.getItem('userSession')).toBeNull()
 		expect(pushMock).toHaveBeenCalledWith('/')
 	})
+
 	it('PU-PD-09: cambiar a la pestaña Departamentos carga y muestra los datos', async () => {
 		const tabDepartamentos = wrapper.findAll('.tab-seccion').find((t) => t.text().includes('Departamentos'))
 		await tabDepartamentos!.trigger('click')
@@ -272,6 +294,7 @@ describe('Pruebas del panel del director general', () => {
 		expect(wrapper.vm.filtros.busqueda).toBe('')
 		expect(wrapper.vm.filtros.rol).toBe('')
 	})
+
 	it('PU-PD-11: crea un departamento interno nuevo', async () => {
 		wrapper.vm.filtros.seccion = 'departamentos'
 		await wrapper.vm.$nextTick()
@@ -294,7 +317,8 @@ describe('Pruebas del panel del director general', () => {
 			})
 		})
 	})
-	it('PU-PD-12: da de baja un departamento interno desde la tabla', async () => {
+
+	it('PU-PD-12: elimina un departamento interno desde la tabla', async () => {
 		wrapper.vm.filtros.seccion = 'departamentos'
 		await wrapper.vm.$nextTick()
 		await vi.waitFor(() => expect(wrapper.vm.cargando).toBe(false))
@@ -307,16 +331,22 @@ describe('Pruebas del panel del director general', () => {
 			expect(db.deleteEq).toHaveBeenCalledWith('departamentos', 'id', 1)
 		})
 	})
+
 	it('PU-PD-13: filtra problemáticas por tipo', async () => {
 		wrapper.vm.filtros.seccion = 'problematicas'
 		await wrapper.vm.$nextTick()
 		await vi.waitFor(() => expect(wrapper.vm.cargando).toBe(false))
 
+		// Sin filtro de tipo se ven las internas y las externas
+		expect(wrapper.findAll('tbody tr.fila-datos')).toHaveLength(2)
+
 		wrapper.vm.filtros.tipoProblematica = 'Interno'
 		await wrapper.vm.$nextTick()
 
 		const filas = wrapper.findAll('tbody tr.fila-datos')
-		expect(filas.every((f) => f.text().includes('Interno'))).toBe(true)
+		expect(filas).toHaveLength(1)
+		expect(filas[0].text()).toContain('Bache')
+		expect(filas[0].text()).toContain('Interno')
 	})
 
 	it('PU-PD-14: cambiar tipo de problemática resetea el filtro de departamento', async () => {
@@ -328,5 +358,20 @@ describe('Pruebas del panel del director general', () => {
 		await wrapper.vm.$nextTick()
 
 		expect(wrapper.vm.filtros.departamentoProblematica).toBe('')
+	})
+
+	it('PU-PD-15: si no se puede eliminar un departamento, lo da de baja', async () => {
+		vi.mocked(db.deleteEq).mockResolvedValueOnce({ data: null, error: { message: 'foreign key violation' } })
+
+		wrapper.vm.filtros.seccion = 'departamentos'
+		await wrapper.vm.$nextTick()
+		await vi.waitFor(() => expect(wrapper.vm.cargando).toBe(false))
+		await wrapper.vm.$nextTick()
+
+		await wrapper.find('.btn-eliminar').trigger('click')
+
+		await vi.waitFor(() => {
+			expect(db.updateEq).toHaveBeenCalledWith('departamentos', 'id', 1, { estado: 'Baja' })
+		})
 	})
 })
