@@ -34,12 +34,12 @@ jobs:
       - name: Pruebas E2E Cypress
         uses: cypress-io/github-action@v5
         with:
-          start: npm run preview
+          start: npx vite preview --port 4173 --host 0.0.0.0
           wait-on: 'http://localhost:4173'
+          wait-on-timeout: 120
         env:
           VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
 
-          
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
