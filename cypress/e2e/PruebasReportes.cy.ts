@@ -1,3 +1,10 @@
+// Comprueba que un mensaje de error sea visible. Se separan las acciones (scrollIntoView)
+// de las aserciones para evitar la regla cypress/unsafe-to-chain-command.
+const verError = (texto: string | RegExp) => {
+  cy.contains('.msg-error', texto).scrollIntoView();
+  cy.contains('.msg-error', texto).should('be.visible');
+};
+
 //PC-01 Pruebas para el envío de reportes
 describe('PC-01 Pruebas para el envío de reportes', () => {
   beforeEach(() => {
@@ -9,24 +16,28 @@ describe('PC-01 Pruebas para el envío de reportes', () => {
 
     // Enviar el formulario sin llenar los campos obligatorios
     cy.get('.panel-form button[type="submit"]').click();
-    cy.contains('.msg-error', 'Selecciona el departamento').scrollIntoView().should('be.visible');
-    cy.contains('.msg-error', 'Selecciona el problema').scrollIntoView().should('be.visible');
-    cy.contains('.msg-error', 'La descripción es obligatoria').scrollIntoView().should('be.visible');
-    cy.contains('.msg-error', 'El teléfono es obligatorio').scrollIntoView().should('be.visible');
-    cy.contains('.msg-error', 'Por favor selecciona una ubicación en el mapa').scrollIntoView().should('be.visible');
-    cy.contains('.msg-error', 'Debes adjuntar una foto de evidencia').scrollIntoView().should('be.visible');
+    verError('Selecciona el departamento');
+    verError('Selecciona el problema');
+    verError('La descripción es obligatoria');
+    verError('El teléfono es obligatorio');
+    verError('Por favor selecciona una ubicación en el mapa');
+    verError('Debes adjuntar una foto de evidencia');
 
-    // Llenar el campo teléfono con menos de 10 dígitos y enviar el formulario
+    // Teléfono con menos de 10 dígitos.
+    // El input tiene minlength="10", así que el navegador puede bloquear el envío y el mensaje
+    // visible es el del evento @input ("El teléfono debe tener exactamente 10 dígitos") o el del
+    // submit ("Ingresa un número válido de 10 dígitos"). Ambos mencionan "10 dígitos".
     cy.get('input[name="telefono"]').type('66721455');
     cy.get('.panel-form button[type="submit"]').click();
-    cy.contains('.msg-error', 'Ingresa un número válido de 10 dígitos').should('be.visible');
+    cy.contains('.msg-error', /10 dígitos/).should('be.visible');
 
-    // Llenar el campo teléfono con 10 dígitos pero sin seleccionar ubicación ni adjuntar evidencia y enviar el formulario
-    cy.get('input[name="telefono"]').clear().type('6672145512');
+    // Teléfono con 10 dígitos pero sin ubicación ni evidencia
+    cy.get('input[name="telefono"]').clear();
+    cy.get('input[name="telefono"]').type('6672145512');
     cy.get('.panel-form button[type="submit"]').click();
-    cy.contains('.msg-error', 'Ingresa un número válido de 10 dígitos').should('not.exist');
-    cy.contains('.msg-error', 'Por favor selecciona una ubicación en el mapa').scrollIntoView().should('be.visible');
-    cy.contains('.msg-error', 'Debes adjuntar una foto de evidencia').scrollIntoView().should('be.visible');
+    cy.contains('.msg-error', /10 dígitos/).should('not.exist');
+    verError('Por favor selecciona una ubicación en el mapa');
+    verError('Debes adjuntar una foto de evidencia');
   });
 });
 
@@ -38,7 +49,8 @@ describe('PC-02 Prueba para verificar que el campo teléfono solo acepte número
 
   it('El campo teléfono solo acepta números', () => {
     cy.contains('Crear reporte').click();
-    cy.get('input[name="telefono"]').type('abcde12345').should('have.value', '12345');
+    cy.get('input[name="telefono"]').type('abcde12345');
+    cy.get('input[name="telefono"]').should('have.value', '12345');
   });
 });
 
@@ -57,7 +69,7 @@ describe('PC-03 Pruebas para seleccionar problemas por departamento', () => {
     // Verificar que está deshabilitada la lista de problemas
     cy.get('select[name="problema"]').should('be.disabled');
 
-    // Seleccionar un departamento
+    // Seleccionar un departamento (el texto de la opción es el "nombre amigable" del departamento)
     cy.get('select[name="departamento"]').select('Alumbrado público');
 
     // Verificar que ahora está habilitada la lista de problemas
@@ -68,6 +80,14 @@ describe('PC-03 Pruebas para seleccionar problemas por departamento', () => {
 //PC-04 Prueba para comprobación de inserciones en la base de datos
 describe('PC-04 Prueba para comprobación de inserciones en la base de datos', () => {
   beforeEach(() => {
+    // Al confirmar la dirección el componente consulta Nominatim; si esa llamada falla, la
+    // latitud/longitud quedan en 0 y el envío se bloquea. Se simula para que la prueba no
+    // dependa de un servicio externo.
+    cy.intercept('GET', 'https://nominatim.openstreetmap.org/reverse*', {
+      statusCode: 200,
+      body: { display_name: 'Av. Álvaro Obregón 450, Centro, Culiacán, Sinaloa' },
+    }).as('reverseGeocode');
+
     cy.visit('/');
   });
 
@@ -79,7 +99,7 @@ describe('PC-04 Prueba para comprobación de inserciones en la base de datos', (
 
     // Llenar los campos obligatorios del formulario
     cy.get('select[name="departamento"]').select('Alumbrado público');
-    
+
     // Asegurar que el select de problemas se habilite y cargue sus propias opciones
     cy.get('select[name="problema"]').should('not.be.disabled');
     cy.get('select[name="problema"] option', { timeout: 10000 }).should('have.length.greaterThan', 1);
@@ -89,13 +109,19 @@ describe('PC-04 Prueba para comprobación de inserciones en la base de datos', (
     cy.get('input[name="nombre"]').type('Juan Pérez');
     cy.get('input[name="telefono"]').type('6672145512');
     cy.get('#inputFotoFile').selectFile('cypress/fixtures/evidencia.jpg', { force: true });
+
+    // Al abrir el mapa el formulario se oculta; sus datos se conservan al confirmar la dirección
     cy.get('.btn-abrir-mapa').click();
     cy.get('.btn-confirmar-dir').click();
+    cy.wait('@reverseGeocode');
+    cy.get('input[name="domicilio"]').should('have.value', 'Av. Álvaro Obregón 450, Centro, Culiacán, Sinaloa');
 
     // Enviar el formulario
     cy.get('.panel-form button[type="submit"]').click();
 
-    cy.get('.modal-reporte-exitoso').should('be.visible').and('contain', '¡Reporte enviado con éxito!');
+    // El título del modal es "Reporte enviado con éxito" (sin signos de exclamación)
+    cy.get('.modal-reporte-exitoso', { timeout: 15000 }).should('be.visible');
+    cy.get('.modal-reporte-exitoso').should('contain', 'Reporte enviado con éxito');
   });
 });
 
@@ -110,7 +136,7 @@ describe('PC-05 Prueba para validar límite de caracteres en el campo descripci�
 
     // Llenar el campo descripción con más de 600 caracteres
     const descripcionLarga = 'a'.repeat(601);
-    cy.get('textarea[name="descripcion"]').type(descripcionLarga);
+    cy.get('textarea[name="descripcion"]').type(descripcionLarga, { delay: 0 });
 
     // Verificar que el valor del campo descripción no exceda los 600 caracteres
     cy.get('textarea[name="descripcion"]').invoke('val').should('have.length', 600);

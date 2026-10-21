@@ -2,7 +2,7 @@ import { mount, VueWrapper } from '@vue/test-utils'
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import HomeComponent from '@/views/HomeView.vue'
 import ReporteDetalleModal from '@/components/ReporteDetalleModal.vue'
-import { selectEqSingle } from '@/services/supabaseController'
+import { obtenerReportePorFolio } from '@/services/supabaseController'
 import './setup'
 
 const {pushMock} = vi.hoisted(()=>{
@@ -47,28 +47,23 @@ describe('Pruebas Unitarias del Módulo Home', () => {
         const mockReporte = {
             folio: 'ALU-BAC-20260315-153000-AB3F9',
             descripcion: 'Prueba de consulta de folio',
-            nombreReportante: 'Angel',
+            nombre: 'Angel',
             telefono: '6671234567',
             domicilio: 'Av. Álvaro Obregón 450',
             referencias: null,
             foto_url: 'https://example.com/foto.jpg',
-            fecha_creacion: '2026-03-15T00:00:00Z',
+            created_at: '2026-03-15T00:00:00Z',
             problemas: { nombreamigable: 'Bache' },
             detalle_reporte: {
-                estado_id: 2, 
-                estadoreporte: {estado: 'En Proceso' }},
+                estado_id: 2,
+                estadoreporte: { estado: 'En Proceso' }},
         };
-        vi.mocked(selectEqSingle).mockResolvedValueOnce({ data: mockReporte, error: null });
+        vi.mocked(obtenerReportePorFolio).mockResolvedValueOnce({ data: mockReporte, error: null });
 
         wrapper.vm.folioInput = mockReporte.folio;
         await wrapper.vm.ejecutarBusqueda();
 
-        expect(selectEqSingle).toHaveBeenCalledWith(
-            'reportes',
-            'folio',
-            mockReporte.folio,
-            expect.any(Array),
-        );
+        expect(obtenerReportePorFolio).toHaveBeenCalledWith(mockReporte.folio);
         expect(wrapper.vm.reporteEncontrado).toEqual(
             expect.objectContaining({
                 folio: mockReporte.folio,
@@ -81,7 +76,7 @@ describe('Pruebas Unitarias del Módulo Home', () => {
 
 
     it('PU-2: Mostrar mensaje si el folio no existe', async () => {
-        vi.mocked(selectEqSingle).mockResolvedValueOnce({ data: null, error: { message: 'Filas no encontradas' } });
+        vi.mocked(obtenerReportePorFolio).mockResolvedValueOnce({ data: null, error: null });
 
         wrapper.vm.folioInput = 'FOLIO-INEXISTENTE';
         await wrapper.vm.ejecutarBusqueda();
@@ -94,7 +89,7 @@ describe('Pruebas Unitarias del Módulo Home', () => {
         wrapper.vm.folioInput = '   ';
         await wrapper.vm.ejecutarBusqueda();
 
-        expect(selectEqSingle).not.toHaveBeenCalled();
+        expect(obtenerReportePorFolio).not.toHaveBeenCalled();
         expect(wrapper.vm.errorBusqueda).toBe('Por favor, ingresa el folio de tu reporte.');
     });
 
@@ -107,76 +102,73 @@ describe('Pruebas Unitarias del Módulo Home', () => {
             domicilio: 'Av. Álvaro Obregón 450',
             referencias: null,
             foto_url: 'https://example.com/foto.jpg',
-            fecha_creacion: '2026-03-15T00:00:00Z',
+            created_at: '2026-03-15T00:00:00Z',
             problemas: { nombreamigable: 'Bache' },
-            detalle_reporte: null, 
+            detalle_reporte: null,
         };
-        vi.mocked(selectEqSingle).mockResolvedValueOnce({ data: mockReporte, error: null });
+        vi.mocked(obtenerReportePorFolio).mockResolvedValueOnce({ data: mockReporte, error: null });
 
         wrapper.vm.folioInput = mockReporte.folio;
         await wrapper.vm.ejecutarBusqueda();
 
         expect(wrapper.vm.reporteEncontrado.estado).toBe('Pendiente');
     });
+
     it('PU-05: Navegación a la ruta /reporte', async () => {
         await wrapper.vm.irAReporte();
         expect(pushMock).toHaveBeenCalledWith('/reporte');
     });
+
     it('PU-06: abrirModalBusqueda limpia el estado anterior y abre el modal', async () => {
-        // Simulación de los datos en una búsqueda previa
         wrapper.vm.folioInput = 'ALGO-VIEJO';
         wrapper.vm.errorBusqueda = 'Un error anterior';
         wrapper.vm.modalBusquedaVisible = false;
- 
+
         wrapper.vm.abrirModalBusqueda();
- 
+
         expect(wrapper.vm.folioInput).toBe('');
         expect(wrapper.vm.errorBusqueda).toBe('');
         expect(wrapper.vm.modalBusquedaVisible).toBe(true);
     });
+
     it('PU-07: Los eventos del modal de detalle se manejan correctamente', async () => {
-        // Forzamos a que el modal esté visible para poder interactuar con él
         wrapper.vm.modalVisible = true;
         await wrapper.vm.$nextTick();
- 
+
         const modal = wrapper.findComponent(ReporteDetalleModal);
         expect(modal.exists()).toBe(true);
- 
-        await modal.vm.$emit('close');
-        expect(wrapper.vm.modalVisible).toBe(false);
- 
-        // Emitir 'buscar' debe reabrir el modal de búsqueda de folio
-        await modal.vm.$emit('buscar');
-        expect(wrapper.vm.modalBusquedaVisible).toBe(true);
-    });
-    it('PU-08: Los eventos del modal de detalle se manejan correctamente', async () => {
-        // Forzamos a que el modal esté visible para poder interactuar con él
-        wrapper.vm.modalVisible = true;
-        await wrapper.vm.$nextTick();
- 
-        const modal = wrapper.findComponent(ReporteDetalleModal);
-        expect(modal.exists()).toBe(true);
- 
+
         // Emitir 'close' debe cerrar el modal de detalle
         await modal.vm.$emit('close');
         expect(wrapper.vm.modalVisible).toBe(false);
- 
+
         // Emitir 'buscar' debe reabrir el modal de búsqueda de folio
         await modal.vm.$emit('buscar');
         expect(wrapper.vm.modalBusquedaVisible).toBe(true);
     });
-     it('PU-09: El menú desplegable llama a iniciarSesion al hacer clic', async () => {
+
+    it('PU-08: Mostrar el mensaje de error que devuelve el servicio al consultar', async () => {
+        vi.mocked(obtenerReportePorFolio).mockResolvedValueOnce({ data: null, error: 'Error de conexión' });
+
+        wrapper.vm.folioInput = 'ALU-BAC-20260315-153000-AB3F9';
+        await wrapper.vm.ejecutarBusqueda();
+
+        expect(wrapper.vm.errorBusqueda).toBe('Error de conexión');
+        expect(wrapper.vm.modalVisible).toBe(false);
+    });
+
+    it('PU-09: El menú desplegable llama a iniciarSesion al hacer clic', async () => {
         const { menuAbierto, iniciarSesion } = await import('@/logic/home');
- 
+
         expect(menuAbierto.value).toBe(false);
- 
+
         await wrapper.find('.menu-btn').trigger('click');
         expect(menuAbierto.value).toBe(true);
- 
+
         const opcionLogin = wrapper.find('.menu-list li');
         expect(opcionLogin.exists()).toBe(true);
         await opcionLogin.trigger('click');
- 
+
         expect(iniciarSesion).toHaveBeenCalled();
     });
 });
