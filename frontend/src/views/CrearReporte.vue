@@ -583,9 +583,7 @@ const enviarReporte = async () => {
 
     const resultadoGmail = await enviarCorreoCreacionReporte(correoData)
 
-    if (resultadoGmail.ok) {
-      console.log('Correo enviado, ID:', resultadoGmail.idMessage)
-    } else {
+    if (!resultadoGmail.ok) {
       console.error('Error al enviar:', resultadoGmail.mensaje)
       console.error('Error detallado:', resultadoGmail.error)
     }
