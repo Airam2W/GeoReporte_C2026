@@ -580,7 +580,7 @@ const enviarReporte = async () => {
       referencias: form.value.referencias ? form.value.referencias.trim() : null,
     }
 
-    const { data, error } = await enviarCorreoCreacionReporte(correoData)
+    const { dataGmail, errorGmail } = await enviarCorreoCreacionReporte(correoData)
 
     mostrarModalReporteExitoso({
       folio: folioGenerado,
