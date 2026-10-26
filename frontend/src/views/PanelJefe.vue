@@ -225,6 +225,7 @@ import {
 } from '../services/supabaseController'
 import { truncarTexto } from '../logic/panelAdministrador'
 import DescargarPdfModal from '../components/DescargarPdfModal.vue'
+import { enviarCorreoReportePDF } from '../services/gmailController'
 
 const modalPdfVisible = ref(false)
 const reportePdf = ref<any>(null)
@@ -485,54 +486,22 @@ const descargarYEnviar = async (correo: string) => {
     a.click()
     URL.revokeObjectURL(url)
 
-    // 2. Envío por correo (pendiente de conectar la API de Gmail)
-    // ---------------------------------------------------------------
-    // Aquí iría la lógica con la API de Gmail. Requiere un access token
-    // de Google con el scope https://www.googleapis.com/auth/gmail.send
-    //
-    // const base64Pdf = await blobABase64(blob)
-    // const limite = 'georeporte_boundary'
-    // const mime = [
-    //   `To: ${correo}`,
-    //   'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(`Ficha del reporte ${reportePdf.value.folio}`))) + '?=',
-    //   'MIME-Version: 1.0',
-    //   `Content-Type: multipart/mixed; boundary="${limite}"`,
-    //   '',
-    //   `--${limite}`,
-    //   'Content-Type: text/plain; charset="UTF-8"',
-    //   '',
-    //   'Adjunto la ficha del reporte. Ayuntamiento de Culiacán · GeoReporte.',
-    //   '',
-    //   `--${limite}`,
-    //   `Content-Type: application/pdf; name="${nombreArchivo}"`,
-    //   `Content-Disposition: attachment; filename="${nombreArchivo}"`,
-    //   'Content-Transfer-Encoding: base64',
-    //   '',
-    //   base64Pdf,
-    //   `--${limite}--`,
-    // ].join('\r\n')
-    //
-    // // Gmail pide el mensaje completo en base64 "url-safe"
-    // const raw = btoa(mime).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-    //
-    // const resp = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-    //   method: 'POST',
-    //   headers: {
-    //     Authorization: `Bearer ${accessTokenGoogle}`,
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({ raw }),
-    // })
-    // if (!resp.ok) throw new Error('Gmail respondió ' + resp.status)
-    //
-    // // Helper para convertir el Blob a base64:
-    // // const blobABase64 = (b: Blob) => new Promise<string>((res, rej) => {
-    // //   const r = new FileReader()
-    // //   r.onload = () => res(String(r.result).split(',')[1])
-    // //   r.onerror = rej
-    // //   r.readAsDataURL(b)
-    // // })
-    // ---------------------------------------------------------------
+    // 2. Enviar correo por Gmail del Reporte en PDF
+    const correoData = {
+      folio: reportePdf.value.folio,
+      departamento: jefe.value?.departamento || 'No disponible',
+      problema: reportePdf.value.problemas?.nombre || 'No disponible',
+      correo: correo || jefe.value?.correo || '',
+      pdfBlob: blob,
+      nombreArchivo: nombreArchivo,
+    }
+
+    const resultadoGmail = await enviarCorreoReportePDF(correoData)
+
+    if (!resultadoGmail.ok) {
+      console.error('Error al enviar:', resultadoGmail.mensaje)
+      console.error('Error detallado:', resultadoGmail.error)
+    }
 
     cerrarModalPdf()
     Swal.fire({
