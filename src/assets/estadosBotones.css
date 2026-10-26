@@ -61,6 +61,7 @@
 .estado-purpura { --color: #571897; --fondo: #dac5e8; }
 .estado-verde   { --color: #2e7d32; --fondo: #e8f5e9; }
 .estado-rojo    { --color: #c62828; --fondo: #ffebee; }
+.estado-gris    { --color: #2e2e2e; --fondo: #dfdfdf; }
 
 .estados-grid.estados-grid--dos {
   grid-template-columns: repeat(2, 1fr);

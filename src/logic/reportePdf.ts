@@ -14,7 +14,10 @@ const ANCHO_UTIL = ANCHO - MARGEN * 2
 interface OpcionesPdf {
   departamento?: string
   supervisor?: string
+  devolverBlob?: boolean // true = no descarga, regresa el archivo
 }
+
+
 
 const formatearFecha = (valor?: string) => {
   if (!valor) return 'No disponible'
@@ -206,6 +209,12 @@ export const generarPdfReporte = async (reporte: any, opciones: OpcionesPdf = {}
     doc.text(`Página ${i} de ${totalPaginas}`, ANCHO - MARGEN, ALTO - 11, { align: 'right' })
   }
 
-  const numero = String(reporte.folio).split('-')[4] || reporte.folio
-  doc.save(`Reporte_${numero}.pdf`)
+  const numero = reporte.folio
+  const nombreArchivo = `GeoReporte_${numero}.pdf`
+
+  if (opciones.devolverBlob) {
+    return { blob: doc.output('blob') as Blob, nombreArchivo }
+  }
+  doc.save(nombreArchivo)
+  return null
 }

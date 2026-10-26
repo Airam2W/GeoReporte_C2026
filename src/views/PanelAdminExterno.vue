@@ -103,7 +103,7 @@
               <th>FOLIO</th>
               <th>FECHA TURNADO</th>
               <th>PROBLEMÁTICA REPORTADA</th>
-              <th>UBICACIÓN</th>
+              <th>DOMICILIO</th>
               <th>ESTADO ACTUAL</th>
               <th class="text-center">ACCIONES</th>
             </tr>
@@ -122,14 +122,14 @@
               <td class="font-mono">{{ formatearFecha(reporte.detalle_reporte?.updated_at) }}</td>
               <td>
                 <div class="ciudadano-info">
-                  <span>{{ reporte.problemas_externos?.nombreamigable }}</span>
-                  <small>{{ reporte.problemas_externos?.nombre }}</small>
+                  <span>{{ truncarTexto(reporte.problemas_externos?.nombreamigable, 25) }}</span>
+                  <small>{{ truncarTexto(reporte.problemas_externos?.nombre, 25) }}</small>
                 </div>
               </td>
               <td :title="reporte.domicilio">
                 <div class="ciudadano-info">
-                  <span>Col.{{ reporte.domicilio.split(',')[1] }}</span>
-                  <small>{{ reporte.domicilio.split(',')[0] }}</small>
+                  <span>{{ truncarTexto(reporte.domicilio.split(',')[1], 25) }}</span>
+                  <small>{{ truncarTexto(reporte.domicilio.split(',')[0], 25) }}</small>
                 </div>
               </td>
               <td class="text-center">
@@ -146,6 +146,13 @@
               </td>
 
               <td class="acciones-celda">
+                <button
+                  class="btn-accion btn-pdf"
+                  title="Descargar PDF"
+                  @click="descargarPDF(reporte)"
+                >
+                  📄
+                </button>
                 <button class="btn-accion" title="Ver detalle" @click="abrirModalVer(reporte)">
                   👁️
                 </button>
@@ -197,6 +204,17 @@
       @rechazar="rechazarReporte"
       @devolver="devolverReporte"
       @finalizar="devolverReporte"
+      @descargar-pdf="descargarPDF"
+    />
+
+    <DescargarPdfModal
+      :visible="modalPdfVisible"
+      :folio="reportePdf?.folio || ''"
+      :correo-inicial="admin?.correo || ''"
+      :procesando="procesandoPdf"
+      @close="cerrarModalPdf"
+      @descargar="descargarSoloLocal"
+      @enviar="descargarYEnviar"
     />
   </div>
 </template>
@@ -209,7 +227,20 @@ import Swal from 'sweetalert2'
 import { obtenerClaseEstado } from '../logic/panelAdministrador'
 import { redireccionarUsuario } from '../logic/redirectUser.ts'
 import { formatearFecha } from '@/logic/reporteDetalleModal.ts'
-import { esperarUsuario, selectEq, selectEqOrder, updateEq, obtenerProblematicasExternasPorID } from '../services/supabaseController'
+import {
+  esperarUsuario,
+  obtenerProblematicasExternasPorID,
+  obtenerReportesPorDepartamentoExternoID,
+  actualizarEstadoReporte,
+  obtenerDepartamentosExternosPorID,
+} from '../services/supabaseController'
+import { truncarTexto } from '../logic/panelAdministrador'
+import { generarPdfReporte } from '../logic/reportePdf'
+import DescargarPdfModal from '../components/DescargarPdfModal.vue'
+
+const modalPdfVisible = ref(false)
+const reportePdf = ref<any>(null)
+const procesandoPdf = ref(false)
 
 const router = useRouter()
 const admin = ref<any>(null)
@@ -218,9 +249,9 @@ const reportes = ref<any[]>([])
 const foliosProcesando = ref(new Set<string>())
 const problemasOpciones = ref<any[]>([])
 const estados = [
-  { valor: 'Pendiente', clase: 'estado-azul' },
-  { valor: 'Finalizado', clase: 'estado-verde' },
-  { valor: 'Rechazado', clase: 'estado-rojo' },
+  { valor: 'Pendiente', clase: 'estado-gris' },
+  { valor: 'Finalizado', clase: 'estado-gris' },
+  { valor: 'Rechazado', clase: 'estado-gris' },
 ]
 
 const conteoPorEstado = computed(() => {
@@ -261,30 +292,33 @@ onMounted(async () => {
     return
   }
 
-  await esperarUsuario(2000).catch(() => null); // Espera máx 2 segundos
-  await cargarCatalogos()
-  await cargarReportes()
-  ocultarCargando() // Ocultar el indicador de carga después de cargar los datos
+  try {
+    await esperarUsuario(2000).catch(() => null) // Espera máx 2 segundos
+    await cargarCatalogos()
+    await cargarReportes()
+  } catch (error) {
+    console.error('Error al cargar datos:', error)
+    Swal.fire('Error', 'Hubo un problema al cargar los datos. Intenta nuevamente.', 'error')
+  } finally {
+    ocultarCargando() // Ocultar el indicador de carga al finalizar
+  }
 })
 
 const cargarCatalogos = async () => {
   // Traer solo problemas del departamento del admin
-  const { data: problemasData, error: problemasError } = await obtenerProblematicasExternasPorID(admin.value.departamento_id)
-  
+  const { data: problemasData, error: problemasError } = await obtenerProblematicasExternasPorID(
+    admin.value.departamento_id,
+  )
+
   if (problemasError) {
     console.error('Error al cargar problemas:', problemasError)
-    console.log('Problemas data:', problemasData)
   } else {
     problemasOpciones.value = problemasData || []
-    console.log('Problemas data:', problemasData)
   }
 
   // Traer nombre del departamento para mostrarlo en el header
-  const { data: deptData, error: deptError } = await selectEq(
-    'departamentos_externos',
-    'id',
+  const { data: deptData, error: deptError } = await obtenerDepartamentosExternosPorID(
     admin.value.departamento_id,
-    ['id', 'departamento'],
   )
 
   if (deptError) {
@@ -294,35 +328,133 @@ const cargarCatalogos = async () => {
   }
 }
 
+// Paso 1: solo abre el modal (también sirve desde el modal de detalle)
+const descargarPDF = (reporte: any) => {
+  reportePdf.value = reporte
+  modalPdfVisible.value = true
+}
+
+const cerrarModalPdf = () => {
+  modalPdfVisible.value = false
+}
+
+const opcionesPdf = () => ({
+  departamento: admin.value?.departamento || 'No disponible',
+  supervisor: 'No disponible',
+})
+
+// Solo descargar en local (lo que ya hacía)
+const descargarSoloLocal = async () => {
+  procesandoPdf.value = true
+  try {
+    await generarPdfReporte(reportePdf.value, opcionesPdf())
+    cerrarModalPdf()
+  } catch (error) {
+    console.error('Error al generar el PDF:', error)
+    Swal.fire('Error', 'No se pudo generar el PDF del reporte.', 'error')
+  } finally {
+    procesandoPdf.value = false
+  }
+}
+
+// Descargar en local + enviar por correo
+const descargarYEnviar = async (correo: string) => {
+  procesandoPdf.value = true
+  try {
+    const resultado = await generarPdfReporte(reportePdf.value, {
+      ...opcionesPdf(),
+      devolverBlob: true,
+    })
+    if (!resultado) throw new Error('No se generó el archivo')
+    const { blob, nombreArchivo } = resultado
+
+    // 1. Descarga local (mismo comportamiento que antes)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nombreArchivo
+    a.click()
+    URL.revokeObjectURL(url)
+
+    // 2. Envío por correo (pendiente de conectar la API de Gmail)
+    // ---------------------------------------------------------------
+    // Aquí iría la lógica con la API de Gmail. Requiere un access token
+    // de Google con el scope https://www.googleapis.com/auth/gmail.send
+    //
+    // const base64Pdf = await blobABase64(blob)
+    // const limite = 'georeporte_boundary'
+    // const mime = [
+    //   `To: ${correo}`,
+    //   'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(`Ficha del reporte ${reportePdf.value.folio}`))) + '?=',
+    //   'MIME-Version: 1.0',
+    //   `Content-Type: multipart/mixed; boundary="${limite}"`,
+    //   '',
+    //   `--${limite}`,
+    //   'Content-Type: text/plain; charset="UTF-8"',
+    //   '',
+    //   'Adjunto la ficha del reporte. Ayuntamiento de Culiacán · GeoReporte.',
+    //   '',
+    //   `--${limite}`,
+    //   `Content-Type: application/pdf; name="${nombreArchivo}"`,
+    //   `Content-Disposition: attachment; filename="${nombreArchivo}"`,
+    //   'Content-Transfer-Encoding: base64',
+    //   '',
+    //   base64Pdf,
+    //   `--${limite}--`,
+    // ].join('\r\n')
+    //
+    // // Gmail pide el mensaje completo en base64 "url-safe"
+    // const raw = btoa(mime).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    //
+    // const resp = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    //   method: 'POST',
+    //   headers: {
+    //     Authorization: `Bearer ${accessTokenGoogle}`,
+    //     'Content-Type': 'application/json',
+    //   },
+    //   body: JSON.stringify({ raw }),
+    // })
+    // if (!resp.ok) throw new Error('Gmail respondió ' + resp.status)
+    //
+    // // Helper para convertir el Blob a base64:
+    // // const blobABase64 = (b: Blob) => new Promise<string>((res, rej) => {
+    // //   const r = new FileReader()
+    // //   r.onload = () => res(String(r.result).split(',')[1])
+    // //   r.onerror = rej
+    // //   r.readAsDataURL(b)
+    // // })
+    // ---------------------------------------------------------------
+
+    cerrarModalPdf()
+    Swal.fire({
+      title: 'PDF descargado',
+      html: `El archivo se descargó en tu equipo. El envío a <b>${correo}</b> estará disponible cuando se conecte el servicio de correo.`,
+      icon: 'info',
+      confirmButtonColor: '#1a6b2f',
+      customClass: { container: 'swal-difuminado' },
+    })
+  } catch (error) {
+    console.error('Error al generar o enviar el PDF:', error)
+    Swal.fire('Error', 'No se pudo generar el PDF del reporte.', 'error')
+  } finally {
+    procesandoPdf.value = false
+  }
+}
+
 const cargarReportes = async () => {
   cargando.value = true
-  const { data, error } = await selectEqOrder(
-    'reportes',
-    'departamento_externo_id',
-    admin.value.departamento_id,
-    'created_at',
-    [
-      'folio',
-      'descripcion',
-      'nombre',
-      'telefono',
-      'domicilio',
-      'referencias',
-      'foto_url',
-      'created_at',
-      'problemas_externos (id, nombre, nombreamigable)',
-      'detalle_reporte (estado_id, estadoreporte (estado), updated_at)',
-    ],
-    false, // 👈 ascendente = true, descendente = false
-  )
+  const { data, error } = await obtenerReportesPorDepartamentoExternoID(admin.value.departamento_id)
 
   if (!error && data) {
     reportes.value = data.map((r) => ({
       ...r,
       estado: r.detalle_reporte?.estadoreporte?.estado || 'Pendiente',
     }))
+    cargando.value = false
   }
-  cargando.value = false
+  if (error) {
+    console.error('Error al cargar reportes:', error)
+  }
 }
 
 // Filtros en tiempo real
@@ -372,12 +504,7 @@ const rechazarReporte = async (folio: string) => {
     })
 
     if (result.isConfirmed) {
-      const { error } = await updateEq(
-        'detalle_reporte', // tabla
-        'folio', // campo para eq
-        folio, // valor a comparar
-        { estado_id: 3 }, // data a actualizar
-      )
+      const { error } = await actualizarEstadoReporte(folio, { estado_id: 3 }) // 3 = Rechazado
 
       if (!error) {
         const index = reportes.value.findIndex((r) => r.folio === folio)
@@ -397,6 +524,8 @@ const rechazarReporte = async (folio: string) => {
           icon: 'error',
           confirmButtonColor: '#1a6b2f',
         })
+
+        console.error('Error al rechazar reporte:', error)
       }
     }
   } finally {
@@ -423,8 +552,8 @@ const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Pendi
     })
 
     if (result.isConfirmed) {
-      const { error } = await updateEq('detalle_reporte', 'folio', folio, {
-        estado_id: nuevoEstado == 'Finalizado' ? 4 : 1,
+      const { error } = await actualizarEstadoReporte(folio, {
+        estado_id: nuevoEstado === 'Finalizado' ? 4 : 1, // 4 = Finalizado, 1 = Pendiente
       })
 
       if (!error) {
@@ -438,6 +567,7 @@ const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Pendi
           confirmButtonColor: '#1a6b2f',
         })
       } else {
+        console.error('Error al actualizar estado del reporte:', error)
         Swal.fire({
           title: 'Error',
           text: 'Hubo un error al actualizar el estado en la base de datos.',

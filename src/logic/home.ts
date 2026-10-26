@@ -153,6 +153,10 @@ export const iniciarSesion = () => {
         return
       }
 
+      // Agregar al objeto Usuario el correo
+      data[0].correo = email
+
+
       const usuario = data[0]
 
       if (usuario.estado !== 'Alta' && usuario.estado !== 'Activo') {
@@ -167,7 +171,6 @@ export const iniciarSesion = () => {
       // Si el usuario es Supervisor (tipo_id === 3), traer su id de la tabla "supervisores"
       if (usuario.tipo_id === 3 || usuario.tipousuario_id === 3) {
         const { data: supData, error: supError } = await obtenerSupervisorIDPorUsuarioID(usuario.id)
-        console.log('Respuesta de Supabase:', { supData, supError })
         if (!supError && supData && supData.length > 0) {
           usuario.id_supervisor = supData[0].id
           // Si el RPC no trae ya el departamento_id, lo tomamos de aquí también

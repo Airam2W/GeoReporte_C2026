@@ -5,7 +5,7 @@
  */
 export const truncarTexto = (texto: string, limite: number): string => {
   if (!texto) return ''
-  return texto.length > limite ? texto.slice(0, limite) + '...' : texto
+  return texto.length > limite ? texto.slice(0, limite) + ' ...' : texto
 }
 
 /**

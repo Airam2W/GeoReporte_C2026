@@ -262,14 +262,16 @@
             </tr>
             <tr v-else v-for="user in usuariosFiltrados" :key="user.id" class="fila-datos">
               <td class="font-bold">
-                {{ user.nombre }} {{ user.apellido_p }} {{ user.apellido_m }}
+                {{ truncarTexto(user.nombre + ' ' + user.apellido_p + ' ' + user.apellido_m, 25) }}
               </td>
-              <td>{{ user.correo }}</td>
+              <td>{{ truncarTexto(user.correo, 25) }}</td>
               <td>
                 <span class="badge badge-gris">{{ user.tipousuario?.nombre || 'N/A' }}</span>
               </td>
               <td>
-                <span class="badge badge-gris">{{ user.departamentoNombre || '-' }}</span>
+                <span class="badge badge-gris">{{
+                  truncarTexto(user.departamentoNombre || '-', 25)
+                }}</span>
               </td>
               <td>
                 <span
@@ -321,8 +323,8 @@
               :key="`${depto.tipo}-${depto.id}`"
               class="fila-datos"
             >
-              <td class="font-bold">{{ depto.nombre }}</td>
-              <td>{{ depto.nombreamigable || 'Sin asignar' }}</td>
+              <td class="font-bold">{{ truncarTexto(depto.nombre, 25) }}</td>
+              <td>{{ truncarTexto(depto.nombreamigable, 25) || 'Sin asignar' }}</td>
               <td>
                 <span :class="['badge', depto.tipo === 'Interno' ? 'badge-azul' : 'badge-gris']">
                   {{ depto.tipo }}
@@ -386,9 +388,9 @@
               :key="`${prob.tipo}-${prob.id}`"
               class="fila-datos"
             >
-              <td class="font-bold">{{ prob.nombre }}</td>
-              <td>{{ prob.nombreamigable || 'Sin asignar' }}</td>
-              <td>{{ prob.departamentoNombre }}</td>
+              <td class="font-bold">{{ truncarTexto(prob.nombre, 25) }}</td>
+              <td>{{ truncarTexto(prob.nombreamigable, 25) || 'Sin asignar' }}</td>
+              <td>{{ truncarTexto(prob.departamentoNombre, 25) }}</td>
               <td>
                 <span :class="['badge', prob.tipo === 'Interno' ? 'badge-azul' : 'badge-gris']">
                   {{ prob.tipo }}
@@ -483,15 +485,35 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  selectOrder,
-  selectAll,
-  selectNeq,
-  selectNeqOrder,
-  updateEq,
-  insert,
-  deleteEq,
-  callRpc,
   esperarUsuario,
+  obtenerTodosProblemasInternos,
+  obtenerTodosProblemasExternos,
+  obtenerTodosDepartamentosInternos,
+  obtenerTodosDepartamentosExternos,
+  obtenerTodosSupervisores,
+  obtenerTodosJefes,
+  obtenerUsuarioExcepto,
+  obtenerTodosUsuariosExcepto,
+  actualizarEstadoProblemaInterno,
+  actualizarEstadoProblemaExterno,
+  actualizarProblemaInterno,
+  actualizarProblemaExterno,
+  actualizarDepartamentoInterno,
+  actualizarDepartamentoExterno,
+  actualizarEstadoDepartamentoInterno,
+  actualizarEstadoDepartamentoExterno,
+  actualizarEstadoUsuario,
+  actualizarFechaBajaUsuario,
+  actualizarFechaAltaUsuario,
+  crearProblemaInterno,
+  crearProblemaExterno,
+  crearDepartamentoInterno,
+  crearDepartamentoExterno,
+  eliminarProblemaInterno,
+  eliminarProblemaExterno,
+  eliminarDepartamentoInterno,
+  eliminarDepartamentoExterno,
+  guardarUsuario,
 } from '../services/supabaseController'
 import Swal from 'sweetalert2'
 import UsuarioDetalleModal from '../components/UsuarioDetalleModal.vue'
@@ -500,6 +522,7 @@ import DepartamentoFormModal from '../components/DepartamentoFormModal.vue'
 import DepartamentoDetalleModal from '../components/DepartamentoDetalleModal.vue'
 import ProblematicaFormModal from '../components/ProblematicaFormModal.vue'
 import ProblematicaDetalleModal from '../components/ProblematicaDetalleModal.vue'
+import { truncarTexto } from '../logic/panelAdministrador'
 
 const problematicasData = ref<any[]>([])
 
@@ -572,11 +595,16 @@ onMounted(async () => {
   }
   director.value = sesion
 
-  await esperarUsuario(2000).catch(() => null); // Espera máx 2 segundos
-  await cargarCatalogos()
-  await cargarDatos()
-  await cargarDepartamentos()
-  ocultarCargando() // Ocultar el indicador de carga después de cargar los datos
+  try {
+    await esperarUsuario(2000).catch(() => null) // Espera máx 2 segundos
+    await cargarCatalogos()
+    await cargarDatos()
+    await cargarDepartamentos()
+  } catch (error) {
+    console.error('Error al cargar datos:', error)
+  } finally {
+    ocultarCargando() // Ocultar el indicador de carga después de cargar los datos
+  }
 })
 
 const departamentosInternos = ref<any[]>([])
@@ -585,26 +613,9 @@ const departamentosExternos = ref<any[]>([])
 const cargarListaProblematicas = async () => {
   cargando.value = true
 
-  const { data: internas, error: errorInt } = await selectOrder(
-    'problemas',
-    'nombre',
-    ['id', 'nombre', 'nombreamigable', 'departamento_id', 'departamentos (id, nombre)', 'estado'],
-    true, // 👈 true = ascendente, false = descendente
-  )
+  const { data: internas, error: errorInt } = await obtenerTodosProblemasInternos()
 
-  const { data: externas, error: errorExt } = await selectOrder(
-    'problemas_externos',
-    'nombre',
-    [
-      'id',
-      'nombre',
-      'nombreamigable',
-      'departamento_externo_id',
-      'departamentos_externos (id, departamento)',
-      'estado',
-    ],
-    true, // 👈 true = ascendente, false = descendente
-  )
+  const { data: externas, error: errorExt } = await obtenerTodosProblemasExternos()
 
   if (!errorInt && !errorExt) {
     const listaInternas = (internas || []).map((p) => ({
@@ -636,18 +647,9 @@ const cargarListaProblematicas = async () => {
 }
 
 const cargarDepartamentos = async () => {
-  const { data: internos } = await selectAll('departamentos', [
-    'id',
-    'nombre',
-    'nombreamigable',
-    'estado',
-  ])
+  const { data: internos } = await obtenerTodosDepartamentosInternos()
 
-  const { data: externos } = await selectAll('departamentos_externos', [
-    'id',
-    'departamento',
-    'estado',
-  ])
+  const { data: externos } = await obtenerTodosDepartamentosExternos()
 
   departamentosInternos.value = internos || []
   departamentosExternos.value = externos || []
@@ -656,19 +658,9 @@ const cargarDepartamentos = async () => {
 const cargarListaDepartamentos = async () => {
   cargando.value = true
 
-  const { data: internos, error: errorInt } = await selectOrder(
-    'departamentos',
-    'nombre',
-    ['id', 'nombre', 'nombreamigable', 'estado'],
-    true, // 👈 true = ascendente, false = descendente
-  )
+  const { data: internos, error: errorInt } = await obtenerTodosDepartamentosInternos()
 
-  const { data: externos, error: errorExt } = await selectOrder(
-    'departamentos_externos',
-    'departamento',
-    ['id', 'departamento', 'estado'],
-    true, // 👈 true = ascendente, false = descendente
-  )
+  const { data: externos, error: errorExt } = await obtenerTodosDepartamentosExternos()
 
   if (!errorInt && !errorExt) {
     const listaInternos = (internos || []).map((d) => ({
@@ -706,69 +698,29 @@ const cargarDatos = async () => {
 }
 
 const cargarCatalogos = async () => {
-  const { data: rData } = await selectNeq(
-    'tipousuario',
-    'id',
-    1,
-    ['id', 'nombre'], // 👈 columnas específicas
-  )
+  const { data: rData } = await obtenerUsuarioExcepto(1) // Excluir al Director General (tipousuario_id = 1)
 
   if (rData) rolesOpciones.value = rData
 
-  const { data: dData } = await selectAll(
-    'departamentos',
-    ['id', 'nombre', 'nombreamigable', 'estado'], // 👈 columnas específicas
-  )
+  const { data: dData } = await obtenerTodosDepartamentosInternos()
 
   if (dData) departamentosOpciones.value = dData
 
-  const { data: deData } = await selectAll(
-    'departamentos_externos',
-    ['id', 'departamento', 'estado'], // 👈 columnas específicas
-  )
+  const { data: deData } = await obtenerTodosDepartamentosExternos()
 
   if (deData) departamentosExternosOpciones.value = deData
 
-  const { data: sData } = await selectAll(
-    'supervisores',
-    ['id', 'usuario_id', 'usuarios(id,nombre,apellido_p,apellido_m)'], // 👈 columnas específicas
-  )
+  const { data: sData } = await obtenerTodosSupervisores()
 
   if (sData) supervisoresOpciones.value = sData
 
-  const { data: jData } = await selectAll(
-    'jefes',
-    ['id', 'usuario_id', 'usuarios(id,nombre,apellido_p,apellido_m)'], // 👈 columnas específicas
-  )
+  const { data: jData } = await obtenerTodosJefes()
 
   if (jData) jefesOpciones.value = jData
 }
 const cargarUsuarios = async () => {
   cargando.value = true
-  const { data, error } = await selectNeqOrder(
-    'usuarios',
-    'tipousuario_id',
-    1,
-    'nombre',
-    [
-      'id',
-      'correo',
-      'nombre',
-      'apellido_p',
-      'apellido_m',
-      'estadoadministrativo',
-      'tipousuario_id',
-      'fechaalta',
-      'fechabaja',
-      'tipousuario:tipousuario_id (nombre)',
-      'administradores (created_at, departamentos(id, nombre))',
-      'supervisores (created_at, departamentos(id, nombre), usuarios(id, nombre, apellido_p, apellido_m), jefes(id, usuarios(id, nombre, apellido_p, apellido_m)))',
-      'jefes (created_at, supervisores(id, usuarios(id, nombre, apellido_p, apellido_m)), trabajadores(id, usuarios(id, nombre, apellido_p, apellido_m)))',
-      'trabajadores (created_at, jefes(id, usuarios(id, nombre, apellido_p, apellido_m), supervisores(id, usuarios(id, nombre, apellido_p, apellido_m))) )',
-      'personal_externo (created_at, departamentos_externos(id, departamento))',
-    ],
-    true, // 👈 true = ascendente, false = descendente
-  )
+  const { data, error } = await obtenerTodosUsuariosExcepto(1) // Excluir al Director General (tipousuario_id = 1)
 
   if (!error && data) {
     usuarios.value = data.map((u) => {
@@ -947,14 +899,11 @@ const cambiarEstadoProblematica = async (prob: any) => {
 
 const cambiarEstadoProblematicaEnBD = async (prob: any) => {
   const nuevoEstado = prob.estado === 'Alta' ? 'Baja' : 'Alta'
-  const tabla = prob.tipo === 'Interno' ? 'problemas' : 'problemas_externos'
 
-  const { error } = await updateEq(
-    tabla, // nombre de la tabla
-    'id', // campo para eq
-    prob.id, // valor a comparar
-    { estado: nuevoEstado }, // data a actualizar
-  )
+  const { error } =
+    prob.tipo === 'Interno'
+      ? await actualizarEstadoProblemaInterno({ estado: nuevoEstado, id: prob.id })
+      : await actualizarEstadoProblemaExterno({ estado: nuevoEstado, id: prob.id })
 
   if (error) {
     console.error('Error al cambiar estado de problemática: ', error)
@@ -977,33 +926,23 @@ const ejecutarGuardadoProblematica = async (formData: any, esEdicion: boolean) =
   try {
     if (esEdicion) {
       if (formData.tipo === 'Interno') {
-        const { error } = await updateEq(
-          'problemas', // tabla
-          'id', // campo para eq
-          formData.id, // valor a comparar
-          {
-            nombre: formData.nombre,
-            nombreamigable: formData.nombreamigable,
-            departamento_id: formData.departamento_id,
-          }, // data a actualizar
-        )
+        const { error } = await actualizarProblemaInterno(formData.id, {
+          nombre: formData.nombre,
+          nombreamigable: formData.nombreamigable,
+          departamento_id: formData.departamento_id,
+        })
         if (error) throw error
       } else {
-        const { error } = await updateEq(
-          'problemas_externos', // tabla
-          'id', // campo para eq
-          formData.id, // valor a comparar
-          {
-            nombre: formData.nombre,
-            nombreamigable: formData.nombreamigable,
-            departamento_externo_id: formData.departamento_id,
-          }, // data a actualizar
-        )
+        const { error } = await actualizarProblemaExterno(formData.id, {
+          nombre: formData.nombre,
+          nombreamigable: formData.nombreamigable,
+          departamento_externo_id: formData.departamento_id,
+        })
         if (error) throw error
       }
     } else {
       if (formData.tipo === 'Interno') {
-        const { error } = await insert('problemas', {
+        const { error } = await crearProblemaInterno({
           nombre: formData.nombre,
           nombreamigable: formData.nombreamigable,
           departamento_id: formData.departamento_id,
@@ -1011,7 +950,7 @@ const ejecutarGuardadoProblematica = async (formData: any, esEdicion: boolean) =
         })
         if (error) throw error
       } else {
-        const { error } = await insert('problemas_externos', {
+        const { error } = await crearProblemaExterno({
           nombre: formData.nombre,
           nombreamigable: formData.nombreamigable,
           departamento_externo_id: formData.departamento_id,
@@ -1053,12 +992,10 @@ const cambiarEstadoProblema = async (prob: any) => {
 
   if (!result.isConfirmed) return
 
-  const tabla = prob.tipo === 'Interno' ? 'problemas' : 'problemas_externos'
-  const { error } = await deleteEq(
-    tabla, // nombre de la tabla
-    'id', // campo para eq
-    prob.id, // valor a comparar
-  )
+  const { error } =
+    prob.tipo === 'Interno'
+      ? await eliminarProblemaInterno(prob.id)
+      : await eliminarProblemaExterno(prob.id)
 
   if (error) {
     cambiarEstadoProblematicaEnBD(prob) // Cambia el estado a "Baja" si no se puede eliminar
@@ -1101,37 +1038,27 @@ const ejecutarGuardadoDepartamento = async (formData: any, esEdicion: boolean) =
   try {
     if (esEdicion) {
       if (formData.tipo === 'Interno') {
-        const { error } = await updateEq(
-          'departamentos', // tabla
-          'id', // campo para eq
-          formData.id, // valor a comparar
-          {
-            nombre: formData.nombre,
-            nombreamigable: formData.nombreamigable,
-          }, // data a actualizar
-        )
+        const { error } = await actualizarDepartamentoInterno(formData.id, {
+          nombre: formData.nombre,
+          nombreamigable: formData.nombreamigable,
+        })
         if (error) throw error
       } else {
-        const { error } = await updateEq(
-          'departamentos_externos', // tabla
-          'id', // campo para eq
-          formData.id, // valor a comparar
-          {
-            departamento: formData.nombre,
-          }, // data a actualizar
-        )
+        const { error } = await actualizarDepartamentoExterno(formData.id, {
+          departamento: formData.nombre,
+        })
         if (error) throw error
       }
     } else {
       if (formData.tipo === 'Interno') {
-        const { error } = await insert('departamentos', {
+        const { error } = await crearDepartamentoInterno({
           nombre: formData.nombre,
           nombreamigable: formData.nombreamigable,
           estado: 'Alta',
         })
         if (error) throw error
       } else {
-        const { error } = await insert('departamentos_externos', {
+        const { error } = await crearDepartamentoExterno({
           departamento: formData.nombre,
           estado: 'Alta',
         })
@@ -1170,12 +1097,10 @@ const cambiarEstadoDepartamento = async (depto: any) => {
 
   if (!result.isConfirmed) return
 
-  const tabla = depto.tipo === 'Interno' ? 'departamentos' : 'departamentos_externos'
-  const { error } = await deleteEq(
-    tabla, // nombre de la tabla
-    'id', // campo para eq
-    depto.id, // valor a comparar
-  )
+  const { error } =
+    depto.tipo === 'Interno'
+      ? await eliminarDepartamentoInterno(depto.id)
+      : await eliminarDepartamentoExterno(depto.id)
 
   if (error) {
     cambiarEstadoDepartamentoEnBD(depto) // Cambia el estado a "Baja" si no se puede eliminar
@@ -1198,14 +1123,11 @@ const cambiarEstadoDepartamento = async (depto: any) => {
 
 const cambiarEstadoDepartamentoEnBD = async (depto: any) => {
   const nuevoEstado = depto.estado === 'Alta' ? 'Baja' : 'Alta'
-  const tabla = depto.tipo === 'Interno' ? 'departamentos' : 'departamentos_externos'
 
-  const { error } = await updateEq(
-    tabla, // nombre de la tabla
-    'id', // campo para eq
-    depto.id, // valor a comparar
-    { estado: nuevoEstado }, // data a actualizar
-  )
+  const { error } =
+    (await depto.tipo) === 'Interno'
+      ? await actualizarEstadoDepartamentoInterno(depto.id, { estado: nuevoEstado })
+      : await actualizarEstadoDepartamentoExterno(depto.id, { estado: nuevoEstado })
 
   if (error) {
     console.error('Error al cambiar estado de departamento: ', error)
@@ -1243,7 +1165,7 @@ const cerrarModalForm = () => {
 
 const ejecutarGuardadoUsuario = async (formData: any, esEdicion: boolean) => {
   try {
-    const { data, error } = await callRpc('guardar_usuario', {
+    const { data, error } = await guardarUsuario({
       p_id: esEdicion ? formData.id : null,
       p_nombre: formData.nombre,
       p_apellido_p: formData.apellido_p,
@@ -1303,16 +1225,11 @@ const cambiarEstadoUsuario = async (user: any, nuevoEstado: 'Alta' | 'Baja') => 
   })
 
   if (result.isConfirmed) {
-    const { error } = await updateEq(
-      'usuarios', // nombre de la tabla
-      'id', // campo para eq
-      user.id, // valor a comparar
-      { estadoadministrativo: nuevoEstado }, // data a actualizar
-    )
+    const { error } = await actualizarEstadoUsuario(user.id, { estadoadministrativo: nuevoEstado })
 
     // Si pasa de Alta -> Baja else si pasa de Baja -> Alta entonces cambiar Columna FechaBaja o FechaAlta con la fecha actual
     if (user.estadoadministrativo === 'Alta' && nuevoEstado === 'Baja') {
-      const { error } = await updateEq('usuarios', 'id', user.id, {
+      const { error } = await actualizarFechaBajaUsuario(user.id, {
         fechabaja: new Date().toISOString(),
       })
 
@@ -1324,7 +1241,7 @@ const cambiarEstadoUsuario = async (user: any, nuevoEstado: 'Alta' | 'Baja') => 
         Swal.fire('Error', 'No se pudo actualizar el estado.', 'error')
       }
     } else if (user.estadoadministrativo === 'Baja' && nuevoEstado === 'Alta') {
-      const { error } = await updateEq('usuarios', 'id', user.id, {
+      const { error } = await actualizarFechaAltaUsuario(user.id, {
         fechaalta: new Date().toISOString(),
       })
 

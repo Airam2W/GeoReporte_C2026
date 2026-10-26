@@ -117,9 +117,11 @@
               <td class="font-mono" data-label="Folio">
                 #{{ reporte.folio.split('-')[4] || reporte.folio }}
               </td>
-              <td class="font-bold" data-label="Problema">{{ reporte.problemas?.nombre }}</td>
+              <td class="font-bold" data-label="Problema">
+                {{ truncarTexto(reporte.problemas?.nombre, 25) }}
+              </td>
               <td data-label="Domicilio" :title="reporte.domicilio">
-                <span class="domicilio-texto">{{ reporte.domicilio }}</span>
+                <span class="domicilio-texto">{{ truncarTexto(reporte.domicilio, 25) }}</span>
               </td>
               <td class="acciones-celda">
                 <button
@@ -188,6 +190,16 @@
       @close="cerrarEvidencia"
       @confirm="confirmarEvidencia"
     />
+
+    <DescargarPdfModal
+      :visible="modalPdfVisible"
+      :folio="reportePdf?.folio || ''"
+      :correo-inicial="jefe?.correo || ''"
+      :procesando="procesandoPdf"
+      @close="cerrarModalPdf"
+      @descargar="descargarSoloLocal"
+      @enviar="descargarYEnviar"
+    />
   </div>
 </template>
 
@@ -201,14 +213,22 @@ import { generarPdfReporte } from '../logic/reportePdf'
 import { useCargando } from '../composable/useCargando'
 import EvidenciaReporteModal from '../components/EvidenciaReporteModal.vue'
 import {
-  selectEq,
-  selectEqOrder,
-  updateEq,
-  insert,
   uploadFoto,
   getPublicUrl,
   esperarUsuario,
+  obtenerProblemasPorDepartamentoID,
+  obtenerDepartamentosInternosPorID,
+  obtenerTitulos,
+  obtenerReportesJefe,
+  actualizarEstadoReporte,
+  crearHistorialReporteConFoto,
 } from '../services/supabaseController'
+import { truncarTexto } from '../logic/panelAdministrador'
+import DescargarPdfModal from '../components/DescargarPdfModal.vue'
+
+const modalPdfVisible = ref(false)
+const reportePdf = ref<any>(null)
+const procesandoPdf = ref(false)
 
 const modalEvidenciaVisible = ref(false)
 const modoEvidencia = ref<'finalizar' | 'avance'>('avance')
@@ -246,8 +266,8 @@ const filtros = ref({
 })
 
 const estados = [
-  { valor: 'En Proceso', clase: 'estado-teal' },
-  { valor: 'Pendiente de Finalización', clase: 'estado-verde' },
+  { valor: 'En Proceso', clase: 'estado-gris' },
+  { valor: 'Pendiente de Finalización', clase: 'estado-gris' },
 ]
 
 const conteoPorEstado = computed(() => {
@@ -274,54 +294,37 @@ onMounted(async () => {
       return
     }
 
-    await esperarUsuario(2000).catch(() => null); // Espera máx 2 segundos
+    await esperarUsuario(2000).catch(() => null) // Espera máx 2 segundos
     await cargarCatalogos()
     await cargarReportes()
-  } finally {
+  } catch (error) {
+    console.error('Error al cargar datos:', error)
+    Swal.fire('Error', 'No se pudieron cargar los datos del panel.', 'error')
+  } 
+  finally {
     ocultarCargando()
   }
 })
 
 const cargarCatalogos = async () => {
-  const { data: problemasData, error: problemasError } = await selectEq(
-    'problemas',
-    'departamento_id',
+  const { data: problemasData, error: problemasError } = await obtenerProblemasPorDepartamentoID(
     jefe.value.departamento_id,
-    ['id', 'nombre', 'departamento_id'],
   )
+
   if (problemasError) console.error('Error al cargar problemas:', problemasError.message)
   else problemasOpciones.value = problemasData || []
 
-  const { data: deptData, error: deptError } = await selectEq(
-    'departamentos',
-    'id',
+  const { data: deptData, error: deptError } = await obtenerDepartamentosInternosPorID(
     jefe.value.departamento_id,
-    ['id', 'nombre'],
   )
+
   if (deptError) console.error('Error al cargar departamento:', deptError.message)
   else if (deptData && deptData.length > 0) jefe.value.departamento = deptData[0].nombre
 }
 
 const cargarReportes = async () => {
   cargando.value = true
-  const { data, error } = await selectEqOrder(
-    'reportes',
-    'departamento_id',
-    jefe.value.departamento_id,
-    'created_at',
-    [
-      'folio',
-      'descripcion',
-      'domicilio',
-      'referencias',
-      'foto_url',
-      'created_at',
-      'problemas(id,nombre)',
-      'detalle_reporte(estado_id,fecha_inicio,fecha_cierre,estadoreporte(estado),jefe_id,supervisor_id,supervisores(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
-      'historial_reporte(categoria_historial_id,notas,fecha,foto_url,titulo(nombre))',
-    ],
-    false,
-  )
+  const { data, error } = await obtenerReportesJefe(jefe.value.departamento_id)
 
   if (!error && data) {
     const mapeados = data
@@ -346,7 +349,11 @@ const cargarReportes = async () => {
             : 'No disponible',
           estado: r.detalle_reporte?.estadoreporte?.estado || '',
           estado_jefe:
-            r.detalle_reporte?.estado_id === 8 ? 'Pendiente de Finalización' : r.detalle_reporte?.estado_id === 7 ? 'En Proceso' : 'Otro',
+            r.detalle_reporte?.estado_id === 8
+              ? 'Pendiente de Finalización'
+              : r.detalle_reporte?.estado_id === 7
+                ? 'En Proceso'
+                : 'Otro',
           fecha_inicio: r.detalle_reporte?.fecha_inicio || null,
           fecha_cierre: r.detalle_reporte?.fecha_cierre || null,
           notas_avances: notasPorCategoria(historial, 4),
@@ -369,10 +376,10 @@ const cargarReportes = async () => {
     Swal.fire('Error', 'No se pudieron cargar los reportes.', 'error')
   }
 
-  const { data: tFin } = await selectEq('titulo', 'categoria_historial_id', 3, ['id', 'nombre'])
+  const { data: tFin } = await obtenerTitulos(3) // categoría 3 = Finalización
   tituloFinalizacion.value = (tFin || []).slice(0, 1)
 
-  const { data: tAv } = await selectEq('titulo', 'categoria_historial_id', 4, ['id', 'nombre'])
+  const { data: tAv } = await obtenerTitulos(4) // categoría 4 = Avance
   titulosAvance.value = tAv || []
 
   cargando.value = false
@@ -430,18 +437,116 @@ const cerrarModalVer = () => {
   }, 300)
 }
 
-const descargarPDF = async (reporte: any) => {
-  mostrarCargando()
+// Paso 1: solo abre el modal (también sirve desde el modal de detalle)
+const descargarPDF = (reporte: any) => {
+  reportePdf.value = reporte
+  modalPdfVisible.value = true
+}
+
+const cerrarModalPdf = () => {
+  modalPdfVisible.value = false
+}
+
+const opcionesPdf = () => ({
+  departamento: jefe.value?.departamento || 'No disponible',
+  supervisor: reportePdf.value?.supervisor || 'No disponible',
+})
+
+// Solo descargar en local (lo que ya hacía)
+const descargarSoloLocal = async () => {
+  procesandoPdf.value = true
   try {
-    await generarPdfReporte(reporte, {
-      departamento: jefe.value?.departamento,
-      supervisor: reporte.supervisor,
-    })
+    await generarPdfReporte(reportePdf.value, opcionesPdf())
+    cerrarModalPdf()
   } catch (error) {
     console.error('Error al generar el PDF:', error)
     Swal.fire('Error', 'No se pudo generar el PDF del reporte.', 'error')
   } finally {
-    ocultarCargando()
+    procesandoPdf.value = false
+  }
+}
+
+// Descargar en local + enviar por correo
+const descargarYEnviar = async (correo: string) => {
+  procesandoPdf.value = true
+  try {
+    const resultado = await generarPdfReporte(reportePdf.value, {
+      ...opcionesPdf(),
+      devolverBlob: true,
+    })
+    if (!resultado) throw new Error('No se generó el archivo')
+    const { blob, nombreArchivo } = resultado
+
+    // 1. Descarga local (mismo comportamiento que antes)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nombreArchivo
+    a.click()
+    URL.revokeObjectURL(url)
+
+    // 2. Envío por correo (pendiente de conectar la API de Gmail)
+    // ---------------------------------------------------------------
+    // Aquí iría la lógica con la API de Gmail. Requiere un access token
+    // de Google con el scope https://www.googleapis.com/auth/gmail.send
+    //
+    // const base64Pdf = await blobABase64(blob)
+    // const limite = 'georeporte_boundary'
+    // const mime = [
+    //   `To: ${correo}`,
+    //   'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(`Ficha del reporte ${reportePdf.value.folio}`))) + '?=',
+    //   'MIME-Version: 1.0',
+    //   `Content-Type: multipart/mixed; boundary="${limite}"`,
+    //   '',
+    //   `--${limite}`,
+    //   'Content-Type: text/plain; charset="UTF-8"',
+    //   '',
+    //   'Adjunto la ficha del reporte. Ayuntamiento de Culiacán · GeoReporte.',
+    //   '',
+    //   `--${limite}`,
+    //   `Content-Type: application/pdf; name="${nombreArchivo}"`,
+    //   `Content-Disposition: attachment; filename="${nombreArchivo}"`,
+    //   'Content-Transfer-Encoding: base64',
+    //   '',
+    //   base64Pdf,
+    //   `--${limite}--`,
+    // ].join('\r\n')
+    //
+    // // Gmail pide el mensaje completo en base64 "url-safe"
+    // const raw = btoa(mime).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    //
+    // const resp = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    //   method: 'POST',
+    //   headers: {
+    //     Authorization: `Bearer ${accessTokenGoogle}`,
+    //     'Content-Type': 'application/json',
+    //   },
+    //   body: JSON.stringify({ raw }),
+    // })
+    // if (!resp.ok) throw new Error('Gmail respondió ' + resp.status)
+    //
+    // // Helper para convertir el Blob a base64:
+    // // const blobABase64 = (b: Blob) => new Promise<string>((res, rej) => {
+    // //   const r = new FileReader()
+    // //   r.onload = () => res(String(r.result).split(',')[1])
+    // //   r.onerror = rej
+    // //   r.readAsDataURL(b)
+    // // })
+    // ---------------------------------------------------------------
+
+    cerrarModalPdf()
+    Swal.fire({
+      title: 'PDF descargado',
+      html: `El archivo se descargó en tu equipo. El envío a <b>${correo}</b> estará disponible cuando se conecte el servicio de correo.`,
+      icon: 'info',
+      confirmButtonColor: '#1a6b2f',
+      customClass: { container: 'swal-difuminado' },
+    })
+  } catch (error) {
+    console.error('Error al generar o enviar el PDF:', error)
+    Swal.fire('Error', 'No se pudo generar el PDF del reporte.', 'error')
+  } finally {
+    procesandoPdf.value = false
   }
 }
 
@@ -501,12 +606,11 @@ const confirmarEvidencia = async (datos: {
     }
 
     // 2. Registrar en el historial (3 = Finalización, 4 = Avance)
-    const { error: errorHistorial } = await insert('historial_reporte', {
-      folio,
-      categoria_historial_id: esFinal ? 3 : 4,
+    const { error: errorHistorial } = await crearHistorialReporteConFoto(folio, {
       titulo_id: datos.titulo_id,
       notas: datos.notas,
       foto_url: fotoUrl,
+      categoria_historial_id: esFinal ? 3 : 4,
     })
     if (errorHistorial) {
       console.error('Error al guardar historial:', errorHistorial)
@@ -516,7 +620,7 @@ const confirmarEvidencia = async (datos: {
 
     // 3. Solo al finalizar: estado 8 (Pendiente de Finalización)
     if (esFinal) {
-      const { error: errorEstado } = await updateEq('detalle_reporte', 'folio', folio, {
+      const { error: errorEstado } = await actualizarEstadoReporte(folio, {
         estado_id: 8,
       })
       if (errorEstado) {

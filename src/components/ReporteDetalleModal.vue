@@ -263,6 +263,7 @@
             class="btn-primario"
             title="Descargar PDF"
             @click="$emit('descargar-pdf', reporte)"
+            v-if="esAdmin || esAdminEx || esSupervisor || esJefe"
           >
             Descargar PDF
           </button>

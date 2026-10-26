@@ -70,55 +70,59 @@ async function request(path: string, options: RequestInit = {}) {
 
 // ------------------ Consultas ------------------
 
-export async function selectAll(tabla: string, columnas: string[] = ['*']) {
-  return request(`/select/${tabla}`, {
+export async function obtenerTodosDepartamentosInternos() {//NUEVO
+  return request(`/obtener/departamentos_internos`, {
     method: 'POST',
-    body: JSON.stringify({ columnas }),
+    body: JSON.stringify({ user: usuarioObjeto }),
   })
 }
 
-export async function selectNeq(
-  tabla: string,
-  campo: string,
-  valor: any,
-  columnas: string[] = ['*'],
-) {
-  return request(`/select/${tabla}/neq`, {
+export async function obtenerTodosDepartamentosExternos() {//NUEVO
+  return request(`/obtener/departamentos_externos`, {
     method: 'POST',
-    body: JSON.stringify({ campo, valor, columnas }),
+    body: JSON.stringify({ user: usuarioObjeto }),
   })
 }
 
-export async function selectNeqOrder(
-  tabla: string,
-  campo: string,
-  valor: any,
-  orderBy: string,
-  columnas: string[] = ['*'],
-  ascending: boolean = true,
-) {
-  return request(`/select/${tabla}/neq/order`, {
+export async function obtenerTodosProblemasInternos() {//NUEVO
+  return request(`/obtener/problemas_internos`, {
     method: 'POST',
-    body: JSON.stringify({ campo, valor, orderBy, columnas, ascending }),
+    body: JSON.stringify({ user: usuarioObjeto }),
   })
 }
 
-export async function deleteEq(tabla: string, campo: string, valor: any) {
-  return request(`/delete/${tabla}/eq`, {
-    method: 'DELETE',
-    body: JSON.stringify({ campo, valor }),
+export async function obtenerTodosProblemasExternos() {//NUEVO
+  return request(`/obtener/problemas_externos`, {
+    method: 'POST',
+    body: JSON.stringify({ user: usuarioObjeto }),
   })
 }
 
-export async function selectIlike(//BORRAR
-  tabla: string,
-  campo: string,
-  valor: string,
-  columnas: string[] = ['*'],
-) {
-  return request(`/select/${tabla}/ilike`, {
+export async function obtenerTodosSupervisores() {//NUEVO
+  return request(`/obtener/supervisores`, {
     method: 'POST',
-    body: JSON.stringify({ campo, valor, columnas }),
+    body: JSON.stringify({ user: usuarioObjeto }),
+  })
+}
+
+export async function obtenerTodosJefes() {//NUEVO
+  return request(`/obtener/jefes`, {
+    method: 'POST',
+    body: JSON.stringify({ user: usuarioObjeto }),
+  })
+}
+
+export async function obtenerUsuarioExcepto(tipousuario_id: number) {//NUEVO
+  return request(`/obtener/usuarios/excepto`, {
+    method: 'POST',
+    body: JSON.stringify({ valor: tipousuario_id, user: usuarioObjeto }),
+  })
+}
+
+export async function obtenerTodosUsuariosExcepto(tipousuario_id: number) {//NUEVO
+  return request(`/obtener/usuariosTodos/excepto`, {
+    method: 'POST',
+    body: JSON.stringify({ valor: tipousuario_id, user: usuarioObjeto }),
   })
 }
 
@@ -147,31 +151,10 @@ export async function obtenerProblematicasExternasPorNombre(nombre: string) {//N
   })
 }
 
-
-
-export async function selectIlikeMaybeSingle(tabla: string, campo: string, valor: string) {//BORRAR
-  return request(`/select/${tabla}/ilike/maybeSingle`, {
-    method: 'POST',
-    body: JSON.stringify({ campo, valor }),
-  })
-}
-
 export async function obtenerCorreoUnico(correo: string) {//NUEVO
   return request(`/obtener/usuarios/correoUnico`, {
     method: 'POST',
     body: JSON.stringify({ valor: correo, user: usuarioObjeto }),
-  })
-}
-
-export async function selectEqSingle(//BORRAR
-  tabla: string,
-  campo: string,
-  valor: any,
-  columnas: string[] = ['*'],
-) {
-  return request(`/select/${tabla}/eq/single`, {
-    method: 'POST',
-    body: JSON.stringify({ campo, valor, columnas }),
   })
 }
 
@@ -182,17 +165,13 @@ export async function obtenerReportePorFolio(folio: string) {//NUEVO
   })
 }
 
-export async function selectEq(//BORRAR
-  tabla: string,
-  campo: string,
-  valor: any,
-  columnas: string[] = ['*'],
-) {
-  return request(`/select/${tabla}/eq`, {
+export async function obtenerEstadoIDPorNombre(estado: string) {//NUEVO
+  return request(`/obtener/estadoId/nombre`, {
     method: 'POST',
-    body: JSON.stringify({ campo, valor, columnas }),
+    body: JSON.stringify({ valor: estado, user: usuarioObjeto}),
   })
 }
+
 
 export async function obtenerProblematicasInternasPorID(depId: number | string) {//NUEVO
   return request(`/obtener/problematicas_internas/id`, {
@@ -204,6 +183,21 @@ export async function obtenerProblematicasInternasPorID(depId: number | string) 
 export async function obtenerProblematicasExternasPorID(depId: number | string) {//NUEVO
 
   return request(`/obtener/problematicas_externas/id`, {
+    method: 'POST',
+    body: JSON.stringify({ valor: depId, user: usuarioObjeto }),
+  })
+}
+
+export async function obtenerDepartamentosExternosPorID(depId: number | string) {//NUEVO
+
+  return request(`/obtener/departamentos_externos/id`, {
+    method: 'POST',
+    body: JSON.stringify({ valor: depId, user: usuarioObjeto }),
+  })
+}
+
+export async function obtenerDepartamentosInternosPorID(depId: number | string) {//NUEVO
+  return request(`/obtener/departamentos_internos/id`, {
     method: 'POST',
     body: JSON.stringify({ valor: depId, user: usuarioObjeto }),
   })
@@ -230,6 +224,13 @@ export async function obtenerSupervisorIDPorUsuarioID(usuarioId: number | string
   })
 }
 
+export async function obtenerSupervisoresPorDepartamentoID(depId: number | string) {//NUEVO
+  return request(`/obtener/supervisores/departamentoId`, {
+    method: 'POST',
+    body: JSON.stringify({ valor: depId, user: usuarioObjeto }),
+  })
+}
+
 
 export async function obtenerJefeIDPorUsuarioID(usuarioId: number | string) {//NUEVO
   return request(`/obtener/jefes/usuarioID`, {
@@ -238,17 +239,129 @@ export async function obtenerJefeIDPorUsuarioID(usuarioId: number | string) {//N
   })
 }
 
-export async function updateEq(tabla: string, campo: string, valor: any, data: any) {
-  return request(`/update/${tabla}/eq`, {
-    method: 'PUT',
-    body: JSON.stringify({ campo, valor, data }),
+export async function obtenerTitulos(categoria_historial_id: number | string) {//NUEVO
+  return request(`/obtener/titulos/categoria_historial_id`, {
+    method: 'POST',
+    body: JSON.stringify({ valor: categoria_historial_id, user: usuarioObjeto }),
   })
 }
 
-export async function callRpc(fn: string, params: any) {//BORRAR
-  return request(`/rpc/${fn}`, {
+export async function obtenerCategoriaHistorial(categoria_historial_id: number | string) {//NUEVO
+  return request(`/obtener/categoria_historial/id`, {
     method: 'POST',
-    body: JSON.stringify(params),
+    body: JSON.stringify({ valor: categoria_historial_id, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarEstadoReporte(folio: string, data: any) {//NUEVO
+  return request(`/actualizar/reporte/estadoId`, {
+    method: 'PUT',
+    body: JSON.stringify({ folio, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarEstadoReporteConJefeFechaInicio(folio: string, data: any) {//NUEVO
+  return request(`/actualizar/reporte/estadoIdJefeFechaInicio`, {
+    method: 'PUT',
+    body: JSON.stringify({ folio, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarEstadoReporteConFechaCierre(folio: string, data: any) {//NUEVO
+  return request(`/actualizar/reporte/estadoIdFechaCierre`, {
+    method: 'PUT',
+    body: JSON.stringify({ folio, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarEstadoReporteQuitarSupervisor(folio: string, data: any) {//NUEVO
+  return request(`/actualizar/reporte/estadoIdSupervisorNull`, {
+    method: 'PUT',
+    body: JSON.stringify({ folio, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarEstadoProblemaInterno(data: any) {//NUEVO
+  return request(`/actualizar/problema_interno/estado`, {
+    method: 'PUT',
+    body: JSON.stringify({ data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarEstadoProblemaExterno(data: any) {//NUEVO
+  return request(`/actualizar/problema_externo/estado`, {
+    method: 'PUT',
+    body: JSON.stringify({ data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarSupervisorEstadoReporte(folio: string, data: any) {//NUEVO
+  return request(`/actualizar/reporteEstado/supervisor`, {
+    method: 'PUT',
+    body: JSON.stringify({ folio, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarProblemaInterno(id: number | string, data: any) {//NUEVO
+  return request(`/actualizar/problema_interno`, {
+    method: 'PUT',
+    body: JSON.stringify({ id, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarProblemaExterno(id: number | string, data: any) {//NUEVO
+  return request(`/actualizar/problema_externo`, {
+    method: 'PUT',
+    body: JSON.stringify({ id, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarDepartamentoInterno(id: number | string, data: any) {//NUEVO
+  return request(`/actualizar/departamento_interno`, {
+    method: 'PUT',
+    body: JSON.stringify({ id, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarDepartamentoExterno(id: number | string, data: any) {//NUEVO
+  return request(`/actualizar/departamento_externo`, {
+    method: 'PUT',
+    body: JSON.stringify({ id, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarEstadoDepartamentoInterno(id: number | string, data: any) {//NUEVO
+  return request(`/actualizar/departamento_interno/estado`, {
+    method: 'PUT',
+    body: JSON.stringify({ id, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarEstadoDepartamentoExterno(id: number | string, data: any) {//NUEVO
+  return request(`/actualizar/departamento_externo/estado`, {
+    method: 'PUT',
+    body: JSON.stringify({ id, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarEstadoUsuario(id: number | string, data: any) {//NUEVO
+  return request(`/actualizar/usuario/estado`, {
+    method: 'PUT',
+    body: JSON.stringify({ id, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarFechaBajaUsuario(id: number | string, data: any) {//NUEVO
+  return request(`/actualizar/usuario/fechaBaja`, {
+    method: 'PUT',
+    body: JSON.stringify({ id, data, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarFechaAltaUsuario(id: number | string, data: any) {//NUEVO
+  return request(`/actualizar/usuario/fechaAlta`, {
+    method: 'PUT',
+    body: JSON.stringify({ id, data, user: usuarioObjeto }),
   })
 }
 
@@ -259,12 +372,10 @@ export async function obtenerUsuarioPorCorreoYContrasena(params: any) {//NUEVO
   })
 }
 
-
-
-export async function insert(tabla: string, data: any) {//BORRAR
-  return request(`/insert/${tabla}`, {
+export async function guardarUsuario(data: any) {//NUEVO
+  return request(`/guardar/usuario`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ data, user: usuarioObjeto }),
   })
 }
 
@@ -282,36 +393,79 @@ export async function crearDetalleReporte(data: any) {//NUEVO
   })
 }
 
-export async function selectOrder(//BORRAR
-  tabla: string,
-  campo: string,
-  columnas: string[] = ['*'],
-  ascending: boolean = true,
-) {
-  return request(`/select/${tabla}/order`, {
+export async function crearHistorialReporte(folio: string, data: any) {//NUEVO
+  return request(`/crear/historialReporte`, {
     method: 'POST',
-    body: JSON.stringify({ campo, columnas, ascending }),
+    body: JSON.stringify({ folio, data, user: usuarioObjeto }),
   })
 }
 
-export async function obtenerDepartamentosOrdenadosPorId() {//NUEVO
+export async function crearHistorialReporteConFoto(folio: string, data: any) {//NUEVO
+  return request(`/crear/historialReporteConFoto`, {
+    method: 'POST',
+    body: JSON.stringify({ folio, data, user: usuarioObjeto }),
+  })
+}
+
+export async function crearProblemaInterno(data: any) {//NUEVO
+  return request(`/crear/problema_interno`, {
+    method: 'POST',
+    body: JSON.stringify({ data, user: usuarioObjeto }),
+  })
+}
+
+export async function crearProblemaExterno(data: any) {//NUEVO
+  return request(`/crear/problema_externo`, {
+    method: 'POST',
+    body: JSON.stringify({ data, user: usuarioObjeto }),
+  })
+}
+
+export async function crearDepartamentoInterno(data: any) {//NUEVO
+  return request(`/crear/departamento_interno`, {
+    method: 'POST',
+    body: JSON.stringify({ data, user: usuarioObjeto }),
+  })
+}
+
+export async function crearDepartamentoExterno(data: any) {//NUEVO
+  return request(`/crear/departamento_externo`, {
+    method: 'POST',
+    body: JSON.stringify({ data, user: usuarioObjeto }),
+  })
+}
+
+export async function eliminarProblemaInterno(id: number | string) {//NUEVO
+  return request(`/eliminar/problema_interno`, {
+    method: 'DELETE',
+    body: JSON.stringify({ id, user: usuarioObjeto }),
+  })
+}
+
+export async function eliminarProblemaExterno(id: number | string) {//NUEVO
+  return request(`/eliminar/problema_externo`, {
+    method: 'DELETE',
+    body: JSON.stringify({ id, user: usuarioObjeto }),
+  })
+}
+
+export async function eliminarDepartamentoInterno(id: number | string) {//NUEVO
+  return request(`/eliminar/departamento_interno`, {
+    method: 'DELETE',
+    body: JSON.stringify({ id, user: usuarioObjeto }),
+  })
+}
+
+export async function eliminarDepartamentoExterno(id: number | string) {//NUEVO
+  return request(`/eliminar/departamento_externo`, {
+    method: 'DELETE',
+    body: JSON.stringify({ id, user: usuarioObjeto }),
+  })
+}
+
+export async function obtenerDepartamentosOrdenadosPorId() {
   return request(`/obtener/departamentos/ordenadosPorId`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  })
-}
-
-export async function selectEqOrder(//BORRAR
-  tabla: string,
-  campo: string,
-  valor: any,
-  orderBy: string,
-  columnas: string[] = ['*'],
-  ascending: boolean = true,
-) {
-  return request(`/select/${tabla}/eq/order`, {
-    method: 'POST',
-    body: JSON.stringify({ campo, valor, orderBy, columnas, ascending }),
+    method: 'GET',
   })
 }
 
@@ -319,6 +473,55 @@ export async function obtenerProblemasPorDepartamentoID(depId: number | string) 
   return request(`/obtener/problemas/departamentoId`, {
     method: 'POST',
     body: JSON.stringify({ valor: depId }),
+  })
+}
+
+export async function obtenerReportesPorDepartamentoExternoID(depId: number | string) {//NUEVO
+  return request(`/obtener/reportes/departamento_externo_Id`, {
+    method: 'POST',
+    body: JSON.stringify({ valor: depId, user: usuarioObjeto }),
+  })
+}
+
+export async function obtenerReportesPorDepartamentoInternoID(depId: number | string) {//NUEVO
+  return request(`/obtener/reportes/departamento_interno_Id`, {
+    method: 'POST',
+    body: JSON.stringify({ valor: depId, user: usuarioObjeto }),
+  })
+}
+
+export async function obtenerReportesJefe(depId: number | string) {//NUEVO
+  return request(`/obtener/reportes/jefe`, {
+    method: 'POST',
+    body: JSON.stringify({ valor: depId, user: usuarioObjeto }),
+  })
+}
+
+export async function obtenerReportesSupervisor(depId: number | string) {//NUEVO
+  return request(`/obtener/reportes/supervisor`, {
+    method: 'POST',
+    body: JSON.stringify({ valor: depId, user: usuarioObjeto }),
+  })
+}
+
+export async function obtenerJefesPorSupervisor(supervisorId: number | string) {//NUEVO
+  return request(`/obtener/jefes/supervisorId`, {
+    method: 'POST',
+    body: JSON.stringify({ valor: supervisorId, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarReporteADepartamentoInterno(folio: string, departamento_id: number | string, problema_id: number | string) {//NUEVO
+  return request(`/actualizar/reporte/departamento_interno`, {
+    method: 'PUT',
+    body: JSON.stringify({ folio, departamento_id, problema_id, user: usuarioObjeto }),
+  })
+}
+
+export async function actualizarReporteADepartamentoExterno(folio: string, departamento_id: number | string, problema_id: number | string) {//NUEVO
+  return request(`/actualizar/reporte/departamento_externo`, {
+    method: 'PUT',
+    body: JSON.stringify({ folio, departamento_id, problema_id, user: usuarioObjeto }),
   })
 }
 
@@ -340,7 +543,7 @@ export async function uploadFoto(filePath: string, file: File, bucket = 'fotos')
   }
 }
 
-export async function getPublicUrl(filePath: string, bucket = 'fotos') {
+export async function getPublicUrl(filePath: string, bucket = 'fotos') {// NO BORRAR
   return request(`/storage/${bucket}/publicUrl`, {
     method: 'POST',
     body: JSON.stringify({ filePath }),

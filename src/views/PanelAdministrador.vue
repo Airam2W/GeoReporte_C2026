@@ -161,17 +161,24 @@
             </tr>
             <tr v-else v-for="reporte in reportesFiltrados" :key="reporte.folio" class="fila-datos">
               <td class="font-mono">#{{ reporte.folio.split('-')[4] || reporte.folio }}</td>
-              <td class="font-bold">{{ reporte.problemas?.nombre }}</td>
+              <td class="font-bold">{{ truncarTexto(reporte.problemas?.nombre, 25) }}</td>
               <td :title="reporte.domicilio">{{ truncarTexto(reporte.domicilio, 25) }}</td>
               <td>
                 <div class="ciudadano-info">
-                  <span>{{ reporte.nombre }}</span>
+                  <span>{{ truncarTexto(reporte.nombre, 25) }}</span>
                   <small>{{ reporte.telefono }}</small>
                 </div>
               </td>
-              <td v-if="esEnProceso">{{ reporte.supervisor }}</td>
-              <td v-if="esEnProceso">{{ reporte.jefe }}</td>
+              <td v-if="esEnProceso">{{ truncarTexto(reporte.supervisor, 25) }}</td>
+              <td v-if="esEnProceso">{{ truncarTexto(reporte.jefe, 25) }}</td>
               <td class="acciones-celda">
+                <button
+                  class="btn-accion btn-pdf"
+                  title="Descargar PDF"
+                  @click="descargarPDF(reporte)"
+                >
+                  📄
+                </button>
                 <button
                   class="btn-accion btn-ver"
                   title="Ver detalle"
@@ -239,6 +246,7 @@
       @rechazar="rechazarReporte"
       @devolver="devolverReporte"
       @turnar="turnarReporte"
+      @descargar-pdf="descargarPDF"
     />
 
     <TurnarReporteModal
@@ -269,22 +277,52 @@
       @close="cerrarModalRechazar"
       @confirm="confirmarRechazo"
     />
+
+    <DescargarPdfModal
+      :visible="modalPdfVisible"
+      :folio="reportePdf?.folio || ''"
+      :correo-inicial="admin?.correo || ''"
+      :procesando="procesandoPdf"
+      @close="cerrarModalPdf"
+      @descargar="descargarSoloLocal"
+      @enviar="descargarYEnviar"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { esperarUsuario, selectEq, selectEqOrder, updateEq, selectEqSingle } from '../services/supabaseController'
+import {
+  esperarUsuario,
+  obtenerProblemasPorDepartamentoID,
+  obtenerDepartamentosInternosPorID,
+  obtenerSupervisoresPorDepartamentoID,
+  obtenerTitulos,
+  obtenerReportesPorDepartamentoInternoID,
+  actualizarReporteADepartamentoInterno,
+  actualizarReporteADepartamentoExterno,
+  actualizarEstadoReporte,
+  actualizarSupervisorEstadoReporte,
+  obtenerEstadoIDPorNombre,
+  crearHistorialReporte,
+  obtenerTodosDepartamentosInternos,
+  obtenerTodosDepartamentosExternos,
+  obtenerTodosJefes,
+} from '../services/supabaseController'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import Swal from 'sweetalert2'
 import { truncarTexto, obtenerClaseEstado } from '../logic/panelAdministrador'
 import { redireccionarUsuario } from '../logic/redirectUser'
 import TurnarReporteModal from '../components/TurnarReporteModal.vue'
-import { selectAll } from '../services/supabaseController'
 import AsignarReporteModal from '../components/AsignarReporteModal.vue'
 import RechazarReporteModal from '../components/RechazarReporteModal.vue'
-import { insert } from '../services/supabaseController' // agrégalo al import existente
+import { generarPdfReporte } from '../logic/reportePdf'
+import DescargarPdfModal from '../components/DescargarPdfModal.vue'
+
+const modalPdfVisible = ref(false)
+const reportePdf = ref<any>(null)
+const procesandoPdf = ref(false)
 
 const titulosRechazo = ref<any[]>([])
 const modalRechazarVisible = ref(false)
@@ -310,13 +348,13 @@ const problemasOpciones = ref<any[]>([])
 const foliosProcesando = ref(new Set<string>())
 
 const estados = [
-  { valor: 'Pendiente', clase: 'estado-azul' },
-  { valor: 'En Revisión', clase: 'estado-amarillo' },
-  { valor: 'En Proceso', clase: 'estado-teal' },
-  { valor: 'Devuelto', clase: 'estado-cafe' },
-  { valor: 'Turnado', clase: 'estado-purpura' },
-  { valor: 'Finalizado', clase: 'estado-verde' },
-  { valor: 'Rechazado', clase: 'estado-rojo' },
+  { valor: 'Pendiente', clase: 'estado-gris' },
+  { valor: 'En Revisión', clase: 'estado-gris' },
+  { valor: 'En Proceso', clase: 'estado-gris' },
+  { valor: 'Devuelto', clase: 'estado-gris' },
+  { valor: 'Turnado', clase: 'estado-gris' },
+  { valor: 'Finalizado', clase: 'estado-gris' },
+  { valor: 'Rechazado', clase: 'estado-gris' },
 ]
 
 // Cantidad de reportes por estado (se actualiza sola al recargar)
@@ -389,19 +427,22 @@ onMounted(async () => {
     return
   }
 
-  await esperarUsuario(2000).catch(() => null); // Espera máx 2 segundos
-  await cargarCatalogos()
-  await cargarReportes()
-  ocultarCargando() // Ocultar el indicador de carga después de cargar los datos
+  try {
+    await esperarUsuario(2000).catch(() => null) // Espera máx 2 segundos
+    await cargarCatalogos()
+    await cargarReportes()
+  } catch (error) {
+    console.error('Error al cargar datos:', error)
+    Swal.fire('Error', 'No se pudieron cargar los datos del panel.', 'error')
+  } finally {
+    ocultarCargando() // Ocultar el indicador de carga al finalizar
+  }
 })
 
 const cargarCatalogos = async () => {
   // Traer solo problemas del departamento del admin
-  const { data: problemasData, error: problemasError } = await selectEq(
-    'problemas',
-    'departamento_id',
+  const { data: problemasData, error: problemasError } = await obtenerProblemasPorDepartamentoID(
     admin.value.departamento_id,
-    ['id', 'nombre', 'departamento_id'],
   )
 
   if (problemasError) {
@@ -411,11 +452,8 @@ const cargarCatalogos = async () => {
   }
 
   // Traer nombre del departamento para mostrarlo en el header
-  const { data: deptData, error: deptError } = await selectEq(
-    'departamentos',
-    'id',
+  const { data: deptData, error: deptError } = await obtenerDepartamentosInternosPorID(
     admin.value.departamento_id,
-    ['id', 'nombre'],
   )
 
   if (deptError) {
@@ -424,12 +462,8 @@ const cargarCatalogos = async () => {
     admin.value.departamento = deptData[0].nombre
   }
 
-  const { data: internos } = await selectAll('departamentos', ['id', 'nombre', 'estado'])
-  const { data: externos } = await selectAll('departamentos_externos', [
-    'id',
-    'departamento',
-    'estado',
-  ])
+  const { data: internos } = await obtenerTodosDepartamentosInternos()
+  const { data: externos } = await obtenerTodosDepartamentosExternos()
 
   // El departamento actual no tiene sentido como destino del turnado
   departamentosInternos.value = (internos || []).filter(
@@ -437,11 +471,8 @@ const cargarCatalogos = async () => {
   )
   departamentosExternos.value = externos || []
 
-  const { data: supData, error: supError } = await selectEq(
-    'supervisores',
-    'departamento_id',
+  const { data: supData, error: supError } = await obtenerSupervisoresPorDepartamentoID(
     admin.value.departamento_id,
-    ['id', 'usuario_id', 'usuarios(nombre,apellido_p,apellido_m,estadoadministrativo)'],
   )
 
   if (supError) {
@@ -458,11 +489,7 @@ const cargarCatalogos = async () => {
 
     // Jefes que dependen de los supervisores de este departamento
     const idsSupervisores = supervisoresTodos.value.map((s) => s.id)
-    const { data: jefesData, error: jefesError } = await selectAll('jefes', [
-      'id',
-      'supervisor_id',
-      'usuarios(nombre,apellido_p,apellido_m)',
-    ])
+    const { data: jefesData, error: jefesError } = await obtenerTodosJefes()
 
     if (jefesError) {
       console.error('Error al cargar jefes:', jefesError.message)
@@ -478,17 +505,125 @@ const cargarCatalogos = async () => {
     }
   }
 
-  const { data: titulosData, error: titulosError } = await selectEq(
-    'titulo',
-    'categoria_historial_id',
-    2, // 2 = Rechazo
-    ['id', 'nombre'],
-  )
+  const { data: titulosData, error: titulosError } = await obtenerTitulos(2) // 2 = Rechazo
 
   if (titulosError) {
     console.error('Error al cargar títulos de rechazo:', titulosError.message)
   } else {
     titulosRechazo.value = titulosData || []
+  }
+}
+
+// Paso 1: solo abre el modal (también sirve desde el modal de detalle)
+const descargarPDF = (reporte: any) => {
+  reportePdf.value = reporte
+  modalPdfVisible.value = true
+}
+
+const cerrarModalPdf = () => {
+  modalPdfVisible.value = false
+}
+
+const opcionesPdf = () => ({
+  departamento: admin.value?.departamento || 'No disponible',
+  supervisor: reportePdf.value?.supervisor || 'No disponible',
+})
+
+// Solo descargar en local (lo que ya hacía)
+const descargarSoloLocal = async () => {
+  procesandoPdf.value = true
+  try {
+    await generarPdfReporte(reportePdf.value, opcionesPdf())
+    cerrarModalPdf()
+  } catch (error) {
+    console.error('Error al generar el PDF:', error)
+    Swal.fire('Error', 'No se pudo generar el PDF del reporte.', 'error')
+  } finally {
+    procesandoPdf.value = false
+  }
+}
+
+// Descargar en local + enviar por correo
+const descargarYEnviar = async (correo: string) => {
+  procesandoPdf.value = true
+  try {
+    const resultado = await generarPdfReporte(reportePdf.value, {
+      ...opcionesPdf(),
+      devolverBlob: true,
+    })
+    if (!resultado) throw new Error('No se generó el archivo')
+    const { blob, nombreArchivo } = resultado
+
+    // 1. Descarga local (mismo comportamiento que antes)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nombreArchivo
+    a.click()
+    URL.revokeObjectURL(url)
+
+    // 2. Envío por correo (pendiente de conectar la API de Gmail)
+    // ---------------------------------------------------------------
+    // Aquí iría la lógica con la API de Gmail. Requiere un access token
+    // de Google con el scope https://www.googleapis.com/auth/gmail.send
+    //
+    // const base64Pdf = await blobABase64(blob)
+    // const limite = 'georeporte_boundary'
+    // const mime = [
+    //   `To: ${correo}`,
+    //   'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(`Ficha del reporte ${reportePdf.value.folio}`))) + '?=',
+    //   'MIME-Version: 1.0',
+    //   `Content-Type: multipart/mixed; boundary="${limite}"`,
+    //   '',
+    //   `--${limite}`,
+    //   'Content-Type: text/plain; charset="UTF-8"',
+    //   '',
+    //   'Adjunto la ficha del reporte. Ayuntamiento de Culiacán · GeoReporte.',
+    //   '',
+    //   `--${limite}`,
+    //   `Content-Type: application/pdf; name="${nombreArchivo}"`,
+    //   `Content-Disposition: attachment; filename="${nombreArchivo}"`,
+    //   'Content-Transfer-Encoding: base64',
+    //   '',
+    //   base64Pdf,
+    //   `--${limite}--`,
+    // ].join('\r\n')
+    //
+    // // Gmail pide el mensaje completo en base64 "url-safe"
+    // const raw = btoa(mime).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    //
+    // const resp = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    //   method: 'POST',
+    //   headers: {
+    //     Authorization: `Bearer ${accessTokenGoogle}`,
+    //     'Content-Type': 'application/json',
+    //   },
+    //   body: JSON.stringify({ raw }),
+    // })
+    // if (!resp.ok) throw new Error('Gmail respondió ' + resp.status)
+    //
+    // // Helper para convertir el Blob a base64:
+    // // const blobABase64 = (b: Blob) => new Promise<string>((res, rej) => {
+    // //   const r = new FileReader()
+    // //   r.onload = () => res(String(r.result).split(',')[1])
+    // //   r.onerror = rej
+    // //   r.readAsDataURL(b)
+    // // })
+    // ---------------------------------------------------------------
+
+    cerrarModalPdf()
+    Swal.fire({
+      title: 'PDF descargado',
+      html: `El archivo se descargó en tu equipo. El envío a <b>${correo}</b> estará disponible cuando se conecte el servicio de correo.`,
+      icon: 'info',
+      confirmButtonColor: '#1a6b2f',
+      customClass: { container: 'swal-difuminado' },
+    })
+  } catch (error) {
+    console.error('Error al generar o enviar el PDF:', error)
+    Swal.fire('Error', 'No se pudo generar el PDF del reporte.', 'error')
+  } finally {
+    procesandoPdf.value = false
   }
 }
 
@@ -528,21 +663,19 @@ const confirmarTurnado = async (datos: any) => {
   guardandoTurnado.value = true
 
   try {
-    const cambios =
-      datos.tipo === 'Interno'
-        ? {
-            departamento_id: datos.departamento_id,
-            problema_id: datos.problema_id,
-          }
-        : {
-            departamento_id: null,
-            problema_id: null,
-            departamento_externo_id: datos.departamento_id,
-            problema_externo_id: datos.problema_id,
-          }
-
     // 1. Cambiar departamento/problema en "reportes"
-    const { error } = await updateEq('reportes', 'folio', folio, cambios)
+    const { error } =
+      datos.tipo === 'Interno'
+        ? await actualizarReporteADepartamentoInterno(
+            folio,
+            datos.departamento_id,
+            datos.problema_id,
+          )
+        : await actualizarReporteADepartamentoExterno(
+            folio,
+            datos.departamento_id,
+            datos.problema_id,
+          )
 
     if (error) {
       console.error('Error al turnar reporte:', error)
@@ -551,9 +684,7 @@ const confirmarTurnado = async (datos: any) => {
     }
 
     // 2. Marcar el estado como Turnado (5) en "detalle_reporte"
-    const { error: errorEstado } = await updateEq('detalle_reporte', 'folio', folio, {
-      estado_id: 5, // 5 = Turnado
-    })
+    const { error: errorEstado } = await actualizarEstadoReporte(folio, { estado_id: 5 }) // 5 = Turnado
 
     if (errorEstado) {
       console.error('Error al actualizar el estado a Turnado:', errorEstado)
@@ -583,26 +714,7 @@ const confirmarTurnado = async (datos: any) => {
 
 const cargarReportes = async () => {
   cargando.value = true
-  const { data, error } = await selectEqOrder(
-    'reportes',
-    'departamento_id',
-    admin.value.departamento_id,
-    'created_at',
-    [
-      'folio',
-      'descripcion',
-      'nombre',
-      'telefono',
-      'domicilio',
-      'referencias',
-      'foto_url',
-      'created_at',
-      'problemas (id, nombre)',
-      'detalle_reporte(estado_id,fecha_inicio,fecha_cierre,estadoreporte(estado),jefe_id,supervisor_id,supervisores(usuario_id,usuarios(nombre,apellido_p,apellido_m)),jefes(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
-      'historial_reporte(categoria_historial_id,notas,fecha,foto_url,titulo(nombre))',
-    ],
-    false,
-  )
+  const { data, error } = await obtenerReportesPorDepartamentoInternoID(admin.value.departamento_id)
 
   if (error) console.error('Error al cargar reportes:', error.message)
 
@@ -776,8 +888,7 @@ const confirmarRechazo = async (datos: {
 
   try {
     // 1. Registrar en el historial
-    const { error: errorHistorial } = await insert('historial_reporte', {
-      folio,
+    const { error: errorHistorial } = await crearHistorialReporte(folio, {
       categoria_historial_id: 2, // 2 = Rechazo
       titulo_id: datos.titulo_id,
       notas: datos.notas,
@@ -790,9 +901,7 @@ const confirmarRechazo = async (datos: {
     }
 
     // 2. Cambiar el estado a Rechazado (3)
-    const { error: errorDetalle } = await updateEq('detalle_reporte', 'folio', folio, {
-      estado_id: 3, // 3 = Rechazado
-    })
+    const { error: errorDetalle } = await actualizarEstadoReporte(folio, { estado_id: 3 }) // 3 = Rechazado
 
     if (errorDetalle) {
       console.error('Error al actualizar detalle_reporte:', errorDetalle)
@@ -822,12 +931,7 @@ const confirmarRechazo = async (datos: {
 
 const buscarEstadoId = async (estado: string): Promise<string | null> => {
   try {
-    const { data, error } = await selectEqSingle(
-      'estadoreporte',
-      'estado',
-      estado,
-      ['id'], // 👈 columnas específicas
-    )
+    const { data, error } = await obtenerEstadoIDPorNombre(estado)
 
     if (error) {
       console.error('Error al buscar estado:', error.message)
@@ -871,12 +975,7 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Pendi
         return
       }
 
-      const { data, error } = await updateEq(
-        'detalle_reporte', // tabla
-        'folio', // campo para eq
-        folio, // valor a comparar
-        { estado_id: estadoId }, // data a actualizar
-      )
+      const { data, error } = await actualizarEstadoReporte(folio, { estado_id: estadoId })
 
       if (!error) {
         //const index = reportes.value.findIndex((r) => r.folio === folio)
@@ -946,7 +1045,7 @@ const confirmarAsignacion = async (datos: {
 
   try {
     // Un solo update: supervisor y estado 2 (En Revisión)
-    const { error } = await updateEq('detalle_reporte', 'folio', folio, {
+    const { error } = await actualizarSupervisorEstadoReporte(folio, {
       supervisor_id: datos.supervisor_id,
       estado_id: 2, // 2 = En Revisión
     })
