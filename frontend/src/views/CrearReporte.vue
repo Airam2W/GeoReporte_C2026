@@ -87,7 +87,7 @@
           <input type="text" :value="departamentos.find((d) => d.id === form.departamento_id)?.nombre || ''" disabled />
           <span v-if="errores.departamento_id" class="msg-error">{{
             errores.departamento_id
-          }}</span>
+            }}</span>
 
           <label>¿Qué problema quieres reportar?</label>
           <select name="problema" v-model="form.problema_id" :class="{ 'input-error': errores.problema_id }"
@@ -581,7 +581,13 @@ const enviarReporte = async () => {
       referencias: form.value.referencias ? form.value.referencias.trim() : null,
     }
 
-    const { dataGmail, errorGmail } = await enviarCorreoCreacionReporte(correoData)
+    const resultadoGmail = await enviarCorreoCreacionReporte(correoData)
+
+    if (resultadoGmail.ok) {
+      console.log('Correo enviado, ID:', resultadoGmail.idMessage)
+    } else {
+      console.error('Error al enviar:', resultadoGmail.mensaje)
+    }
 
     mostrarModalReporteExitoso({
       folio: folioGenerado,

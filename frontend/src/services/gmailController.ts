@@ -6,6 +6,8 @@ export async function enviarCorreoCreacionReporte(correoData: any) {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({data: correoData}),
+        // Enviamos correoData directamente para que coincida con req.body del backend
+        body: JSON.stringify(correoData),
     })
+    return await response.json()
 }
