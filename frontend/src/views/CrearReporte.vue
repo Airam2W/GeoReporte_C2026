@@ -6,38 +6,19 @@
     <div class="buscador-zona" v-show="!panelAbierto || modoMapa">
       <div class="buscador-zona-fila">
         <div class="buscador-zona-wrap">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            width="16"
-            height="16"
-            class="buscador-zona-icono"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"
+            class="buscador-zona-icono">
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.35-4.35" />
           </svg>
-          <input
-            v-model="queryZona"
-            type="text"
-            placeholder="Buscar colonia, dirección..."
-            @keyup.enter="buscarZona"
-            @input="onInputZona"
-          />
+          <input v-model="queryZona" type="text" placeholder="Buscar colonia, dirección..." @keyup.enter="buscarZona"
+            @input="onInputZona" />
           <button v-if="queryZona" class="buscador-zona-clear" @click="limpiarBusquedaZona">
             ✕
           </button>
         </div>
         <button class="btn-ubicacion-actual" @click="irAUbicacionActual">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            width="20"
-            height="20"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="3" />
             <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
             <circle cx="12" cy="12" r="8" stroke-dasharray="2 2" />
@@ -56,19 +37,8 @@
       <button v-show="!panelAbierto || modoMapa" class="btn-zoom" @click="zoomOut">−</button>
     </aside>
 
-    <button
-      v-show="!panelAbierto || modoMapa"
-      class="btn-ubicacion-actual"
-      @click="irAUbicacionActual"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        width="20"
-        height="20"
-      >
+    <button v-show="!panelAbierto || modoMapa" class="btn-ubicacion-actual" @click="irAUbicacionActual">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
         <circle cx="12" cy="12" r="3" />
         <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
         <circle cx="12" cy="12" r="8" stroke-dasharray="2 2" />
@@ -77,12 +47,8 @@
 
     <figure v-if="!panelAbierto || modoMapa" class="pin-fijo">
       <svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">
-        <path
-          d="M16 0C7.163 0 0 7.163 0 16c0 10 16 26 16 26S32 26 32 16C32 7.163 24.837 0 16 0z"
-          fill="#1a6b2f"
-          stroke="white"
-          stroke-width="2"
-        />
+        <path d="M16 0C7.163 0 0 7.163 0 16c0 10 16 26 16 26S32 26 32 16C32 7.163 24.837 0 16 0z" fill="#1a6b2f"
+          stroke="white" stroke-width="2" />
         <circle cx="16" cy="16" r="6" fill="white" />
       </svg>
       <div class="pin-sombra"></div>
@@ -92,11 +58,7 @@
     <button v-show="!panelAbierto" class="btn-agregar" @click="abrirPanel">+</button>
 
     <!-- Panel formulario / modo mapa -->
-    <section
-      v-if="panelAbierto"
-      class="panel"
-      :class="modoMapa ? 'panel--mapa' : 'panel--expandido'"
-    >
+    <section v-if="panelAbierto" class="panel" :class="modoMapa ? 'panel--mapa' : 'panel--expandido'">
       <div v-if="modoMapa" class="franja-mapa">
         <button class="btn-cerrar-mapa" @click="cancelarModoMapa">✕</button>
         <span class="handle-bar" @click="togglePanelAlto"></span>
@@ -114,38 +76,22 @@
 
         <form class="panel-form" @submit.prevent="enviarReporte" @mousedown.stop @touchstart.stop>
           <label>¿A qué área corresponde tu reporte?</label>
-          <select
-            name="departamento"
-            v-model="form.departamento_id"
-            @change="onDepartamentoSeleccionado"
-            :class="{ 'input-error': errores.departamento_id }"
-          >
+          <select name="departamento" v-model="form.departamento_id" @change="onDepartamentoSeleccionado"
+            :class="{ 'input-error': errores.departamento_id }">
             <option value="">Selecciona un departamento...</option>
-            <option
-              v-for="dep in departamentos.filter((d) => d.estado === 'Alta')"
-              :key="dep.id"
-              :value="dep.id"
-            >
+            <option v-for="dep in departamentos.filter((d) => d.estado === 'Alta')" :key="dep.id" :value="dep.id">
               {{ dep.nombreamigable }}
             </option>
           </select>
           <label>Departamento al que corresponde:</label>
-          <input
-            type="text"
-            :value="departamentos.find((d) => d.id === form.departamento_id)?.nombre || ''"
-            disabled
-          />
+          <input type="text" :value="departamentos.find((d) => d.id === form.departamento_id)?.nombre || ''" disabled />
           <span v-if="errores.departamento_id" class="msg-error">{{
             errores.departamento_id
           }}</span>
 
           <label>¿Qué problema quieres reportar?</label>
-          <select
-            name="problema"
-            v-model="form.problema_id"
-            :class="{ 'input-error': errores.problema_id }"
-            :disabled="!form.departamento_id"
-          >
+          <select name="problema" v-model="form.problema_id" :class="{ 'input-error': errores.problema_id }"
+            :disabled="!form.departamento_id">
             <option value="">
               {{
                 form.departamento_id
@@ -153,91 +99,43 @@
                   : 'Primero selecciona un departamento'
               }}
             </option>
-            <option
-              v-for="prob in problemas.filter((d) => d.estado === 'Alta')"
-              :key="prob.id"
-              :value="prob.id"
-            >
+            <option v-for="prob in problemas.filter((d) => d.estado === 'Alta')" :key="prob.id" :value="prob.id">
               {{ prob.nombreamigable }}
             </option>
           </select>
           <label>Problema al que corresponde:</label>
-          <input
-            type="text"
-            :value="problemas.find((d) => d.id === form.problema_id)?.nombre || ''"
-            disabled
-          />
+          <input type="text" :value="problemas.find((d) => d.id === form.problema_id)?.nombre || ''" disabled />
           <span v-if="errores.problema_id" class="msg-error">{{ errores.problema_id }}</span>
           <label>Descripción</label>
-          <textarea
-            name="descripcion"
-            v-model="form.descripcion"
-            rows="4"
-            placeholder="Describe el problema..."
-            maxlength="600"
-            :class="{ 'input-error': errores.descripcion }"
-          ></textarea>
+          <textarea name="descripcion" v-model="form.descripcion" rows="4" placeholder="Describe el problema..."
+            maxlength="600" :class="{ 'input-error': errores.descripcion }"></textarea>
           <span v-if="errores.descripcion" class="msg-error">{{ errores.descripcion }}</span>
           <span class="contador" :class="{ limite: form.descripcion.length >= 600 }">
             {{ form.descripcion.length }}/600
           </span>
 
           <label>Nombre <span class="opcional">(Opcional)</span></label>
-          <input
-            name="nombre"
-            v-model="form.nombre"
-            type="text"
-            placeholder="Si deseas, puedes dejarlo en blanco"
-          />
+          <input name="nombre" v-model="form.nombre" type="text" placeholder="Si deseas, puedes dejarlo en blanco" />
 
           <label>Teléfono</label>
-          <input
-            name="telefono"
-            v-model="form.telefono"
-            type="tel"
-            maxlength="10"
-            minlength="10"
-            placeholder="10 dígitos"
-            @input="validarTelefono"
-            :class="{ 'input-error': errores.telefono }"
-          />
+          <input name="telefono" v-model="form.telefono" type="tel" maxlength="10" minlength="10"
+            placeholder="10 dígitos" @input="validarTelefono" :class="{ 'input-error': errores.telefono }" />
           <span v-if="errores.telefono" class="msg-error">{{ errores.telefono }}</span>
 
-          <label
-            >Correo Electrónico<span class="opcional"
-              >(Opcional, se usará para notificaciones del reporte)</span
-            ></label
-          >
-          <input
-            name="correo"
-            v-model="form.correo"
-            type="email"
-            placeholder="tu@correo.com"
-            :class="{ 'input-error': errores.correo }"
-          />
+          <label>Correo Electrónico<span class="opcional">(Opcional, se usará para notificaciones del
+              reporte)</span></label>
+          <input name="correo" v-model="form.correo" type="email" placeholder="tu@correo.com"
+            :class="{ 'input-error': errores.correo }" />
           <span v-if="errores.correo" class="msg-error">{{ errores.correo }}</span>
 
           <label>Domicilio del incidente</label>
           <div class="input-mapa-wrapper" :class="{ 'input-error': errores.domicilio }">
-            <input
-              name="domicilio"
-              v-model="form.domicilio"
-              type="text"
-              placeholder="Calle y número"
-              class="input-domicilio"
-            />
+            <input name="domicilio" v-model="form.domicilio" type="text" placeholder="Calle y número"
+              class="input-domicilio" />
             <button type="button" class="btn-abrir-mapa" @click="abrirModoMapa">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                width="18"
-                height="18"
-              >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                 <path
-                  d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7l6-3 5.447 2.724A1 1 0 0 1 21 7.618v10.764a1 1 0 0 1-1.447.894L15 17l-6 3z"
-                />
+                  d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7l6-3 5.447 2.724A1 1 0 0 1 21 7.618v10.764a1 1 0 0 1-1.447.894L15 17l-6 3z" />
                 <path d="M9 7v13M15 4v13" />
               </svg>
             </button>
@@ -245,40 +143,19 @@
           <span v-if="errores.domicilio" class="msg-error">{{ errores.domicilio }}</span>
 
           <label>Referencias <span class="opcional">(Opcional)</span></label>
-          <input
-            name="referencias"
-            v-model="form.referencias"
-            type="text"
-            placeholder="Entre calles, cerca de..."
-          />
+          <input name="referencias" v-model="form.referencias" type="text" placeholder="Entre calles, cerca de..." />
 
           <label>Foto</label>
           <div class="foto-wrapper">
             <label class="btn-foto" for="inputFotoFile" :class="{ 'input-error': errores.foto }">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                width="18"
-                height="18"
-              >
-                <path
-                  d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-                />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
               {{ form.foto ? form.foto.name : 'Seleccionar foto' }}
             </label>
-            <input
-              name="foto"
-              id="inputFotoFile"
-              ref="inputFoto"
-              type="file"
-              accept="image/*"
-              class="input-foto-hidden"
-              @change="seleccionarFoto"
-            />
+            <input name="foto" id="inputFotoFile" ref="inputFoto" type="file" accept="image/*" class="input-foto-hidden"
+              @change="seleccionarFoto" />
           </div>
           <span v-if="errores.foto" class="msg-error">{{ errores.foto }}</span>
           <span class="validacion-AI"></span>
@@ -305,6 +182,7 @@ import {
   getPublicUrl,
 } from '../services/supabaseController'
 import { validarAI } from '../services/geoAIController'
+import { enviarCorreoCreacionReporte } from '../services/gmailController'
 
 const mapContainer = ref<HTMLElement | null>(null)
 const map = ref<L.Map | null>(null)
@@ -369,7 +247,7 @@ const onDepartamentoSeleccionado = async () => {
 
   if (!form.value.departamento_id) return
 
-  
+
 
   const { data, error } = await obtenerProblemasPorDepartamentoID(form.value.departamento_id)
 
@@ -498,7 +376,7 @@ const irAUbicacionActual = () => {
             .join(', ')
           queryZona.value = direccion
         }
-      } catch {}
+      } catch { }
     },
     () => {
       alert('No se pudo obtener tu ubicación')
@@ -680,7 +558,7 @@ const enviarReporte = async () => {
     })
 
     // 3. Insertar los datos en la tabla 'reportesExistentes'
-    const { error: insertReporteExistenteError } = await crearDetalleReporte( {
+    const { error: insertReporteExistenteError } = await crearDetalleReporte({
       folio: folioGenerado,
       estado_id: 1,
     })
@@ -689,6 +567,30 @@ const enviarReporte = async () => {
       throw new Error('Error al guardar en base de datos: ' + insertReporteError.message)
     if (insertReporteExistenteError)
       throw new Error('Error al guardar en base de datos: ' + insertReporteExistenteError.message)
+
+    // Enviar correo por Gmail de la Creacion del Reporte
+    const correoData = {
+      folio: folioGenerado,
+      departamento: departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombre || '',
+      problema: problemas.value.find((p) => p.id === form.value.problema_id)?.nombre || '',
+      descripcion: form.value.descripcion.trim(),
+      nombre: form.value.nombre ? form.value.nombre.trim() : 'Ciudadano Honorable',
+      telefono: form.value.telefono,
+      correo: form.value.correo.trim(),
+      domicilio: form.value.domicilio.trim(),
+      referencias: form.value.referencias ? form.value.referencias.trim() : null,
+    }
+
+    if (!correoData.correo) {
+      console.warn('No se proporcionó correo electrónico para enviar la notificación del reporte.')
+    } else {
+      const resultadoGmail = await enviarCorreoCreacionReporte(correoData)
+
+      if (!resultadoGmail.ok) {
+        console.error('Error al enviar:', resultadoGmail.mensaje)
+        console.error('Error detallado:', resultadoGmail.error)
+      }
+    }
 
     mostrarModalReporteExitoso({
       folio: folioGenerado,

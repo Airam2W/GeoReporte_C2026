@@ -3,14 +3,7 @@
     <!-- Barra Superior -->
     <nav class="topbar">
       <div class="topbar-logo">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          width="24"
-          height="24"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
           <circle cx="12" cy="10" r="3"></circle>
         </svg>
@@ -22,14 +15,7 @@
           <span class="user-dept">{{ admin.departamento }}</span>
         </div>
         <button class="btn-logout" @click="cerrarSesion" title="Cerrar Sesión">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            width="18"
-            height="18"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
             <polyline points="16 17 21 12 16 7"></polyline>
             <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -47,14 +33,9 @@
 
       <!-- Botones de estado -->
       <section class="estados-grid estados-grid--tres" aria-label="Filtrar reportes por estado">
-        <button
-          v-for="e in estados"
-          :key="e.valor"
-          type="button"
+        <button v-for="e in estados" :key="e.valor" type="button"
           :class="['estado-btn', e.clase, { activo: filtros.estado === e.valor }]"
-          :aria-pressed="filtros.estado === e.valor"
-          @click="filtros.estado = e.valor"
-        >
+          :aria-pressed="filtros.estado === e.valor" @click="filtros.estado = e.valor">
           <span class="estado-nombre">{{ e.valor }}</span>
           <span class="estado-conteo">{{ conteoPorEstado[e.valor] || 0 }}</span>
         </button>
@@ -63,22 +44,12 @@
       <!-- Panel de Filtros -->
       <section class="filtros-card">
         <div class="filtro-grupo input-icono">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#888"
-            stroke-width="2"
-            width="18"
-            height="18"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" width="18" height="18">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input
-            v-model="filtros.busqueda"
-            type="text"
-            placeholder="Buscar por folio, nombre, teléfono o dirección..."
-          />
+          <input v-model="filtros.busqueda" type="text"
+            placeholder="Buscar por folio, nombre, teléfono o dirección..." />
         </div>
 
         <!--<div class="filtro-grupo">
@@ -133,60 +104,41 @@
                 </div>
               </td>
               <td class="text-center">
-                <span
-                  :class="[
-                    'badge',
-                    obtenerClaseEstado(
-                      reporte.detalle_reporte?.estadoreporte?.estado.toLowerCase(),
-                    ),
-                  ]"
-                >
+                <span :class="[
+                  'badge',
+                  obtenerClaseEstado(
+                    reporte.detalle_reporte?.estadoreporte?.estado.toLowerCase(),
+                  ),
+                ]">
                   {{ reporte.detalle_reporte?.estadoreporte?.estado }}
                 </span>
               </td>
 
               <td class="acciones-celda">
-                <button
-                  class="btn-accion btn-pdf"
-                  title="Descargar PDF"
-                  @click="descargarPDF(reporte)"
-                >
+                <button class="btn-accion btn-pdf" title="Descargar PDF" @click="descargarPDF(reporte)">
                   📄
                 </button>
                 <button class="btn-accion" title="Ver detalle" @click="abrirModalVer(reporte)">
                   👁️
                 </button>
 
-                <button
-                  v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Pendiente'"
-                  class="btn-accion"
-                  title="Rechazar reporte"
-                  :disabled="foliosProcesando.has(reporte.folio)"
-                  @click="rechazarReporte(reporte.folio)"
-                >
+                <button v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Pendiente'" class="btn-accion"
+                  title="Rechazar reporte" :disabled="foliosProcesando.has(reporte.folio)"
+                  @click="rechazarReporte(reporte.folio)">
                   ❌
                 </button>
 
-                <button
-                  v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Pendiente'"
-                  class="btn-accion"
-                  title="Finalizar reporte"
-                  :disabled="foliosProcesando.has(reporte.folio)"
-                  @click="devolverReporte(reporte.folio, 'Finalizado')"
-                >
+                <button v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Pendiente'" class="btn-accion"
+                  title="Finalizar reporte" :disabled="foliosProcesando.has(reporte.folio)"
+                  @click="devolverReporte(reporte.folio, 'Finalizado')">
                   ✅
                 </button>
 
-                <button
-                  v-if="
-                    reporte.detalle_reporte?.estadoreporte?.estado === 'Rechazado' ||
-                    reporte.detalle_reporte?.estadoreporte?.estado === 'Finalizado'
-                  "
-                  class="btn-accion"
-                  title="Devolver a Pendiente"
-                  :disabled="foliosProcesando.has(reporte.folio)"
-                  @click="devolverReporte(reporte.folio, 'Pendiente')"
-                >
+                <button v-if="
+                  reporte.detalle_reporte?.estadoreporte?.estado === 'Rechazado' ||
+                  reporte.detalle_reporte?.estadoreporte?.estado === 'Finalizado'
+                " class="btn-accion" title="Devolver a Pendiente" :disabled="foliosProcesando.has(reporte.folio)"
+                  @click="devolverReporte(reporte.folio, 'Pendiente')">
                   🔄
                 </button>
               </td>
@@ -196,26 +148,12 @@
       </div>
     </main>
 
-    <ReporteDetalleModal
-      :visible="modalVisible"
-      :reporte="reporteActivo"
-      :esAdminEx="true"
-      @close="cerrarModalVer"
-      @rechazar="rechazarReporte"
-      @devolver="devolverReporte"
-      @finalizar="devolverReporte"
-      @descargar-pdf="descargarPDF"
-    />
+    <ReporteDetalleModal :visible="modalVisible" :reporte="reporteActivo" :esAdminEx="true" @close="cerrarModalVer"
+      @rechazar="rechazarReporte" @devolver="devolverReporte" @finalizar="devolverReporte"
+      @descargar-pdf="descargarPDF" />
 
-    <DescargarPdfModal
-      :visible="modalPdfVisible"
-      :folio="reportePdf?.folio || ''"
-      :correo-inicial="admin?.correo || ''"
-      :procesando="procesandoPdf"
-      @close="cerrarModalPdf"
-      @descargar="descargarSoloLocal"
-      @enviar="descargarYEnviar"
-    />
+    <DescargarPdfModal :visible="modalPdfVisible" :folio="reportePdf?.folio || ''" :correo-inicial="admin?.correo || ''"
+      :procesando="procesandoPdf" @close="cerrarModalPdf" @descargar="descargarSoloLocal" @enviar="descargarYEnviar" />
   </div>
 </template>
 
@@ -237,6 +175,7 @@ import {
 import { truncarTexto } from '../logic/panelAdministrador'
 import { generarPdfReporte } from '../logic/reportePdf'
 import DescargarPdfModal from '../components/DescargarPdfModal.vue'
+import { enviarCorreoRechazoReporte, enviarCorreoFinalizacionReporte, enviarCorreoReportePDF } from '../services/gmailController'
 
 const modalPdfVisible = ref(false)
 const reportePdf = ref<any>(null)
@@ -376,59 +315,40 @@ const descargarYEnviar = async (correo: string) => {
     a.click()
     URL.revokeObjectURL(url)
 
-    // 2. Envío por correo (pendiente de conectar la API de Gmail)
-    // ---------------------------------------------------------------
-    // Aquí iría la lógica con la API de Gmail. Requiere un access token
-    // de Google con el scope https://www.googleapis.com/auth/gmail.send
-    //
-    // const base64Pdf = await blobABase64(blob)
-    // const limite = 'georeporte_boundary'
-    // const mime = [
-    //   `To: ${correo}`,
-    //   'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(`Ficha del reporte ${reportePdf.value.folio}`))) + '?=',
-    //   'MIME-Version: 1.0',
-    //   `Content-Type: multipart/mixed; boundary="${limite}"`,
-    //   '',
-    //   `--${limite}`,
-    //   'Content-Type: text/plain; charset="UTF-8"',
-    //   '',
-    //   'Adjunto la ficha del reporte. Ayuntamiento de Culiacán · GeoReporte.',
-    //   '',
-    //   `--${limite}`,
-    //   `Content-Type: application/pdf; name="${nombreArchivo}"`,
-    //   `Content-Disposition: attachment; filename="${nombreArchivo}"`,
-    //   'Content-Transfer-Encoding: base64',
-    //   '',
-    //   base64Pdf,
-    //   `--${limite}--`,
-    // ].join('\r\n')
-    //
-    // // Gmail pide el mensaje completo en base64 "url-safe"
-    // const raw = btoa(mime).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-    //
-    // const resp = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-    //   method: 'POST',
-    //   headers: {
-    //     Authorization: `Bearer ${accessTokenGoogle}`,
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({ raw }),
-    // })
-    // if (!resp.ok) throw new Error('Gmail respondió ' + resp.status)
-    //
-    // // Helper para convertir el Blob a base64:
-    // // const blobABase64 = (b: Blob) => new Promise<string>((res, rej) => {
-    // //   const r = new FileReader()
-    // //   r.onload = () => res(String(r.result).split(',')[1])
-    // //   r.onerror = rej
-    // //   r.readAsDataURL(b)
-    // // })
-    // ---------------------------------------------------------------
+    const pdfBlob = await new Promise<string>((res, rej) => {
+      const r = new FileReader()
+      r.onload = () => res(String(r.result).split(',')[1])
+      r.onerror = rej
+      r.readAsDataURL(blob)
+    })
+
+    // 2. Enviar correo por Gmail del Reporte en PDF
+    const correoData = {
+      folio: reportePdf.value.folio,
+      departamento: admin.value.departamento,
+      problema: reportePdf.value.problemas_externos?.nombre || 'No disponible',
+      titulo: reportePdf.value.titulo || 'No disponible',
+      notas: reportePdf.value.notas || 'No disponible',
+      correo: correo || admin.value.correo || '',
+      pdfBlob: pdfBlob,
+      pdfNombre: nombreArchivo,
+    }
+
+    if (!correoData.correo) {
+      console.warn('No se enviará correo del reporte PDF: no hay correo disponible para el reporte', reportePdf.value.folio)
+    } else {
+      const resultadoGmail = await enviarCorreoReportePDF(correoData)
+
+      if (!resultadoGmail.ok) {
+        console.error('Error al enviar:', resultadoGmail.mensaje)
+        console.error('Error detallado:', resultadoGmail.error)
+      }
+    }
 
     cerrarModalPdf()
     Swal.fire({
       title: 'PDF descargado',
-      html: `El archivo se descargó en tu equipo. El envío a <b>${correo}</b> estará disponible cuando se conecte el servicio de correo.`,
+      html: `El archivo se descargó en tu equipo. ${correoData.correo ? 'Se envió una copia al correo ' + correoData.correo + '.' : 'No se envió la copia por correo al no tener dirección de correo disponible.'}`,
       icon: 'info',
       confirmButtonColor: '#1a6b2f',
       customClass: { container: 'swal-difuminado' },
@@ -510,6 +430,26 @@ const rechazarReporte = async (folio: string) => {
         const index = reportes.value.findIndex((r) => r.folio === folio)
         if (index !== -1) reportes.value[index].estado = 'Rechazado'
 
+        // Enviar correo por Gmail de rechazo del reporte
+        const correoData = {
+          folio,
+          departamento: admin.value.departamento,
+          problema: reporteActivo.value?.problemas?.nombre || 'No disponible',
+          titulo: reporteActivo.value?.titulo || 'No disponible',
+          notas: reporteActivo.value?.notas || 'No disponible',
+          correo: reporteActivo.value?.correo || '',
+        }
+
+        if (!correoData.correo)
+          console.warn('No se enviará correo de rechazo: no hay correo disponible para el reporte', folio)
+        else {
+          const resultadoGmail = await enviarCorreoRechazoReporte(correoData)
+
+          if (!resultadoGmail.ok) {
+            console.error('Error al enviar:', resultadoGmail.mensaje)
+            console.error('Error detallado:', resultadoGmail.error)
+          }
+        }
         Swal.fire({
           title: '¡Rechazado!',
           text: 'El reporte ha sido rechazado correctamente.',
@@ -560,20 +500,43 @@ const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Pendi
         const index = reportes.value.findIndex((r) => r.folio === folio)
         if (index !== -1) reportes.value[index].estado = nuevoEstado
 
-        Swal.fire({
-          title: '¡Actualizado!',
-          text: `El reporte ahora está en "${nuevoEstado}".`,
-          icon: 'success',
-          confirmButtonColor: '#1a6b2f',
-        })
-      } else {
-        console.error('Error al actualizar estado del reporte:', error)
-        Swal.fire({
-          title: 'Error',
-          text: 'Hubo un error al actualizar el estado en la base de datos.',
-          icon: 'error',
-          confirmButtonColor: '#1a6b2f',
-        })
+        // Enviar correo por Gmail de finalización del reporte si es "Finalizado"
+        if (nuevoEstado === 'Finalizado') {
+          const correoData = {
+            folio,
+            departamento: admin.value.departamento,
+            problema: reporteActivo.value?.problemas?.nombre || 'No disponible',
+            titulo: reporteActivo.value?.titulo || 'No disponible',
+            notas: reporteActivo.value?.notas || 'No disponible',
+            correo: reporteActivo.value?.correo || '',
+          }
+
+          if (!correoData.correo) {
+            console.warn('No se enviará correo de finalización: no hay correo disponible para el reporte', folio)
+          } else {
+            const resultadoGmail = await enviarCorreoFinalizacionReporte(correoData)
+
+            if (!resultadoGmail.ok) {
+              console.error('Error al enviar:', resultadoGmail.mensaje)
+              console.error('Error detallado:', resultadoGmail.error)
+            }
+          }
+
+          Swal.fire({
+            title: '¡Actualizado!',
+            text: `El reporte ahora está en "${nuevoEstado}".`,
+            icon: 'success',
+            confirmButtonColor: '#1a6b2f',
+          })
+        } else {
+          console.error('Error al actualizar estado del reporte:', error)
+          Swal.fire({
+            title: 'Error',
+            text: 'Hubo un error al actualizar el estado en la base de datos.',
+            icon: 'error',
+            confirmButtonColor: '#1a6b2f',
+          })
+        }
       }
     }
   } finally {
