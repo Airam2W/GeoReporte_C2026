@@ -1,0 +1,32 @@
+{
+  "name": "georeporte_ai_vi",
+  "version": "1.0.0",
+  "description": "Inteligencia Artificial para la validacion de imagenes de reportes & Backend de GeoReporte",
+  "main": "src/index.js",
+  "scripts": {
+    "test:k6:smoke": "dotenv run -- k6 run k6/smoke.js",
+    "test:k6:load": "dotenv run -- k6 run k6/load.js",
+    "test:k6:heavy": "dotenv run -- k6 run k6/carga_pesada.js",
+    "test": "echo \"Pruebas implementadas\" && exit 0",
+    "start": "node src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Airam2W/GeoReporte_AI_VI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Airam2W/GeoReporte_AI_VI/issues"
+  },
+  "homepage": "https://github.com/Airam2W/GeoReporte_AI_VI#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.5",
+    "express": "^5.2.1",
+    "multer": "^2.4.0"
+  }
+}

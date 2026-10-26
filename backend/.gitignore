@@ -1,0 +1,25 @@
+# Python
+AI/__pycache__/
+__pycache__/
+*.pyc
+
+# Virtual envs
+AI/.venv/
+.venv/
+venv/
+
+# VS Code
+.vscode/
+
+# Temp
+*.tmp
+
+# YOLO outputs
+runs/
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Node
+node_modules/

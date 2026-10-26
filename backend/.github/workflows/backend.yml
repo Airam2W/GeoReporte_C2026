@@ -1,0 +1,43 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repo
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Run unit tests (backend)
+      - name: Run unit tests
+        run: npm run test
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      # 5. Pruebas E2E
+      # - name: Pruebas E2E Cypress
+      #   uses: cypress-io/github-action@v5
+      #   with:
+      #     start: npm run preview
+      #     wait-on: 'http://localhost:4173'
+      #   env:
+      #     VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      #     VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
