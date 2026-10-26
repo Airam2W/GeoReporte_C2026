@@ -3,14 +3,7 @@
     <!-- Barra Superior -->
     <nav class="topbar">
       <div class="topbar-logo">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          width="24"
-          height="24"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
           <circle cx="12" cy="10" r="3"></circle>
         </svg>
@@ -22,14 +15,7 @@
           <span class="user-dept">¡Bienvenido!</span>
         </div>
         <button class="btn-logout" @click="cerrarSesion" title="Cerrar Sesión">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            width="18"
-            height="18"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
             <polyline points="16 17 21 12 16 7"></polyline>
             <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -47,14 +33,9 @@
 
       <!-- Botones de estado -->
       <section class="estados-grid estados-grid--dos" aria-label="Filtrar reportes por estado">
-        <button
-          v-for="e in estados"
-          :key="e.valor"
-          type="button"
+        <button v-for="e in estados" :key="e.valor" type="button"
           :class="['estado-btn', e.clase, { activo: filtros.estado === e.valor }]"
-          :aria-pressed="filtros.estado === e.valor"
-          @click="filtros.estado = e.valor"
-        >
+          :aria-pressed="filtros.estado === e.valor" @click="filtros.estado = e.valor">
           <span class="estado-nombre">{{ e.valor }}</span>
           <span class="estado-conteo">{{ conteoPorEstado[e.valor] || 0 }}</span>
         </button>
@@ -63,22 +44,11 @@
       <!-- Filtros -->
       <section class="filtros-card">
         <div class="filtro-grupo input-icono">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#888"
-            stroke-width="2"
-            width="18"
-            height="18"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" width="18" height="18">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input
-            v-model="filtros.busqueda"
-            type="text"
-            placeholder="Buscar por folio o domicilio..."
-          />
+          <input v-model="filtros.busqueda" type="text" placeholder="Buscar por folio o domicilio..." />
         </div>
 
         <div class="filtro-grupo">
@@ -124,43 +94,23 @@
                 <span class="domicilio-texto">{{ truncarTexto(reporte.domicilio, 25) }}</span>
               </td>
               <td class="acciones-celda">
-                <button
-                  class="btn-accion btn-pdf"
-                  title="Descargar PDF"
-                  @click="descargarPDF(reporte)"
-                >
+                <button class="btn-accion btn-pdf" title="Descargar PDF" @click="descargarPDF(reporte)">
                   📄
                 </button>
-                <button
-                  class="btn-accion btn-ver"
-                  title="Ver detalle"
-                  @click="abrirModalVer(reporte)"
-                >
+                <button class="btn-accion btn-ver" title="Ver detalle" @click="abrirModalVer(reporte)">
                   👁️
                 </button>
-                <button
-                  v-if="reporte.detalle_reporte?.estado_id === 7"
-                  class="btn-accion btn-avance"
-                  title="Actualizar avance"
-                  @click="actualizarAvance(reporte)"
-                >
+                <button v-if="reporte.detalle_reporte?.estado_id === 7" class="btn-accion btn-avance"
+                  title="Actualizar avance" @click="actualizarAvance(reporte)">
                   ⬆️
                 </button>
-                <button
-                  v-if="reporte.detalle_reporte?.estado_id === 7"
-                  class="btn-accion btn-finalizar"
-                  title="Enviar petición de finalización"
-                  @click="finalizarReporte(reporte)"
-                >
+                <button v-if="reporte.detalle_reporte?.estado_id === 7" class="btn-accion btn-finalizar"
+                  title="Enviar petición de finalización" @click="finalizarReporte(reporte)">
                   ✅
                 </button>
 
-                <button
-                  v-if="reporte.detalle_reporte?.estado_id === 8"
-                  class="btn-accion btn-espera"
-                  title="Esperando la confirmación del supervisor"
-                  disabled
-                >
+                <button v-if="reporte.detalle_reporte?.estado_id === 8" class="btn-accion btn-espera"
+                  title="Esperando la confirmación del supervisor" disabled>
                   ⏳
                 </button>
               </td>
@@ -170,36 +120,16 @@
       </div>
     </main>
 
-    <ReporteDetalleModal
-      :visible="modalVisible"
-      :reporte="reporteActivo"
-      :esJefe="true"
-      @close="cerrarModalVer"
-      @descargar-pdf="descargarPDF"
-      @actualizarAvance="actualizarAvance"
-      @enviarPeticionFinalizacion="finalizarReporte"
-    />
+    <ReporteDetalleModal :visible="modalVisible" :reporte="reporteActivo" :esJefe="true" @close="cerrarModalVer"
+      @descargar-pdf="descargarPDF" @actualizarAvance="actualizarAvance"
+      @enviarPeticionFinalizacion="finalizarReporte" />
 
-    <EvidenciaReporteModal
-      :visible="modalEvidenciaVisible"
-      :folio="folioEvidencia"
-      :encabezado="encabezadoModal"
-      :titulos="titulosModal"
-      :titulo-fijo="modoEvidencia === 'finalizar'"
-      :guardando="guardandoEvidencia"
-      @close="cerrarEvidencia"
-      @confirm="confirmarEvidencia"
-    />
+    <EvidenciaReporteModal :visible="modalEvidenciaVisible" :folio="folioEvidencia" :encabezado="encabezadoModal"
+      :titulos="titulosModal" :titulo-fijo="modoEvidencia === 'finalizar'" :guardando="guardandoEvidencia"
+      @close="cerrarEvidencia" @confirm="confirmarEvidencia" />
 
-    <DescargarPdfModal
-      :visible="modalPdfVisible"
-      :folio="reportePdf?.folio || ''"
-      :correo-inicial="jefe?.correo || ''"
-      :procesando="procesandoPdf"
-      @close="cerrarModalPdf"
-      @descargar="descargarSoloLocal"
-      @enviar="descargarYEnviar"
-    />
+    <DescargarPdfModal :visible="modalPdfVisible" :folio="reportePdf?.folio || ''" :correo-inicial="jefe?.correo || ''"
+      :procesando="procesandoPdf" @close="cerrarModalPdf" @descargar="descargarSoloLocal" @enviar="descargarYEnviar" />
   </div>
 </template>
 
@@ -301,7 +231,7 @@ onMounted(async () => {
   } catch (error) {
     console.error('Error al cargar datos:', error)
     Swal.fire('Error', 'No se pudieron cargar los datos del panel.', 'error')
-  } 
+  }
   finally {
     ocultarCargando()
   }
@@ -486,21 +416,32 @@ const descargarYEnviar = async (correo: string) => {
     a.click()
     URL.revokeObjectURL(url)
 
+    const pdfBlob = await new Promise<string>((res, rej) => {
+      const r = new FileReader()
+      r.onload = () => res(String(r.result).split(',')[1])
+      r.onerror = rej
+      r.readAsDataURL(blob)
+    })
+
     // 2. Enviar correo por Gmail del Reporte en PDF
     const correoData = {
       folio: reportePdf.value.folio,
       departamento: jefe.value?.departamento || 'No disponible',
       problema: reportePdf.value.problemas?.nombre || 'No disponible',
       correo: correo || jefe.value?.correo || '',
-      pdfBlob: blob,
+      pdfBlob: pdfBlob,
       nombreArchivo: nombreArchivo,
     }
 
-    const resultadoGmail = await enviarCorreoReportePDF(correoData)
+    if (!correoData.correo) {
+      console.warn('No se proporcionó correo para enviar el PDF.')
+    } else {
+      const resultadoGmail = await enviarCorreoReportePDF(correoData)
 
-    if (!resultadoGmail.ok) {
-      console.error('Error al enviar:', resultadoGmail.mensaje)
-      console.error('Error detallado:', resultadoGmail.error)
+      if (!resultadoGmail.ok) {
+        console.error('Error al enviar:', resultadoGmail.mensaje)
+        console.error('Error detallado:', resultadoGmail.error)
+      }
     }
 
     cerrarModalPdf()

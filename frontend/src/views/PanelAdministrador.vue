@@ -3,14 +3,7 @@
     <!-- Barra Superior -->
     <nav class="topbar">
       <div class="topbar-logo">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          width="24"
-          height="24"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
           <circle cx="12" cy="10" r="3"></circle>
         </svg>
@@ -22,14 +15,7 @@
           <span class="user-dept">¡Bienvenido!</span>
         </div>
         <button class="btn-logout" @click="cerrarSesion" title="Cerrar Sesión">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            width="18"
-            height="18"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
             <polyline points="16 17 21 12 16 7"></polyline>
             <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -53,14 +39,9 @@
 
       <!-- Botones de estado -->
       <section class="estados-grid" aria-label="Filtrar reportes por estado">
-        <button
-          v-for="e in estados"
-          :key="e.valor"
-          type="button"
+        <button v-for="e in estados" :key="e.valor" type="button"
           :class="['estado-btn', e.clase, { activo: filtros.estado === e.valor }]"
-          :aria-pressed="filtros.estado === e.valor"
-          @click="filtros.estado = e.valor"
-        >
+          :aria-pressed="filtros.estado === e.valor" @click="filtros.estado = e.valor">
           <span class="estado-nombre">{{ e.valor }}</span>
           <span class="estado-conteo">{{ conteoPorEstado[e.valor] || 0 }}</span>
         </button>
@@ -69,22 +50,12 @@
       <!-- Panel de Filtros -->
       <section class="filtros-card">
         <div class="filtro-grupo input-icono">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#888"
-            stroke-width="2"
-            width="18"
-            height="18"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" width="18" height="18">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input
-            v-model="filtros.busqueda"
-            type="text"
-            placeholder="Buscar por folio, nombre, teléfono o dirección..."
-          />
+          <input v-model="filtros.busqueda" type="text"
+            placeholder="Buscar por folio, nombre, teléfono o dirección..." />
         </div>
 
         <div class="filtro-grupo">
@@ -172,62 +143,37 @@
               <td v-if="esEnProceso">{{ truncarTexto(reporte.supervisor, 25) }}</td>
               <td v-if="esEnProceso">{{ truncarTexto(reporte.jefe, 25) }}</td>
               <td class="acciones-celda">
-                <button
-                  class="btn-accion btn-pdf"
-                  title="Descargar PDF"
-                  @click="descargarPDF(reporte)"
-                >
+                <button class="btn-accion btn-pdf" title="Descargar PDF" @click="descargarPDF(reporte)">
                   📄
                 </button>
-                <button
-                  class="btn-accion btn-ver"
-                  title="Ver detalle"
-                  @click="abrirModalVer(reporte)"
-                >
+                <button class="btn-accion btn-ver" title="Ver detalle" @click="abrirModalVer(reporte)">
                   👁️
                 </button>
 
-                <button
-                  v-if="
-                    reporte.estado === 'Pendiente' ||
-                    reporte.estado === 'Turnado' ||
-                    reporte.estado === 'Devuelto'
-                  "
-                  class="btn-accion btn-asignar"
-                  title="Asignar supervisor"
-                  @click="asignarReporte(reporte.folio)"
-                >
+                <button v-if="
+                  reporte.estado === 'Pendiente' ||
+                  reporte.estado === 'Turnado' ||
+                  reporte.estado === 'Devuelto'
+                " class="btn-accion btn-asignar" title="Asignar supervisor" @click="asignarReporte(reporte.folio)">
                   👤
                 </button>
 
-                <button
-                  v-if="reporte.estado === 'Devuelto'"
-                  class="btn-accion btn-asignar"
-                  title="Turnar reporte"
-                  @click="turnarReporte(reporte.folio)"
-                >
+                <button v-if="reporte.estado === 'Devuelto'" class="btn-accion btn-asignar" title="Turnar reporte"
+                  @click="turnarReporte(reporte.folio)">
                   🔄
                 </button>
 
-                <button
-                  v-if="
-                    reporte.estado === 'Rechazado' ||
-                    reporte.estado === 'Finalizado' ||
-                    reporte.estado === 'Devuelto'
-                  "
-                  class="btn-accion btn-devolver"
-                  title="Devolver a Pendiente"
-                  @click="devolverReporte(reporte.folio, 'Pendiente')"
-                >
+                <button v-if="
+                  reporte.estado === 'Rechazado' ||
+                  reporte.estado === 'Finalizado' ||
+                  reporte.estado === 'Devuelto'
+                " class="btn-accion btn-devolver" title="Devolver a Pendiente"
+                  @click="devolverReporte(reporte.folio, 'Pendiente')">
                   ↩️
                 </button>
 
-                <button
-                  v-if="reporte.estado === 'Pendiente' || reporte.estado === 'Devuelto'"
-                  class="btn-accion btn-rechazar"
-                  title="Rechazar reporte"
-                  @click="rechazarReporte(reporte.folio)"
-                >
+                <button v-if="reporte.estado === 'Pendiente' || reporte.estado === 'Devuelto'"
+                  class="btn-accion btn-rechazar" title="Rechazar reporte" @click="rechazarReporte(reporte.folio)">
                   ❌
                 </button>
               </td>
@@ -237,56 +183,23 @@
       </div>
     </main>
 
-    <ReporteDetalleModal
-      :visible="modalVisible"
-      :reporte="reporteActivo"
-      :esAdmin="true"
-      @close="cerrarModalVer"
-      @asignar="asignarReporte"
-      @rechazar="rechazarReporte"
-      @devolver="devolverReporte"
-      @turnar="turnarReporte"
-      @descargar-pdf="descargarPDF"
-    />
+    <ReporteDetalleModal :visible="modalVisible" :reporte="reporteActivo" :esAdmin="true" @close="cerrarModalVer"
+      @asignar="asignarReporte" @rechazar="rechazarReporte" @devolver="devolverReporte" @turnar="turnarReporte"
+      @descargar-pdf="descargarPDF" />
 
-    <TurnarReporteModal
-      :visible="modalTurnarVisible"
-      :folio="folioATurnar"
-      :departamentos-internos="departamentosInternos"
-      :departamentos-externos="departamentosExternos"
-      :guardando="guardandoTurnado"
-      @close="cerrarModalTurnar"
-      @confirm="confirmarTurnado"
-    />
+    <TurnarReporteModal :visible="modalTurnarVisible" :folio="folioATurnar"
+      :departamentos-internos="departamentosInternos" :departamentos-externos="departamentosExternos"
+      :guardando="guardandoTurnado" @close="cerrarModalTurnar" @confirm="confirmarTurnado" />
 
-    <AsignarReporteModal
-      :visible="modalAsignarVisible"
-      :folio="folioAAsignar"
-      :departamento-nombre="admin?.departamento || ''"
-      :supervisores="supervisoresOpciones"
-      :guardando="guardandoAsignacion"
-      @close="cerrarModalAsignar"
-      @confirm="confirmarAsignacion"
-    />
+    <AsignarReporteModal :visible="modalAsignarVisible" :folio="folioAAsignar"
+      :departamento-nombre="admin?.departamento || ''" :supervisores="supervisoresOpciones"
+      :guardando="guardandoAsignacion" @close="cerrarModalAsignar" @confirm="confirmarAsignacion" />
 
-    <RechazarReporteModal
-      :visible="modalRechazarVisible"
-      :folio="folioARechazar"
-      :titulos="titulosRechazo"
-      :guardando="guardandoRechazo"
-      @close="cerrarModalRechazar"
-      @confirm="confirmarRechazo"
-    />
+    <RechazarReporteModal :visible="modalRechazarVisible" :folio="folioARechazar" :titulos="titulosRechazo"
+      :guardando="guardandoRechazo" @close="cerrarModalRechazar" @confirm="confirmarRechazo" />
 
-    <DescargarPdfModal
-      :visible="modalPdfVisible"
-      :folio="reportePdf?.folio || ''"
-      :correo-inicial="admin?.correo || ''"
-      :procesando="procesandoPdf"
-      @close="cerrarModalPdf"
-      @descargar="descargarSoloLocal"
-      @enviar="descargarYEnviar"
-    />
+    <DescargarPdfModal :visible="modalPdfVisible" :folio="reportePdf?.folio || ''" :correo-inicial="admin?.correo || ''"
+      :procesando="procesandoPdf" @close="cerrarModalPdf" @descargar="descargarSoloLocal" @enviar="descargarYEnviar" />
   </div>
 </template>
 
@@ -563,6 +476,13 @@ const descargarYEnviar = async (correo: string) => {
     a.click()
     URL.revokeObjectURL(url)
 
+    const pdfBlob = await new Promise<string>((res, rej) => {
+      const r = new FileReader()
+      r.onload = () => res(String(r.result).split(',')[1])
+      r.onerror = rej
+      r.readAsDataURL(blob)
+    })
+
     // 2. Enviar correo por Gmail del Reporte en PDF
     const correoData = {
       folio: reportePdf.value.folio,
@@ -570,15 +490,19 @@ const descargarYEnviar = async (correo: string) => {
       supervisorNombre: reportePdf.value.supervisor || 'No disponible',
       tipo: 'Interno',
       correo: correo || admin.value.correo || '',
-      pdfBlob: blob,
+      pdfBlob: pdfBlob,
       nombreArchivo,
     }
 
-    const resultadoGmail = await enviarCorreoReportePDF(correoData)
+    if (!correoData.correo) {
+      console.error('No se encontró correo del reporte para enviar el PDF.')
+    } else {
+      const resultadoGmail = await enviarCorreoReportePDF(correoData)
 
-    if (!resultadoGmail.ok) {
-      console.error('Error al enviar:', resultadoGmail.mensaje)
-      console.error('Error detallado:', resultadoGmail.error)
+      if (!resultadoGmail.ok) {
+        console.error('Error al enviar:', resultadoGmail.mensaje)
+        console.error('Error detallado:', resultadoGmail.error)
+      }
     }
 
     cerrarModalPdf()
@@ -637,15 +561,15 @@ const confirmarTurnado = async (datos: any) => {
     const { error } =
       datos.tipo === 'Interno'
         ? await actualizarReporteADepartamentoInterno(
-            folio,
-            datos.departamento_id,
-            datos.problema_id,
-          )
+          folio,
+          datos.departamento_id,
+          datos.problema_id,
+        )
         : await actualizarReporteADepartamentoExterno(
-            folio,
-            datos.departamento_id,
-            datos.problema_id,
-          )
+          folio,
+          datos.departamento_id,
+          datos.problema_id,
+        )
 
     if (error) {
       console.error('Error al turnar reporte:', error)
@@ -676,11 +600,15 @@ const confirmarTurnado = async (datos: any) => {
       correo: reportePdf.value?.correo || '',
     }
 
-    const resultadoGmail = await enviarCorreoTurnadoReporte(correoData)
+    if (!correoData.correo) {
+      console.error('No se encontró correo del reporte para enviar el turno.')
+    } else {
+      const resultadoGmail = await enviarCorreoTurnadoReporte(correoData)
 
-    if (!resultadoGmail.ok) {
-      console.error('Error al enviar:', resultadoGmail.mensaje)
-      console.error('Error detallado:', resultadoGmail.error)
+      if (!resultadoGmail.ok) {
+        console.error('Error al enviar:', resultadoGmail.mensaje)
+        console.error('Error detallado:', resultadoGmail.error)
+      }
     }
 
     cerrarModalTurnar()
@@ -909,11 +837,16 @@ const confirmarRechazo = async (datos: {
       notas: datos.notas,
       correo: reporteActivo.value?.correo || '',
     }
-    const resultadoGmail = await enviarCorreoRechazoReporte(correoData)
 
-    if (!resultadoGmail.ok) {
-      console.error('Error al enviar:', resultadoGmail.mensaje)
-      console.error('Error detallado:', resultadoGmail.error)
+    if (!correoData.correo) {
+      console.warn('No se encontró correo del ciudadano para el folio:', folio)
+    } else {
+      const resultadoGmail = await enviarCorreoRechazoReporte(correoData)
+
+      if (!resultadoGmail.ok) {
+        console.error('Error al enviar:', resultadoGmail.mensaje)
+        console.error('Error detallado:', resultadoGmail.error)
+      }
     }
 
     cerrarModalRechazar()

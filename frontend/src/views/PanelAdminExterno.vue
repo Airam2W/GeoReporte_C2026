@@ -315,6 +315,13 @@ const descargarYEnviar = async (correo: string) => {
     a.click()
     URL.revokeObjectURL(url)
 
+    const pdfBlob = await new Promise<string>((res, rej) => {
+      const r = new FileReader()
+      r.onload = () => res(String(r.result).split(',')[1])
+      r.onerror = rej
+      r.readAsDataURL(blob)
+    })
+
     // 2. Enviar correo por Gmail del Reporte en PDF
     const correoData = {
       folio: reportePdf.value.folio,
@@ -323,15 +330,19 @@ const descargarYEnviar = async (correo: string) => {
       titulo: reportePdf.value.titulo || 'No disponible',
       notas: reportePdf.value.notas || 'No disponible',
       correo: correo || admin.value.correo || '',
-      pdfBlob: blob,
+      pdfBlob: pdfBlob,
       pdfNombre: nombreArchivo,
     }
 
-    const resultadoGmail = await enviarCorreoReportePDF(correoData)
+    if (!correoData.correo) {
+      console.warn('No se enviará correo del reporte PDF: no hay correo disponible para el reporte', reportePdf.value.folio)
+    } else {
+      const resultadoGmail = await enviarCorreoReportePDF(correoData)
 
-    if (!resultadoGmail.ok) {
-      console.error('Error al enviar:', resultadoGmail.mensaje)
-      console.error('Error detallado:', resultadoGmail.error)
+      if (!resultadoGmail.ok) {
+        console.error('Error al enviar:', resultadoGmail.mensaje)
+        console.error('Error detallado:', resultadoGmail.error)
+      }
     }
 
     cerrarModalPdf()
@@ -429,13 +440,16 @@ const rechazarReporte = async (folio: string) => {
           correo: reporteActivo.value?.correo || '',
         }
 
-        const resultadoGmail = await enviarCorreoRechazoReporte(correoData)
+        if (!correoData.correo)
+          console.warn('No se enviará correo de rechazo: no hay correo disponible para el reporte', folio)
+        else {
+          const resultadoGmail = await enviarCorreoRechazoReporte(correoData)
 
-        if (!resultadoGmail.ok) {
-          console.error('Error al enviar:', resultadoGmail.mensaje)
-          console.error('Error detallado:', resultadoGmail.error)
+          if (!resultadoGmail.ok) {
+            console.error('Error al enviar:', resultadoGmail.mensaje)
+            console.error('Error detallado:', resultadoGmail.error)
+          }
         }
-
         Swal.fire({
           title: '¡Rechazado!',
           text: 'El reporte ha sido rechazado correctamente.',
@@ -497,11 +511,15 @@ const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Pendi
             correo: reporteActivo.value?.correo || '',
           }
 
-          const resultadoGmail = await enviarCorreoFinalizacionReporte(correoData)
+          if (!correoData.correo) {
+            console.warn('No se enviará correo de finalización: no hay correo disponible para el reporte', folio)
+          } else {
+            const resultadoGmail = await enviarCorreoFinalizacionReporte(correoData)
 
-          if (!resultadoGmail.ok) {
-            console.error('Error al enviar:', resultadoGmail.mensaje)
-            console.error('Error detallado:', resultadoGmail.error)
+            if (!resultadoGmail.ok) {
+              console.error('Error al enviar:', resultadoGmail.mensaje)
+              console.error('Error detallado:', resultadoGmail.error)
+            }
           }
 
           Swal.fire({
