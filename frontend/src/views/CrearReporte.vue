@@ -182,6 +182,7 @@ import {
   getPublicUrl,
 } from '../services/supabaseController'
 import { validarAI } from '../services/geoAIController'
+import { enviarCorreoCreacionReporte } from '../services/gmailController'
 
 const mapContainer = ref<HTMLElement | null>(null)
 const map = ref<L.Map | null>(null)

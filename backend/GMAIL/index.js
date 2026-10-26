@@ -24,11 +24,26 @@ oAuth2Client.setCredentials({
 })
 
 // ----------------------- Endpoints -----------------------
-app.post('/enviar-correo', async (req, res) => {
+app.post('/enviar/correo/creacion-reporte', async (req, res) => {
 
   try {
     const {data} = req.body;
     const correoUsuario = data.correo;
+
+    /*
+    Datos del data
+    {
+      folio: folioGenerado,
+      departamento: departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombre || '',
+      problema: problemas.value.find((p) => p.id === form.value.problema_id)?.nombre || '',
+      descripcion: form.value.descripcion.trim(),
+      nombre: form.value.nombre ? form.value.nombre.trim() : 'Ciudadano Honorable',
+      telefono: form.value.telefono,
+      correo: form.value.correo.trim(),
+      domicilio: form.value.domicilio.trim(),
+      referencias: form.value.referencias ? form.value.referencias.trim() : null,
+    }
+      */
 
     // Construccion del correo
     const destinatario = correoUsuario
