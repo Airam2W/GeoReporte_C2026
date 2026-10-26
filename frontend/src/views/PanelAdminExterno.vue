@@ -520,34 +520,35 @@ const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Pendi
           })
         }
       }
-    } finally {
-      foliosProcesando.value.delete(folio)
-      await cargarReportes()
-      cerrarModalVer()
     }
+  } finally {
+    foliosProcesando.value.delete(folio)
+    await cargarReportes()
+    cerrarModalVer()
   }
+}
 
 const cerrarSesion = () => {
-    localStorage.removeItem('userSession')
-    router.push('/')
-  }
+  localStorage.removeItem('userSession')
+  router.push('/')
+}
 
-  defineExpose({
-    admin,
-    cargando,
-    reportes,
-    problemasOpciones,
-    filtros,
-    reportesFiltrados,
-    modalVisible,
-    reporteActivo,
-    abrirModalVer,
-    cerrarModalVer,
-    rechazarReporte,
-    devolverReporte,
-    cerrarSesion,
-    foliosProcesando,
-  })
+defineExpose({
+  admin,
+  cargando,
+  reportes,
+  problemasOpciones,
+  filtros,
+  reportesFiltrados,
+  modalVisible,
+  reporteActivo,
+  abrirModalVer,
+  cerrarModalVer,
+  rechazarReporte,
+  devolverReporte,
+  cerrarSesion,
+  foliosProcesando,
+})
 </script>
 
 <style src="../assets/estadosBotones.css"></style>
