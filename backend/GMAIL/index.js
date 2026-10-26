@@ -27,8 +27,8 @@ oAuth2Client.setCredentials({
 app.post('/enviar/correo/creacion-reporte', async (req, res) => {
 
   try {
-    const {data} = req.body;
-    const correoUsuario = data.correo;
+    const correoData = req.body;
+    const correoUsuario = correoData.correo;
 
     /*
     Datos del data
@@ -48,11 +48,11 @@ app.post('/enviar/correo/creacion-reporte', async (req, res) => {
     // Construccion del correo
     const destinatario = correoUsuario
     const remitenteNombre = 'GeoReporte'
-    const asunto = `Nuevo Reporte: ${data.folio}`
+    const asunto = `Nuevo Reporte: ${correoData.folio}`
     const contenido = `
-      <p>Se ha creado un nuevo reporte con el folio: ${data.folio}</p>
-      <p>Departamento: ${data.departamento}</p>
-      <p>Problema: ${data.problema}</p>
+      <p>Se ha creado un nuevo reporte con el folio: ${correoData.folio}</p>
+      <p>Departamento: ${correoData.departamento}</p>
+      <p>Problema: ${correoData.problema}</p>
     `
 
     // 1. Validar campos obligatorios

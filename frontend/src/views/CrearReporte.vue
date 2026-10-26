@@ -587,6 +587,7 @@ const enviarReporte = async () => {
       console.log('Correo enviado, ID:', resultadoGmail.idMessage)
     } else {
       console.error('Error al enviar:', resultadoGmail.mensaje)
+      console.error('Error detallado:', resultadoGmail.error)
     }
 
     mostrarModalReporteExitoso({
