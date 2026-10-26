@@ -1,3 +1,2 @@
 npm install dotenv
-npm install googleapis
 pip install fastapi uvicorn pydantic
