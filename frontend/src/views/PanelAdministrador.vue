@@ -508,7 +508,7 @@ const descargarYEnviar = async (correo: string) => {
     cerrarModalPdf()
     Swal.fire({
       title: 'PDF descargado',
-      html: `El archivo se descargó en tu equipo. El envío a <b>${correo}</b> estará disponible cuando se conecte el servicio de correo.`,
+      html: `El archivo se descargó en tu equipo. ${correoData.correo ? 'Se envió una copia al correo ' + correoData.correo + '.' : 'No se envió la copia por correo al no tener dirección de correo disponible.'}`,
       icon: 'info',
       confirmButtonColor: '#1a6b2f',
       customClass: { container: 'swal-difuminado' },

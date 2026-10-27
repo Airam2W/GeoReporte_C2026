@@ -27,12 +27,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      #- name: Pruebas unitarias
-      #  run: npm run test:unit
-      #  env:
-      #    VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
-      #    VITE_AI_BACKEND_URL: ${{ secrets.VITE_AI_BACKEND_URL }}
-      #    VITE_GMAIL_SERVICE: ${{ secrets.VITE_GMAIL_SERVICE }}
+      - name: Pruebas unitarias
+        run: npm run test:unit
+        env:
+          VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+          VITE_AI_BACKEND_URL: ${{ secrets.VITE_AI_BACKEND_URL }}
+          VITE_GMAIL_SERVICE: ${{ secrets.VITE_GMAIL_SERVICE }}
 
       - name: Build project
         run: npm run build
@@ -41,12 +41,12 @@ jobs:
           VITE_AI_BACKEND_URL: ${{ secrets.VITE_AI_BACKEND_URL }}
           VITE_GMAIL_SERVICE: ${{ secrets.VITE_GMAIL_SERVICE }}
 
-      #- name: Pruebas E2E Cypress
-      #  run: npm run test:e2e
-      #  env:
-      #    VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
-      #    VITE_AI_BACKEND_URL: ${{ secrets.VITE_AI_BACKEND_URL }}
-      #    VITE_GMAIL_SERVICE: ${{ secrets.VITE_GMAIL_SERVICE }}
+      - name: Pruebas E2E Cypress
+        run: npm run test:e2e
+        env:
+          VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+          VITE_AI_BACKEND_URL: ${{ secrets.VITE_AI_BACKEND_URL }}
+          VITE_GMAIL_SERVICE: ${{ secrets.VITE_GMAIL_SERVICE }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -62,4 +62,4 @@ jobs:
       id-token: write
     steps:
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v4.0.5
