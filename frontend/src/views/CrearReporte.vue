@@ -133,11 +133,7 @@
             <input name="domicilio" v-model="form.domicilio" type="text" placeholder="Calle y número"
               class="input-domicilio" />
             <button type="button" class="btn-abrir-mapa" @click="abrirModoMapa">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                <path
-                  d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7l6-3 5.447 2.724A1 1 0 0 1 21 7.618v10.764a1 1 0 0 1-1.447.894L15 17l-6 3z" />
-                <path d="M9 7v13M15 4v13" />
-              </svg>
+              <Map />
             </button>
           </div>
           <span v-if="errores.domicilio" class="msg-error">{{ errores.domicilio }}</span>
@@ -147,32 +143,140 @@
 
           <label>Foto</label>
           <div class="foto-wrapper">
-            <label class="btn-foto" for="inputFotoFile" :class="{ 'input-error': errores.foto }">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-              {{ form.foto ? form.foto.name : 'Seleccionar foto' }}
-            </label>
-            <input name="foto" id="inputFotoFile" ref="inputFoto" type="file" accept="image/*" class="input-foto-hidden"
-              @change="seleccionarFoto" />
+            <div class="foto-actions">
+              <label
+                class="btn-foto"
+                :class="{
+                  'input-error': errores.foto,
+                  'btn-disabled': !form.departamento_id || procesandoAI
+                }"
+                for="inputFotoFile"
+              >
+                <Image/>
+
+                <span>
+                  {{ form.foto ? 'Cambiar foto' : 'Seleccionar foto' }}
+                </span>
+              </label>
+
+              <label
+                class="btn-foto btn-foto-camara"
+                :class="{
+                  'btn-disabled': !form.departamento_id
+                    || procesandoAI
+                }"
+                for="inputFotoCamara"
+              >
+                <Camera/>
+                <span>Tomar foto</span>
+              </label>
+
+            </div>
+
+            <input
+              id="inputFotoFile"
+              ref="inputFoto"
+              type="file"
+              accept="image/*"
+              class="input-foto-hidden"
+              :disabled="!form.departamento_id || enviando || procesandoAI"
+              @change="seleccionarFoto"
+            />
+
+            <input
+              id="inputFotoCamara"
+              ref="inputCamara"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              class="input-foto-hidden"
+              :disabled="!form.departamento_id || enviando || procesandoAI"
+              @change="seleccionarFoto"
+            />
+
+            <div
+              v-if="previewFoto"
+              class="preview-foto-wrapper"
+            >
+              <img
+                :src="previewFoto"
+                alt="Vista previa"
+                class="preview-foto"
+              />
+            </div>
+
+            <button
+              type="button"
+              class="link-evidencia"
+              @click="mostrarModalConsejos = true"
+            >
+              Cómo tomar tu evidencia correctamente...
+            </button>
+
           </div>
-          <span v-if="errores.foto" class="msg-error">{{ errores.foto }}</span>
+
+          <span v-if="errores.foto" class="msg-error">
+            {{ errores.foto }}
+          </span>
+
           <span class="validacion-AI"></span>
 
           <button name="enviar" type="submit" class="btn-enviar" :disabled="enviando">
             {{ enviando ? 'Enviando...' : 'Enviar Reporte' }}
           </button>
         </form>
+
       </template>
     </section>
   </section>
+  <div
+    v-if="mostrarModalConsejos"
+    class="modal-overlay"
+    @click.self="mostrarModalConsejos = false"
+  >
+    <div class="modal-consejos">
+
+      <h3>Consejos para tomar evidencia</h3>
+
+      <ul>
+        <li>Captura claramente el problema reportado.</li>
+
+        <li>Mantén la cámara estable para evitar fotos borrosas.</li>
+
+        <li>Procura contar con buena iluminación.</li>
+
+        <li>Muestra el contexto alrededor del incidente.</li>
+
+        <li>Evita tomar la fotografía demasiado lejos.</li>
+
+        <li>No cubras el lente con los dedos.</li>
+
+        <li>Verifica la imagen antes de enviarla.</li>
+      </ul>
+
+      <button
+        type="button"
+        class="btn-cerrar-consejos"
+        @click="mostrarModalConsejos = false"
+      >
+        Entendido
+      </button>
+
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+
+// Iconos de PrimeVue
+import Image from '@primeicons/vue/image';
+import Camera from '@primeicons/vue/camera';
+import Map from '@primeicons/vue/map';
+
+
 import {
   obtenerDepartamentosOrdenadosPorId,
   obtenerProblemasPorDepartamentoID,
@@ -193,7 +297,13 @@ const volandoAUbicacion = ref(false)
 const panelAbierto = ref(true)
 
 const enviando = ref(false)
+const procesandoAI = ref(false)
 const errores = ref<Record<string, string>>({})
+
+const previewFoto = ref('')
+const mostrarModalConsejos = ref(false)
+
+const inputCamara = ref<HTMLInputElement | null>(null)
 
 // --- CATÁLOGOS SUPABASE ---
 const departamentos = ref<any[]>([])
@@ -227,6 +337,8 @@ const form = ref({
   latitud: 0,
   longitud: 0,
   correo: '',
+  fotoTipoID: null as number | null,
+  mensajeAI: '' as string | null,
 })
 
 // 1. Cargar departamentos al iniciar
@@ -244,6 +356,8 @@ const onDepartamentoSeleccionado = async () => {
   form.value.problema_id = ''
   problemas.value = []
   errores.value.departamento_id = '' // Limpiar error visual si elige algo
+  form.value.foto = null
+  previewFoto.value = ''
 
   if (!form.value.departamento_id) return
 
@@ -400,33 +514,77 @@ const abrirPanel = () => {
   }
 }
 
-const seleccionarFoto = (e: Event) => {
-  //Deshabilitar el boton de enviar reporte mientras se procesa la validacion de la AI
+const seleccionarFoto = async (e: Event) => {
   const submitBtn = document.getElementsByName('enviar')[0] as HTMLButtonElement
-  submitBtn.disabled = true
+
+  if (submitBtn) submitBtn.disabled = true
+
   const input = e.target as HTMLInputElement
+
   if (input.files?.[0]) {
-    form.value.foto = input.files[0]
-    errores.value.foto = '' // Quitar alerta si selecciona
-    validarConAi(form.value.foto as File)
+    const archivo = input.files[0]
+    form.value.foto = archivo
+    errores.value.foto = ''
+    previewFoto.value = URL.createObjectURL(archivo)
+    procesandoAI.value = true
+    try {
+      await validarConAi(archivo)
+    } finally {
+      procesandoAI.value = false
+    }
   }
-  // Habilitar el boton enviar reporte
+
   if (submitBtn) submitBtn.disabled = false
 }
 
+const obtenerSlugDepartamento = (id: string | number): string => {
+  const depId = Number(id) // Nos aseguramos de evaluarlo como número
+
+  switch (depId) {
+    case 1:
+      return 'limpieza'
+    case 2:
+      return 'parques'
+    case 3:
+      return 'alumbrado'
+    case 4:
+      return 'mercados'
+    case 5:
+      return 'panteones'
+    case 6:
+      return 'calles'
+    case 7:
+      return 'drenaje'
+    default:
+      return 'calles'
+  }
+}
+
 const validarConAi = async (file: File) => {
-  //Realizar la validacion de la AI de la foto y obtener el resultado
   const spanValidacionAI = document.querySelector('.validacion-AI') as HTMLSpanElement
-  spanValidacionAI.textContent = `Validando tu foto con AI...`
-  spanValidacionAI.style.color = '#000000'
-  const resultadoAI = await validarAI(file)
-  // Actualizar en el span de validacion AI con el resultado
+
+  if (spanValidacionAI) {
+    spanValidacionAI.textContent = `Validando tu foto con AI...`
+    spanValidacionAI.style.color = '#000000'
+  }
+
+  const departamentoId = form.value.departamento_id
+  const departamentoSlug = obtenerSlugDepartamento(departamentoId)
+  const resultadoAI = await validarAI(file, departamentoSlug)
+
   if (spanValidacionAI) {
     if (resultadoAI) {
+      // Guardar los datos de la IA en nuestro state del formulario
+      form.value.fotoTipoID = resultadoAI.type;
+      form.value.mensajeAI = resultadoAI.data.message;
+
       spanValidacionAI.textContent = `${resultadoAI.data.message}`
       spanValidacionAI.style.color = resultadoAI.type === 0 ? '#008998' : '#FF0000'
     } else {
-      spanValidacionAI.textContent = 'Error al procesar la imagen'
+      form.value.fotoTipoID = 2; // 2 = Error según tu interfaz
+      form.value.mensajeAI = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta';
+
+      spanValidacionAI.textContent = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta'
       spanValidacionAI.style.color = '#FF0000'
     }
   }
@@ -445,9 +603,15 @@ const limpiarFormulario = () => {
     latitud: 0,
     longitud: 0,
     correo: '',
+    fotoTipoID: null,
+    mensajeAI: '',
   }
   problemas.value = []
   errores.value = {}
+  previewFoto.value = ''
+
+  if (inputCamara.value) inputCamara.value.value = ''
+
   if (inputFoto.value) inputFoto.value.value = ''
 }
 
@@ -555,6 +719,8 @@ const enviarReporte = async () => {
       domicilio: form.value.domicilio.trim(),
       referencias: form.value.referencias ? form.value.referencias.trim() : null,
       foto_url: fotoUrlFinal,
+      fotoTipoID: form.value.fotoTipoID,
+      mensajeAI: form.value.mensajeAI,
     })
 
     // 3. Insertar los datos en la tabla 'reportesExistentes'
@@ -783,3 +949,128 @@ defineExpose({
   onDepartamentoSeleccionado,
 })
 </script>
+
+<style scoped>
+
+.foto-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-foto {
+  flex: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding: 12px;
+
+  border-radius: 12px;
+
+  background: var(--dorado);
+  color: var(--tinto);
+
+  cursor: pointer;
+  font-weight: 600;
+
+  transition: .2s;
+}
+
+.btn-foto-camara {
+  background: var(--dorado);
+}
+
+.btn-disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.preview-foto-wrapper {
+  margin-top: 12px;
+}
+
+.preview-foto {
+  width: 100%;
+  max-height: 280px;
+
+  object-fit: cover;
+
+  border-radius: 12px;
+
+  border: 2px solid #e5e7eb;
+}
+
+.link-evidencia {
+  margin-top: 10px;
+
+  background: none;
+  border: none;
+
+  color: var(--tinto-oscuro);
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  text-decoration: underline;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(0,0,0,.55);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 99999;
+}
+
+.modal-consejos {
+  width: 90%;
+  max-width: 420px;
+
+  background: white;
+
+  border-radius: 16px;
+
+  padding: 24px;
+}
+
+.modal-consejos h3 {
+  margin-bottom: 16px;
+}
+
+.modal-consejos ul {
+  padding-left: 18px;
+}
+
+.modal-consejos li {
+  margin-bottom: 10px;
+}
+
+.btn-cerrar-consejos {
+  width: 100%;
+
+  margin-top: 16px;
+
+  padding: 12px;
+
+  border: none;
+
+  border-radius: 10px;
+
+  background: var(--tinto);
+
+  color: white;
+
+  cursor: pointer;
+}
+
+</style>
