@@ -1,5 +1,5 @@
-// export const API_URL = import.meta.env.VITE_AI_BACKEND_URL
-export const API_URL = 'http://localhost:8000'
+export const API_URL = import.meta.env.VITE_AI_BACKEND_URL
+// export const API_URL = 'http://localhost:8000'
 
 
 // Interfaz actualizada para incluir el campo 'type' que envuelve el backend
