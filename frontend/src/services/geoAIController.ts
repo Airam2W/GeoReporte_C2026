@@ -1,4 +1,6 @@
 export const API_URL = import.meta.env.VITE_AI_BACKEND_URL
+// export const API_URL = 'http://localhost:8000'
+
 
 // Interfaz actualizada para incluir el campo 'type' que envuelve el backend
 interface RespuestaAI {
@@ -11,12 +13,12 @@ interface RespuestaAI {
 }
 
 // Método asíncrono para enviar la imagen
-export const validarAI = async (imageFile: File): Promise<RespuestaAI | void> => {
+export const validarAI = async (imageFile: File, depto: string): Promise<RespuestaAI | void> => {
   try {
     const formData = new FormData()
     formData.append('file', imageFile)
 
-    const response = await fetch(`${API_URL}/validarAI`, {
+    const response = await fetch(`${API_URL}/validarAI/${depto}`, {
       method: 'POST',
       body: formData,
     })
@@ -27,10 +29,10 @@ export const validarAI = async (imageFile: File): Promise<RespuestaAI | void> =>
     }
 
     const resultado: RespuestaAI = await response.json()
-    
+
     // Puedes evaluar el tipo de respuesta directamente aquí o en tu componente de Vue
     console.log('Respuesta completa:', resultado)
-    console.log('Código de validación (type):', resultado.type) 
+    console.log('Código de validación (type):', resultado.type)
 
     return resultado
 

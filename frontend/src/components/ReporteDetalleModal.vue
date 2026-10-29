@@ -12,7 +12,7 @@
 
         <div class="modal-body" v-if="reporte">
           <div class="modal-grid">
-            <!-- Columna Info -->
+            <!-- Columna Izquierda: Información del Reporte -->
             <div class="info-columna">
               <div class="info-item">
                 <label>Problema Reportado</label>
@@ -74,6 +74,7 @@
                 <p>{{ formatearFechaOpcional(reporte.fecha_cierre, 'Aún no ha finalizado') }}</p>
               </div>
 
+              <!-- Sección de Notas y Registros Históricos -->
               <div
                 class="info-item"
                 v-if="
@@ -122,77 +123,52 @@
                 </div>
               </div>
 
-              <!-- Columna Foto -->
-              <div class="foto-columna">
-                <label>Evidencia Fotográfica</label>
-                <div class="foto-contenedor">
-                  <img v-if="reporte.foto_url" :src="reporte.foto_url" alt="Evidencia" />
-                  <div v-else class="sin-foto">Sin imagen</div>
-                </div>
-
-                <div
-                  class="estado-actual-box"
-                  v-if="esAdmin || esAdminEx || esSupervisor || esJefe"
-                >
-                  <label>Estado Actual</label>
-                  <span
-                    :class="[
-                      'badge badge-grande',
-                      obtenerClaseEstado(reporte.estado.toLowerCase()),
-                    ]"
+              <div
+                class="info-item"
+                v-if="
+                  (esAdmin || esSupervisor || esJefe) &&
+                  reporte.notas_finales_finalizacion?.length
+                "
+              >
+                <label>Registro Final de finalización</label>
+                <div class="notas-lista">
+                  <article
+                    v-for="(n, i) in reporte.notas_finales_finalizacion"
+                    :key="i"
+                    class="nota-card nota-finalizacion"
                   >
-                    {{ reporte.estado }}
-                  </span>
+                    <header class="nota-meta">
+                      <span class="nota-titulo">{{ n.titulo }}</span>
+                      <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
+                    </header>
+                    <p class="nota-texto">{{ n.notas }}</p>
+                    <a v-if="n.foto_url" :href="n.foto_url" target="_blank" rel="noopener">
+                      <img :src="n.foto_url" alt="Registro de finalización" class="nota-foto" />
+                    </a>
+                  </article>
                 </div>
               </div>
 
-                <div
-                  class="info-item"
-                  v-if="
-                    (esAdmin || esSupervisor || esJefe) &&
-                    reporte.notas_finales_finalizacion?.length
-                  "
-                >
-                  <label>Registro Final de finalización</label>
-                  <div class="notas-lista">
-                    <article
-                      v-for="(n, i) in reporte.notas_finales_finalizacion"
-                      :key="i"
-                      class="nota-card nota-finalizacion"
-                    >
-                      <header class="nota-meta">
-                        <span class="nota-titulo">{{ n.titulo }}</span>
-                        <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
-                      </header>
-                      <p class="nota-texto">{{ n.notas }}</p>
-                      <a v-if="n.foto_url" :href="n.foto_url" target="_blank" rel="noopener">
-                        <img :src="n.foto_url" alt="Registro de finalización" class="nota-foto" />
-                      </a>
-                    </article>
-                  </div>
-                </div>
-
-                <div
-                  class="info-item"
-                  v-if="(esSupervisor || esJefe) && reporte.notas_denegacion?.length"
-                >
-                  <label>Registro de Denegación</label>
-                  <div class="notas-lista">
-                    <article
-                      v-for="(n, i) in reporte.notas_denegacion"
-                      :key="i"
-                      class="nota-card nota-finalizacion"
-                    >
-                      <header class="nota-meta">
-                        <span class="nota-titulo">{{ n.titulo }}</span>
-                        <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
-                      </header>
-                      <p class="nota-texto">{{ n.notas }}</p>
-                      <a v-if="n.foto_url" :href="n.foto_url" target="_blank" rel="noopener">
-                        <img :src="n.foto_url" alt="Registro de finalización" class="nota-foto" />
-                      </a>
-                    </article>
-                  </div>
+              <div
+                class="info-item"
+                v-if="(esSupervisor || esJefe) && reporte.notas_denegacion?.length"
+              >
+                <label>Registro de Denegación</label>
+                <div class="notas-lista">
+                  <article
+                    v-for="(n, i) in reporte.notas_denegacion"
+                    :key="i"
+                    class="nota-card nota-finalizacion"
+                  >
+                    <header class="nota-meta">
+                      <span class="nota-titulo">{{ n.titulo }}</span>
+                      <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
+                    </header>
+                    <p class="nota-texto">{{ n.notas }}</p>
+                    <a v-if="n.foto_url" :href="n.foto_url" target="_blank" rel="noopener">
+                      <img :src="n.foto_url" alt="Registro de finalización" class="nota-foto" />
+                    </a>
+                  </article>
                 </div>
               </div>
 
@@ -241,6 +217,41 @@
                   </article>
                 </div>
               </div>
+            </div>
+
+            <!-- Columna Derecha: Foto, Estado y Mensaje de IA -->
+            <div class="foto-columna">
+              <label>Evidencia Fotográfica</label>
+              <div class="foto-contenedor">
+                <img v-if="reporte.foto_url" :src="reporte.foto_url" alt="Evidencia" />
+                <div v-else class="sin-foto">Sin imagen</div>
+              </div>
+
+              <div class="info-item" v-if="reporte.mensajeAI">
+                <label>Validación de la IA</label>
+                <div class="descripcion-box" :style="{
+                   color: reporte.fotoTipoID === 0 ? '#1a6b2f' : '#c62828',
+                   backgroundColor: reporte.fotoTipoID === 0 ? '#e8f5e9' : '#ffebee',
+                   borderColor: reporte.fotoTipoID === 0 ? '#81c784' : '#ef9a9a'
+                }">
+                  {{ reporte.mensajeAI }}
+                </div>
+              </div>
+
+              <div
+                class="estado-actual-box"
+                v-if="esAdmin || esAdminEx || esSupervisor || esJefe"
+              >
+                <label>Estado Actual</label>
+                <span
+                  :class="[
+                    'badge badge-grande',
+                    obtenerClaseEstado(reporte.estado.toLowerCase()),
+                  ]"
+                >
+                  {{ reporte.estado }}
+                </span>
+              </div>
 
               <div
                 class="estado-actual-box"
@@ -253,6 +264,7 @@
                   {{ traducirEstado(reporte.estado) }}
                 </span>
               </div>
+            </div>
           </div>
         </div>
 

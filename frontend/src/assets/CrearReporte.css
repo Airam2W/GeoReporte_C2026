@@ -737,7 +737,7 @@ body {
 
   .panel-form {
     scrollbar-width: thin;
-    scrollbar-color: #c8e6c9 transparent;
+    scrollbar-color: var(--tinto) transparent;
   }
 
   .panel-form::-webkit-scrollbar {

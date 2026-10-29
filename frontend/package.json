@@ -19,7 +19,9 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@primeicons/vue": "^8.0.2",
     "@supabase/supabase-js": "^2.115.0",
+    "bootstrap-icons": "^1.13.2",
     "build": "^0.1.4",
     "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
