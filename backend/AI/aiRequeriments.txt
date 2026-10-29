@@ -2,11 +2,8 @@ fastapi
 uvicorn
 pydantic
 python-multipart
-ultralytics
 onnx
 onnxruntime
 opencv-python-headless
 numpy
 pillow
-
-TODO: Quitar ultralytics y torch, porque solo importandolos consumen 400mb de ram del servidor
