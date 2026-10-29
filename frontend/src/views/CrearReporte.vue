@@ -358,6 +358,8 @@ const onDepartamentoSeleccionado = async () => {
   errores.value.departamento_id = '' // Limpiar error visual si elige algo
   form.value.foto = null
   previewFoto.value = ''
+  document.querySelector('.validacion-AI')?.replaceChildren() // Limpiar mensaje de validación AI
+
 
   if (!form.value.departamento_id) return
 
