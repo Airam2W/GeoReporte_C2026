@@ -128,13 +128,34 @@ const enviar = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100px;
   background: #fafafa;
+  height: 250px; /* 💡 Asegúrate de definir una altura fija o máxima para el contenedor (ajústala a tu diseño) */
+  width: 100%;
   border: 1px solid #eee;
   border-radius: 10px;
   overflow: hidden;
 }
-.foto-box img { display: block; width: 100%; max-height: 280px; object-fit: contain; }
+
+/* Hacemos que el enlace ocupe todo el cuadro */
+.foto-box a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.foto-box img { 
+  display: block; 
+  max-width: 100%; 
+  max-height: 100%; 
+  object-fit: contain; /* Esto garantiza que la imagen completa se vea sin recortarse */
+}
+
+.sin-foto {
+  color: #888;
+  font-size: 14px;
+}
 .sin-foto { color: #aaa; font-style: italic; padding: 24px; }
 
 .pregunta {
