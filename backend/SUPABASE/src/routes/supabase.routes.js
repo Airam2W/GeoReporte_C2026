@@ -2664,7 +2664,7 @@ router.post('/obtener/departamentos_internos', async (req, res) => {
     const rolesPermitidos =
         [1, //Director General
             2, //Administrador Interno
-            //3, //Supervisor
+            3, //Supervisor
             //4, //Jefe
             //5, //Trabajador
             //6, //Administrador Externo
