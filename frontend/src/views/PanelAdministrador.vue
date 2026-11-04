@@ -187,7 +187,7 @@
       @asignar="asignarReporte" @rechazar="rechazarReporte" @devolver="devolverReporte" @turnar="turnarReporte"
       @descargar-pdf="descargarPDF" />
 
-    <TurnarReporteModal :visible="modalTurnarVisible" :folio="folioATurnar"
+    <TurnarReporteModal :visible="modalTurnarVisible" :folio="folioATurnar" :titulos="titulosTurnado"
       :departamentos-internos="departamentosInternos" :departamentos-externos="departamentosExternos"
       :guardando="guardandoTurnado" @close="cerrarModalTurnar" @confirm="confirmarTurnado" />
 
@@ -233,6 +233,8 @@ import RechazarReporteModal from '../components/RechazarReporteModal.vue'
 import { generarPdfReporte } from '../logic/reportePdf'
 import DescargarPdfModal from '../components/DescargarPdfModal.vue'
 import { enviarCorreoRechazoReporte, enviarCorreoTurnadoReporte, enviarCorreoReportePDF } from '../services/gmailController'
+
+const titulosTurnado = ref<any[]>([])
 
 const modalPdfVisible = ref(false)
 const reportePdf = ref<any>(null)
@@ -426,6 +428,10 @@ const cargarCatalogos = async () => {
   } else {
     titulosRechazo.value = titulosData || []
   }
+
+  const { data: titulosTurnadoData, error: titulosTurnadoError } = await obtenerTitulos(7) // 7 = Turnado
+  if (titulosTurnadoError) console.error('Error al cargar títulos de turnado:', titulosTurnadoError.message)
+  else titulosTurnado.value = (titulosTurnadoData || []).filter((t: any) => [11, 12].includes(t.id))
 }
 
 // Paso 1: solo abre el modal (también sirve desde el modal de detalle)
@@ -590,6 +596,24 @@ const confirmarTurnado = async (datos: any) => {
       return
     }
 
+    // 3. Registrar en el historial del reporte (7 = Turnado; 11 = Interno, 12 = Externo)
+    const { error: errorHistorial } = await crearHistorialReporte(folio, {
+      categoria_historial_id: 7,
+      titulo_id: datos.titulo_id,
+      notas: datos.notas,
+      fecha: new Date().toISOString(),
+    })
+
+    if (errorHistorial) {
+      console.error('Error al guardar historial:', errorHistorial)
+      Swal.fire(
+        'Error',
+        'El reporte se turnó, pero no se pudo registrar el turnado en el historial.',
+        'error',
+      )
+      return
+    }
+
     // Enviar correo por Gmail del Turnado del Reporte
     const correoData = {
       folio,
@@ -659,6 +683,7 @@ const cargarReportes = async () => {
         notas_avances: notasPorCategoria(historial, 4),
         notas_finalizacion: notasPorCategoria(historial, 3),
         notas_finales_finalizacion: notasPorCategoria(historial, 5),
+        notas_turnado: notasPorCategoria(historial, 7),
       }
     })
   }

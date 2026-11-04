@@ -365,6 +365,13 @@ export async function actualizarFechaAltaUsuario(id: number | string, data: any)
   })
 }
 
+export async function actualizarFotoDepartamentoReporte(folio: string, fotoDepartamentoID: number) {
+  return request(`/actualizar/reporte/fotoDepartamentoID`, {
+    method: 'PUT',
+    body: JSON.stringify({ folio, fotoDepartamentoID, user: usuarioObjeto }),
+  })
+}
+
 export async function obtenerUsuarioPorCorreoYContrasena(params: any) {//NUEVO
   return request(`/obtener/usuarios/CorreoContrasena`, {
     method: 'POST',

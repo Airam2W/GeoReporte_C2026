@@ -871,32 +871,6 @@ const abrirModalFormProblematica = (prob: any = null) => {
   modalProblematicaFormVisible.value = true
 }
 
-const cambiarEstadoProblematica = async (prob: any) => {
-  const nuevoEstado = prob.estado === 'Alta' ? 'Baja' : 'Alta'
-  // Confirmación pregunta si el usuario realmente quiere darla de baja o alta
-  Swal.fire({
-    title: `¿Deseas dar de ${nuevoEstado === 'Alta' ? 'alta' : 'baja'} esta problemática?`,
-    text: `Se dará de ${nuevoEstado === 'Alta' ? 'alta' : 'baja'} "${prob.nombre}".`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonColor: '#1a6b2f',
-    cancelButtonColor: '#888',
-    confirmButtonText: `Sí, ${nuevoEstado === 'Alta' ? 'Dar de Alta' : 'Dar de Baja'}`,
-    cancelButtonText: 'Cancelar',
-  }).then((result) => {
-    if (result.isConfirmed) {
-      cambiarEstadoProblematicaEnBD(prob)
-      Swal.fire({
-        title: `Problemática ${nuevoEstado === 'Alta' ? 'dada de Alta' : 'dada de Baja'}`,
-        text: `Se ha dado de ${nuevoEstado === 'Alta' ? 'alta' : 'baja'} "${prob.nombre}" correctamente.`,
-        icon: 'success',
-        confirmButtonColor: '#1a6b2f',
-      })
-      cerrarModalVerProblematica()
-    }
-  })
-}
-
 const cambiarEstadoProblematicaEnBD = async (prob: any) => {
   const nuevoEstado = prob.estado === 'Alta' ? 'Baja' : 'Alta'
 
@@ -976,15 +950,15 @@ const ejecutarGuardadoProblematica = async (formData: any, esEdicion: boolean) =
 }
 
 const cambiarEstadoProblema = async (prob: any) => {
-  const nuevoEstado = prob.estado === 'Alta' ? 'Alta' : 'Baja'
+  const nuevoEstado = prob.estado === 'Alta' ? 'Baja' : 'Alta'
   const result = await Swal.fire({
     title: `¿Deseas dar de ${nuevoEstado === 'Alta' ? 'alta' : 'baja'} esta problemática?`,
-    text: `Se ${nuevoEstado === 'Alta' ? 'dará de baja' : 'dará de alta'} "${prob.nombre}".`,
+    text: `Se ${nuevoEstado === 'Alta' ? 'dará de alta' : 'dará de baja'} "${prob.nombre}" del departamento "${prob.departamentoNombre}".`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#0060c0',
     cancelButtonColor: '#888',
-    confirmButtonText: `Sí, dar de ${nuevoEstado === 'Alta' ? 'baja' : 'alta'}`,
+    confirmButtonText: `Sí, dar de ${nuevoEstado === 'Alta' ? 'alta' : 'baja'}`,
     cancelButtonText: 'Cancelar',
     reverseButtons: true,
     customClass: { container: 'swal-difuminado' },

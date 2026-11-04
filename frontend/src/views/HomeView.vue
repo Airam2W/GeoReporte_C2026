@@ -66,9 +66,27 @@ const ejecutarBusqueda = async () => {
   reporteEncontrado.value = {
     ...data,
     estado: data.detalle_reporte?.estadoreporte?.estado || 'Pendiente',
+    notas_rechazo: notasPorCategoriaRD(data.historial_reporte || [], 2),
   }
   modalVisible.value = true
 }
+
+const formatearNotaRD = (h: any) => {
+  const fecha = new Date(h.fecha)
+  return {
+    fecha: fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }),
+    hora: fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+    titulo: h.titulo?.nombre || 'Sin título',
+    notas: h.notas,
+  }
+}
+
+const notasPorCategoriaRD = (historial: any[], categoria: number) =>
+  historial
+    .filter((h) => h.categoria_historial_id === categoria && h.notas)
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .map(formatearNotaRD)
+
 defineExpose({
   folioInput,
   errorBusqueda,

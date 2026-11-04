@@ -1660,7 +1660,10 @@ router.post('/obtener/reportes/folio', async (req, res) => {
             'foto_url',
             'created_at',
             'problemas (nombreamigable)',
+            'departamentos (id, nombre, nombreamigable)',
+            'departamentos_externos (id, departamento)',
             'detalle_reporte ( estado_id, estadoreporte (estado) )',
+            'historial_reporte(categoria_historial_id,notas,fecha,foto_url,titulo(nombre))',
         ].join(','))
         .eq('folio', valor)
         .single()
@@ -1719,7 +1722,9 @@ router.post('/obtener/reportes/departamento_externo_Id', async (req, res) => {
             'foto_url',
             'created_at',
             'problemas_externos (id, nombre, nombreamigable)',
+            'departamentos_externos (id, departamento)',
             'detalle_reporte (estado_id, estadoreporte (estado), updated_at)',
+            'historial_reporte(categoria_historial_id,notas,fecha,foto_url,titulo(nombre))',
         ].join(','))
         .eq('departamento_externo_id', valor).order('created_at', { ascending: false })
     responder(res, result)
@@ -1775,8 +1780,11 @@ router.post('/obtener/reportes/departamento_interno_Id', async (req, res) => {
             'domicilio',
             'referencias',
             'foto_url',
+            'mensajeAI',
+            'fotoTipoID',
             'created_at',
-            'problemas (id, nombre)',
+            'problemas (id, nombre, nombreamigable)',
+            'departamentos (id, nombre, nombreamigable)',
             'detalle_reporte(estado_id,fecha_inicio,fecha_cierre,estadoreporte(estado),jefe_id,supervisor_id,supervisores(usuario_id,usuarios(nombre,apellido_p,apellido_m)),jefes(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
             'historial_reporte(categoria_historial_id,notas,fecha,foto_url,titulo(nombre))',
         ].join(','))
@@ -1833,7 +1841,8 @@ router.post('/obtener/reportes/jefe', async (req, res) => {
             'referencias',
             'foto_url',
             'created_at',
-            'problemas(id,nombre)',
+            'problemas(id,nombre, nombreamigable)',
+            'departamentos(id,nombre, nombreamigable)',
             'detalle_reporte(estado_id,fecha_inicio,fecha_cierre,estadoreporte(estado),jefe_id,supervisor_id,supervisores(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
             'historial_reporte(categoria_historial_id,notas,fecha,foto_url,titulo(nombre))',
         ].join(','))
@@ -1888,9 +1897,13 @@ router.post('/obtener/reportes/supervisor', async (req, res) => {
             'descripcion',
             'domicilio',
             'referencias',
+            'mensajeAI',
+            'fotoTipoID',
+            'fotoDepartamentoID',
             'foto_url',
             'created_at',
-            'problemas(id,nombre)',
+            'problemas(id,nombre, nombreamigable)',
+            'departamentos(id,nombre, nombreamigable)',
             'detalle_reporte(estado_id,fecha_inicio,fecha_cierre,estadoreporte(estado),jefe_id,supervisor_id,supervisores(usuario_id,usuarios(nombre,apellido_p,apellido_m)), jefes(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
             'historial_reporte(categoria_historial_id,notas,fecha,foto_url,titulo(nombre))',
         ].join(','))
@@ -2659,7 +2672,7 @@ router.post('/obtener/departamentos_internos', async (req, res) => {
     const rolesPermitidos =
         [1, //Director General
             2, //Administrador Interno
-            //3, //Supervisor
+            3, //Supervisor
             //4, //Jefe
             //5, //Trabajador
             //6, //Administrador Externo
@@ -3603,6 +3616,56 @@ router.put('/actualizar/usuario/fechaAlta', async (req, res) => {
     responder(res, result)
 })
 
+// (actualizarFotoDepartamentoReporte)
+router.put('/actualizar/reporte/fotoDepartamentoID', async (req, res) => {
+    const { folio, fotoDepartamentoID, user } = req.body;
+    const rolesPermitidos =
+        [//1, //Director General
+            //2, //Administrador Interno
+            3, //Supervisor
+            //4, //Jefe
+            //5, //Trabajador
+            //6, //Administrador Externo
+        ]
 
+    // Validacion de Autenticacion del Usuario
+    if (!await validarAutenticacion(user)) {
+        return res.status(401).json({
+            // Error para el usuario
+            error: 'No estas autenticado o no estas de alta, por favor inicia sesión nuevamente.'
+        });
+    }
+
+    // Validacion de Autorizacion del Usuario
+    if (!await validarAutorizacion(user, rolesPermitidos)) {
+        return res.status(403).json({
+            // Error para el usuario
+            error: 'No tienes permisos para realizar esta acción.'
+        });
+    }
+
+    // Validacion de datos
+    // folio = string || number
+    // fotoDepartamentoID = string || number
+    if (!folio || (typeof folio !== 'string' && typeof folio !== 'number')) {
+        console.log('Folio no proporcionado o tipo inválido:', folio, 'Tipo:', typeof folio);
+        return res.status(400).json({
+            error: 'Folio no proporcionado o tipo inválido. Por favor, ingresa un folio válido.'
+        });
+    }
+    if (!fotoDepartamentoID || (typeof fotoDepartamentoID !== 'string' && typeof fotoDepartamentoID !== 'number')) {
+        console.log('Foto Departamento ID no proporcionado o tipo inválido:', fotoDepartamentoID, 'Tipo:', typeof fotoDepartamentoID);
+        return res.status(400).json({
+            error: 'Foto Departamento ID no proporcionado o tipo inválido. Por favor, ingresa un ID válido.'
+        });
+    }
+
+    // Realizacion de la consulta a la base de datos
+    const result = await supabase
+        .from('reportes')
+        .update({ fotoDepartamentoID: fotoDepartamentoID })
+        .eq('folio', folio);
+    responder(res, result)
+})
 
 export default router

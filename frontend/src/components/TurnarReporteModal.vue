@@ -23,11 +23,8 @@
 
           <div class="input-grupo">
             <label>Departamento</label>
-            <select
-              v-model="form.departamento_id"
-              :disabled="!form.tipo"
-              :class="{ 'input-error': errores.departamento_id }"
-            >
+            <select v-model="form.departamento_id" :disabled="!form.tipo"
+              :class="{ 'input-error': errores.departamento_id }">
               <option value="">Seleccione un departamento...</option>
               <option v-for="d in departamentosDisponibles" :key="d.id" :value="d.id">
                 {{ d.nombre }}
@@ -40,11 +37,8 @@
 
           <div class="input-grupo">
             <label>Problema</label>
-            <select
-              v-model="form.problema_id"
-              :disabled="!form.departamento_id || cargandoOpciones"
-              :class="{ 'input-error': errores.problema_id }"
-            >
+            <select v-model="form.problema_id" :disabled="!form.departamento_id || cargandoOpciones"
+              :class="{ 'input-error': errores.problema_id }">
               <option value="">
                 {{ cargandoOpciones ? 'Cargando...' : 'Seleccione un problema...' }}
               </option>
@@ -55,11 +49,8 @@
 
           <div class="input-grupo">
             <label>Administrador</label>
-            <select
-              v-model="form.administrador_id"
-              :disabled="!form.departamento_id || cargandoOpciones"
-              :class="{ 'input-error': errores.administrador_id }"
-            >
+            <select v-model="form.administrador_id" :disabled="!form.departamento_id || cargandoOpciones"
+              :class="{ 'input-error': errores.administrador_id }">
               <option value="">
                 {{ cargandoOpciones ? 'Cargando...' : 'Seleccione un administrador...' }}
               </option>
@@ -70,6 +61,22 @@
             <span v-if="errores.administrador_id" class="msg-error">{{
               errores.administrador_id
             }}</span>
+          </div>
+
+          <div class="input-grupo">
+            <label>Motivo del turnado</label>
+            <select v-model="form.titulo_id" disabled :class="{ 'input-error': errores.titulo_id }">
+              <option value="">Seleccione primero el tipo de departamento...</option>
+              <option v-for="t in titulosTurnado" :key="t.id" :value="t.id">{{ t.nombre }}</option>
+            </select>
+            <span v-if="errores.titulo_id" class="msg-error">{{ errores.titulo_id }}</span>
+          </div>
+
+          <div class="input-grupo">
+            <label>Notas</label>
+            <textarea v-model="form.notas" rows="4" placeholder="Describe el motivo del turnado..."
+              :class="{ 'input-error': errores.notas }"></textarea>
+            <span v-if="errores.notas" class="msg-error">{{ errores.notas }}</span>
           </div>
         </form>
 
@@ -94,6 +101,7 @@ const props = defineProps({
   departamentosInternos: { type: Array as () => any[], default: () => [] },
   departamentosExternos: { type: Array as () => any[], default: () => [] },
   guardando: { type: Boolean, default: false },
+  titulos: { type: Array as () => any[], default: () => [] }, // títulos 11 y 12
 })
 
 const emit = defineEmits(['close', 'confirm'])
@@ -103,6 +111,8 @@ const form = ref({
   departamento_id: '' as string | number,
   problema_id: '' as string | number,
   administrador_id: '' as string | number,
+  titulo_id: '' as string | number,
+  notas: '',
 })
 const errores = ref<Record<string, string>>({})
 const problemas = ref<any[]>([])
@@ -127,11 +137,23 @@ const departamentosDisponibles = computed(() => {
 const nombreCompleto = (u: any) =>
   `${u?.nombre || ''} ${u?.apellido_p || ''} ${u?.apellido_m || ''}`.trim()
 
+const titulosTurnado = computed(() => props.titulos.filter((t) => [11, 12].includes(t.id)))
+
+watch(
+  () => form.value.tipo,
+  (tipo) => {
+    form.value.titulo_id = tipo === 'Interno' ? 11 : tipo === 'Externo' ? 12 : ''
+  },
+)
+
 watch(
   () => props.visible,
   (v) => {
     if (v) {
-      form.value = { tipo: '', departamento_id: '', problema_id: '', administrador_id: '' }
+      form.value = {
+        tipo: '', departamento_id: '', problema_id: '', administrador_id: '',
+        titulo_id: '', notas: '',
+      }
       errores.value = {}
       problemas.value = []
       administradores.value = []
@@ -206,6 +228,14 @@ const enviar = () => {
     errores.value.administrador_id = 'Selecciona un administrador'
     ok = false
   }
+  if (!form.value.titulo_id) {
+    errores.value.titulo_id = 'Selecciona el tipo de departamento'
+    ok = false
+  }
+  if (!form.value.notas.trim()) {
+    errores.value.notas = 'Las notas son obligatorias'
+    ok = false
+  }
   if (!ok) return
 
   emit('confirm', {
@@ -219,6 +249,9 @@ const enviar = () => {
     problemaNombre: problemas.value.find((p) => p.id == form.value.problema_id)?.nombre,
     administradorNombre: administradores.value.find((a) => a.id == form.value.administrador_id)
       ?.nombre,
+    titulo_id: form.value.titulo_id,
+    tituloNombre: titulosTurnado.value.find((t) => t.id == form.value.titulo_id)?.nombre,
+    notas: form.value.notas.trim(),
   })
 }
 </script>
@@ -230,4 +263,16 @@ const enviar = () => {
 .swal2-container {
   z-index: 10000 !important;
 }
+
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+  outline: none;
+}
+textarea:focus { border-color: #621132; }
 </style>

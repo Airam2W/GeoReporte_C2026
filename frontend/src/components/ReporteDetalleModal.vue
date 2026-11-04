@@ -14,11 +14,24 @@
           <div class="modal-grid">
             <!-- Columna Izquierda: Información del Reporte -->
             <div class="info-columna">
+              <div class="info-item" v-if="!esAdmin && !esAdminEx && !esSupervisor && !esJefe">
+                <label>Departamento asignado</label>
+                <p class="destacado">
+                  {{
+                    reporte.departamentos?.nombre || reporte.departamentos_externos?.departamento ||
+                    reporte.departamentos?.nombreamigable || 
+                    'No proporcionado'
+                  }}
+                </p>
+              </div>
+
               <div class="info-item">
                 <label>Problema Reportado</label>
                 <p class="destacado">
                   {{
-                    reporte.problemas?.nombreamigable || reporte.problemas_externos?.nombreamigable
+                    reporte.problemas?.nombre || reporte.problemas_externos?.nombre ||
+                    reporte.problemas?.nombreamigable || reporte.problemas_externos?.nombreamigable ||
+                    'No proporcionado'
                   }}
                 </p>
               </div>
@@ -59,37 +72,30 @@
                 </div>
               </div>
 
-              <div class="info-item">
+              <div class="info-item" v-if="(esAdmin || esSupervisor)">
                 <label>Fecha de creación</label>
                 <p>{{ formatearFechaLocal(reporte.created_at) }}</p>
               </div>
 
-              <div class="info-item" v-if="verSeguimiento">
+              <div class="info-item" v-if="(esAdmin || esSupervisor)">
                 <label>Fecha de Inicio</label>
                 <p>{{ formatearFechaOpcional(reporte.fecha_inicio, 'Aún no ha iniciado') }}</p>
               </div>
 
-              <div class="info-item" v-if="verSeguimiento">
+              <div class="info-item" v-if="(esAdmin || esSupervisor)">
                 <label>Fecha de Cierre</label>
                 <p>{{ formatearFechaOpcional(reporte.fecha_cierre, 'Aún no ha finalizado') }}</p>
               </div>
 
               <!-- Sección de Notas y Registros Históricos -->
-              <div
-                class="info-item"
-                v-if="
-                  reporte.estado === 'Rechazado' &&
-                  (esAdmin || esAdminEx) &&
-                  reporte.notas_rechazo?.length
-                "
-              >
+              <div class="info-item" v-if="
+                reporte.estado === 'Rechazado' &&
+                (esAdmin || esAdminEx || (!esAdmin && !esAdminEx && !esSupervisor && !esJefe)) &&
+                reporte.notas_rechazo?.length
+              ">
                 <label>Notas de Rechazo</label>
                 <div class="notas-lista">
-                  <article
-                    v-for="(n, i) in reporte.notas_rechazo"
-                    :key="i"
-                    class="nota-card nota-rechazo"
-                  >
+                  <article v-for="(n, i) in reporte.notas_rechazo" :key="i" class="nota-card nota-rechazo">
                     <header class="nota-meta">
                       <span class="nota-titulo">{{ n.titulo }}</span>
                       <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
@@ -99,21 +105,14 @@
                 </div>
               </div>
 
-              <div
-                class="info-item"
-                v-if="
-                  reporte.estado === 'Devuelto' &&
-                  (esAdmin || esAdminEx) &&
-                  reporte.notas_devuelto?.length
-                "
-              >
+              <div class="info-item" v-if="
+                reporte.estado === 'Devuelto' &&
+                (esAdmin || esAdminEx) &&
+                reporte.notas_devuelto?.length
+              ">
                 <label>Notas de Devolución</label>
                 <div class="notas-lista">
-                  <article
-                    v-for="(n, i) in reporte.notas_devuelto"
-                    :key="i"
-                    class="nota-card nota-devuelto"
-                  >
+                  <article v-for="(n, i) in reporte.notas_devuelto" :key="i" class="nota-card nota-devuelto">
                     <header class="nota-meta">
                       <span class="nota-titulo">{{ n.titulo }}</span>
                       <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
@@ -123,20 +122,31 @@
                 </div>
               </div>
 
-              <div
-                class="info-item"
-                v-if="
-                  (esAdmin || esSupervisor || esJefe) &&
-                  reporte.notas_finales_finalizacion?.length
-                "
-              >
+              <div class="info-item" v-if="
+                reporte.estado === 'Turnado' &&
+                (esAdmin || esAdminEx) &&
+                reporte.notas_turnado?.length
+              ">
+                <label>Notas de Turnado</label>
+                <div class="notas-lista">
+                  <article v-for="(n, i) in reporte.notas_turnado" :key="i" class="nota-card nota-turnado">
+                    <header class="nota-meta">
+                      <span class="nota-titulo">{{ n.titulo }}</span>
+                      <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
+                    </header>
+                    <p class="nota-texto">{{ n.notas }}</p>
+                  </article>
+                </div>
+              </div>
+
+              <div class="info-item" v-if="
+                (esAdmin || esSupervisor || esJefe) &&
+                reporte.notas_finales_finalizacion?.length
+              ">
                 <label>Registro Final de finalización</label>
                 <div class="notas-lista">
-                  <article
-                    v-for="(n, i) in reporte.notas_finales_finalizacion"
-                    :key="i"
-                    class="nota-card nota-finalizacion"
-                  >
+                  <article v-for="(n, i) in reporte.notas_finales_finalizacion" :key="i"
+                    class="nota-card nota-finalizacion">
                     <header class="nota-meta">
                       <span class="nota-titulo">{{ n.titulo }}</span>
                       <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
@@ -149,17 +159,10 @@
                 </div>
               </div>
 
-              <div
-                class="info-item"
-                v-if="(esSupervisor || esJefe) && reporte.notas_denegacion?.length"
-              >
+              <div class="info-item" v-if="(esSupervisor || esJefe) && reporte.notas_denegacion?.length">
                 <label>Registro de Denegación</label>
                 <div class="notas-lista">
-                  <article
-                    v-for="(n, i) in reporte.notas_denegacion"
-                    :key="i"
-                    class="nota-card nota-finalizacion"
-                  >
+                  <article v-for="(n, i) in reporte.notas_denegacion" :key="i" class="nota-card nota-finalizacion">
                     <header class="nota-meta">
                       <span class="nota-titulo">{{ n.titulo }}</span>
                       <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
@@ -172,17 +175,10 @@
                 </div>
               </div>
 
-              <div
-                class="info-item"
-                v-if="(esJefe || esSupervisor) && reporte.notas_finalizacion?.length"
-              >
+              <div class="info-item" v-if="(esJefe || esSupervisor) && reporte.notas_finalizacion?.length">
                 <label>Petición de finalización</label>
                 <div class="notas-lista">
-                  <article
-                    v-for="(n, i) in reporte.notas_finalizacion"
-                    :key="i"
-                    class="nota-card nota-finalizacion"
-                  >
+                  <article v-for="(n, i) in reporte.notas_finalizacion" :key="i" class="nota-card nota-finalizacion">
                     <header class="nota-meta">
                       <span class="nota-titulo">{{ n.titulo }}</span>
                       <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
@@ -195,17 +191,10 @@
                 </div>
               </div>
 
-              <div
-                class="info-item"
-                v-if="(esJefe || esSupervisor || esAdmin) && reporte.notas_avances?.length"
-              >
+              <div class="info-item" v-if="(esJefe || esSupervisor || esAdmin) && reporte.notas_avances?.length">
                 <label>Avances registrados</label>
                 <div class="notas-lista">
-                  <article
-                    v-for="(n, i) in reporte.notas_avances"
-                    :key="i"
-                    class="nota-card nota-avance"
-                  >
+                  <article v-for="(n, i) in reporte.notas_avances" :key="i" class="nota-card nota-avance">
                     <header class="nota-meta">
                       <span class="nota-titulo">{{ n.titulo }}</span>
                       <time class="nota-fecha">{{ n.fecha }} · {{ n.hora }}</time>
@@ -227,40 +216,30 @@
                 <div v-else class="sin-foto">Sin imagen</div>
               </div>
 
-              <div class="info-item" v-if="reporte.mensajeAI">
+              <div class="info-item" v-if="reporte.mensajeAI && (esSupervisor || esAdmin)">
                 <label>Validación de la IA</label>
                 <div class="descripcion-box" :style="{
-                   color: reporte.fotoTipoID === 0 ? '#1a6b2f' : '#c62828',
-                   backgroundColor: reporte.fotoTipoID === 0 ? '#e8f5e9' : '#ffebee',
-                   borderColor: reporte.fotoTipoID === 0 ? '#81c784' : '#ef9a9a'
+                  color: reporte.fotoTipoID === 0 ? '#1a6b2f' : '#c62828',
+                  backgroundColor: reporte.fotoTipoID === 0 ? '#e8f5e9' : '#ffebee',
+                  borderColor: reporte.fotoTipoID === 0 ? '#81c784' : '#ef9a9a'
                 }">
                   {{ reporte.mensajeAI }}
                 </div>
               </div>
 
-              <div
-                class="estado-actual-box"
-                v-if="esAdmin || esAdminEx || esSupervisor || esJefe"
-              >
+              <div class="estado-actual-box" v-if="esAdmin || esAdminEx || esSupervisor || esJefe">
                 <label>Estado Actual</label>
-                <span
-                  :class="[
-                    'badge badge-grande',
-                    obtenerClaseEstado(reporte.estado.toLowerCase()),
-                  ]"
-                >
+                <span :class="[
+                  'badge badge-grande',
+                  obtenerClaseEstado(reporte.estado.toLowerCase()),
+                ]">
                   {{ reporte.estado }}
                 </span>
               </div>
 
-              <div
-                class="estado-actual-box"
-                v-if="!esAdmin && !esAdminEx && !esSupervisor && !esJefe"
-              >
+              <div class="estado-actual-box" v-if="!esAdmin && !esAdminEx && !esSupervisor && !esJefe">
                 <label>Estado Actual</label>
-                <span
-                  :class="['badge badge-grande', obtenerClaseEstado(reporte.estado.toLowerCase())]"
-                >
+                <span :class="['badge badge-grande', obtenerClaseEstado(reporte.estado.toLowerCase())]">
                   {{ traducirEstado(reporte.estado) }}
                 </span>
               </div>
@@ -271,119 +250,77 @@
         <div class="modal-footer">
           <button class="btn-secundario" @click="cerrar">Cerrar</button>
 
-          <button
-            class="btn-primario"
-            title="Descargar PDF"
-            @click="$emit('descargar-pdf', reporte)"
-            v-if="esAdmin || esAdminEx || esSupervisor || esJefe"
-          >
+          <button class="btn-primario" title="Descargar PDF" @click="$emit('descargar-pdf', reporte)"
+            v-if="esAdmin || esAdminEx || esSupervisor || esJefe">
             Descargar PDF
           </button>
 
-          <button
-            v-if="!esAdmin && !esAdminEx && !esSupervisor && !esJefe"
-            class="btn-primario"
-            @click="buscarReporte"
-          >
+          <button v-if="!esAdmin && !esAdminEx && !esSupervisor && !esJefe" class="btn-primario" @click="buscarReporte">
             Buscar Otro Reporte
           </button>
 
           <template v-if="reporte">
-            <button
-              v-if="
-                (esAdmin || esAdminEx) &&
-                (reporte.estado === 'Pendiente' ||
-                  reporte.estado === 'Turnado' ||
-                  reporte.estado === 'Devuelto') &&
-                reporte.problemas?.nombre != null
-              "
-              class="btn-primario"
-              @click="$emit('asignar', reporte?.folio)"
-            >
+            <button v-if="
+              (esAdmin || esAdminEx) &&
+              (reporte.estado === 'Pendiente' ||
+                reporte.estado === 'Turnado' ||
+                reporte.estado === 'Devuelto') &&
+              reporte.problemas?.nombre != null
+            " class="btn-primario" @click="$emit('asignar', reporte?.folio)">
               Asignar Supervisor
             </button>
 
-            <button
-              v-if="
-                esSupervisor &&
-                reporte.estado === 'Pendiente de Asignación' &&
-                reporte.problemas?.nombre != null
-              "
-              class="btn-primario"
-              @click="$emit('asignarJefe', reporte?.folio)"
-            >
+            <button v-if="
+              esSupervisor &&
+              reporte.estado === 'Pendiente de Asignación' &&
+              reporte.problemas?.nombre != null
+            " class="btn-primario" @click="$emit('asignarJefe', reporte?.folio)">
               Asignar Jefe
             </button>
 
-            <button
-              v-if="esAdmin && reporte.estado === 'Devuelto' && reporte.problemas?.nombre != null"
-              class="btn-primario"
-              @click="$emit('turnar', reporte?.folio)"
-            >
+            <button v-if="esAdmin && reporte.estado === 'Devuelto' && reporte.problemas?.nombre != null"
+              class="btn-primario" @click="$emit('turnar', reporte?.folio)">
               Turnar Reporte
             </button>
 
-            <button
-              v-if="
-                (esAdmin || esAdminEx) &&
-                (reporte.estado === 'Finalizado' ||
-                  reporte.estado === 'Devuelto' ||
-                  reporte.estado === 'Rechazado')
-              "
-              class="btn-primario"
-              @click="$emit('devolver', reporte?.folio, 'Pendiente')"
-            >
+            <button v-if="
+              (esAdmin || esAdminEx) &&
+              (reporte.estado === 'Finalizado' ||
+                reporte.estado === 'Devuelto' ||
+                reporte.estado === 'Rechazado')
+            " class="btn-primario" @click="$emit('devolver', reporte?.folio, 'Pendiente')">
               Devolver a Pendiente
             </button>
 
-            <button
-              v-if="esSupervisor && reporte.estado === 'Pendiente de Asignación'"
-              class="btn-primario"
-              @click="$emit('devolverRep', reporte?.folio, 'Devuelto')"
-            >
+            <button v-if="esSupervisor && reporte.estado === 'Pendiente de Asignación'" class="btn-primario"
+              @click="$emit('devolverRep', reporte?.folio, 'Devuelto')">
               Devolver Reporte
             </button>
 
-            <button
-              v-if="esJefe && reporte.estado === 'En Proceso'"
-              class="btn-primario"
-              @click="$emit('actualizarAvance', reporte)"
-            >
+            <button v-if="esJefe && reporte.estado === 'En Proceso'" class="btn-primario"
+              @click="$emit('actualizarAvance', reporte)">
               Actualizar Avance
             </button>
 
-            <button
-              v-if="esJefe && reporte.estado === 'En Proceso'"
-              class="btn-primario"
-              @click="$emit('enviarPeticionFinalizacion', reporte)"
-            >
+            <button v-if="esJefe && reporte.estado === 'En Proceso'" class="btn-primario"
+              @click="$emit('enviarPeticionFinalizacion', reporte)">
               Enviar Petición de Finalización
             </button>
 
-            <button
-              v-if="
-                (esAdmin || esAdminEx) &&
-                (reporte.estado === 'Pendiente' || reporte.estado === 'Devuelto')
-              "
-              class="btn-peligroso"
-              @click="$emit('rechazar', reporte?.folio)"
-            >
+            <button v-if="
+              (esAdmin || esAdminEx) &&
+              (reporte.estado === 'Pendiente' || reporte.estado === 'Devuelto')
+            " class="btn-peligroso" @click="$emit('rechazar', reporte?.folio)">
               Rechazar Reporte
             </button>
 
-            <button
-              v-if="esAdminEx && reporte.estado === 'Pendiente'"
-              class="btn-primario"
-              @click="$emit('devolver', reporte?.folio, 'Finalizado')"
-            >
+            <button v-if="esAdminEx && reporte.estado === 'Pendiente'" class="btn-primario"
+              @click="$emit('devolver', reporte?.folio, 'Finalizado')">
               Finalizar Reporte
             </button>
 
-            <button
-              v-if="esSupervisor && reporte.estado === 'Pendiente de Finalización'"
-              class="btn-primario"
-              @click="$emit('finalizarSupervisor', reporte)"
-            >
+            <button v-if="esSupervisor && reporte.estado === 'Pendiente de Finalización'" class="btn-primario"
+              @click="$emit('finalizarSupervisor', reporte)">
               Finalizar Reporte
             </button>
           </template>

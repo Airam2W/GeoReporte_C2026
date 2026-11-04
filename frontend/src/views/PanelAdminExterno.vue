@@ -122,13 +122,13 @@
                   👁️
                 </button>
 
-                <button v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Pendiente'" class="btn-accion"
+                <button v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Turnado'" class="btn-accion"
                   title="Rechazar reporte" :disabled="foliosProcesando.has(reporte.folio)"
                   @click="rechazarReporte(reporte.folio)">
                   ❌
                 </button>
 
-                <button v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Pendiente'" class="btn-accion"
+                <button v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Turnado'" class="btn-accion"
                   title="Finalizar reporte" :disabled="foliosProcesando.has(reporte.folio)"
                   @click="devolverReporte(reporte.folio, 'Finalizado')">
                   ✅
@@ -137,8 +137,8 @@
                 <button v-if="
                   reporte.detalle_reporte?.estadoreporte?.estado === 'Rechazado' ||
                   reporte.detalle_reporte?.estadoreporte?.estado === 'Finalizado'
-                " class="btn-accion" title="Devolver a Pendiente" :disabled="foliosProcesando.has(reporte.folio)"
-                  @click="devolverReporte(reporte.folio, 'Pendiente')">
+                " class="btn-accion" title="Devolver a Turnado" :disabled="foliosProcesando.has(reporte.folio)"
+                  @click="devolverReporte(reporte.folio, 'Turnado')">
                   🔄
                 </button>
               </td>
@@ -188,7 +188,7 @@ const reportes = ref<any[]>([])
 const foliosProcesando = ref(new Set<string>())
 const problemasOpciones = ref<any[]>([])
 const estados = [
-  { valor: 'Pendiente', clase: 'estado-gris' },
+  { valor: 'Turnado', clase: 'estado-gris' },
   { valor: 'Finalizado', clase: 'estado-gris' },
   { valor: 'Rechazado', clase: 'estado-gris' },
 ]
@@ -209,7 +209,7 @@ const filtros = ref({
   busqueda: '',
   fecha: '',
   problema: '',
-  estado: 'Pendiente',
+  estado: 'Turnado',
 })
 
 import { useCargando } from '../composable/useCargando'
@@ -364,11 +364,11 @@ const descargarYEnviar = async (correo: string) => {
 const cargarReportes = async () => {
   cargando.value = true
   const { data, error } = await obtenerReportesPorDepartamentoExternoID(admin.value.departamento_id)
-
   if (!error && data) {
     reportes.value = data.map((r) => ({
       ...r,
-      estado: r.detalle_reporte?.estadoreporte?.estado || 'Pendiente',
+      estado: r.detalle_reporte?.estadoreporte?.estado || 'Turnado',
+      notas_turnado: notasPorCategoria(r.historial_reporte || [], 7),
     }))
     cargando.value = false
   }
@@ -377,17 +377,44 @@ const cargarReportes = async () => {
   }
 }
 
+const formatearNota = (h: any) => {
+  const fecha = new Date(h.fecha)
+  return {
+    fecha: fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }),
+    hora: fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+    titulo: h.titulo?.nombre || 'Sin título',
+    notas: h.notas,
+    foto_url: h.foto_url || '',
+  }
+}
+
+const notasPorCategoria = (historial: any[], categoria: number) =>
+  historial
+    .filter((h) => h.categoria_historial_id === categoria)
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .map(formatearNota)
+
 // Filtros en tiempo real
+// Filtros en tiempo real seguros contra nulos
 const reportesFiltrados = computed(() => {
   return reportes.value.filter((r) => {
     const q = filtros.value.busqueda.toLowerCase()
+
+    // Protegemos cada campo con encadenamiento opcional y operador OR
+    const folio = (r.folio || '').toLowerCase()
+    const problemaNombre = (r.problemas_externos?.nombre || '').toLowerCase()
+    const problemaAmigable = (r.problemas_externos?.nombreamigable || '').toLowerCase()
+    const descripcion = (r.descripcion || '').toLowerCase()
+    const domicilio = (r.domicilio || '').toLowerCase()
+    const fecha = formatearFecha(r.detalle_reporte?.updated_at || '').toLowerCase()
+
     const coincideBusqueda =
-      r.folio.toLowerCase().includes(q) ||
-      r.problemas_externos.nombre.toLowerCase().includes(q) ||
-      r.problemas_externos.nombreamigable.toLowerCase().includes(q) ||
-      r.descripcion.toLowerCase().includes(q) ||
-      r.domicilio.toLowerCase().includes(q) ||
-      formatearFecha(r.detalle_reporte?.updated_at).includes(q)
+      folio.includes(q) ||
+      problemaNombre.includes(q) ||
+      problemaAmigable.includes(q) ||
+      descripcion.includes(q) ||
+      domicilio.includes(q) ||
+      fecha.includes(q)
 
     const coincideEstado = filtros.value.estado === '' || r.estado === filtros.value.estado
     return coincideBusqueda && coincideEstado
@@ -475,7 +502,7 @@ const rechazarReporte = async (folio: string) => {
   }
 }
 
-const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Pendiente') => {
+const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Turnado') => {
   if (foliosProcesando.value.has(folio)) return
   foliosProcesando.value.add(folio)
   try {
@@ -493,7 +520,7 @@ const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Pendi
 
     if (result.isConfirmed) {
       const { error } = await actualizarEstadoReporte(folio, {
-        estado_id: nuevoEstado === 'Finalizado' ? 4 : 1, // 4 = Finalizado, 1 = Pendiente
+        estado_id: nuevoEstado === 'Finalizado' ? 4 : 5, // 4 = Finalizado, 5 = Pendiente/Turndo
       })
 
       if (!error) {
