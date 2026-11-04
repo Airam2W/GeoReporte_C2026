@@ -203,7 +203,9 @@ def procesar_imagen_departamento(file_obj, depto: str):
         width, height = image.size
 
         if width < 200 or height < 200:
-            return {"message": "Imagen con resolución insuficiente"}, 2
+            # Renderizar la imagen en un tamaño más grande para mejorar la detección (200 x 200)
+            image = image.resize((max(200, width), max(200, height)), Image.Resampling.BILINEAR)
+            
 
         with inference_lock:
             session = get_onnx_session(depto)
