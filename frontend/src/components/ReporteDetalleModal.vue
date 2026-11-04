@@ -227,7 +227,7 @@
                 <div v-else class="sin-foto">Sin imagen</div>
               </div>
 
-              <div class="info-item" v-if="reporte.mensajeAI">
+              <div class="info-item" v-if="reporte.mensajeAI && (esSupervisor || esAdmin)">
                 <label>Validación de la IA</label>
                 <div class="descripcion-box" :style="{
                    color: reporte.fotoTipoID === 0 ? '#1a6b2f' : '#c62828',

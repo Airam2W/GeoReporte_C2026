@@ -219,7 +219,7 @@
             {{ errores.foto }}
           </span>
 
-          <span class="validacion-AI"></span>
+          <!--<span class="validacion-AI" disable></span>-->
 
           <button name="enviar" type="submit" class="btn-enviar" :disabled="enviando">
             {{ enviando ? 'Enviando...' : 'Enviar Reporte' }}
@@ -358,7 +358,7 @@ const onDepartamentoSeleccionado = async () => {
   errores.value.departamento_id = '' // Limpiar error visual si elige algo
   form.value.foto = null
   previewFoto.value = ''
-  document.querySelector('.validacion-AI')?.replaceChildren() // Limpiar mensaje de validación AI
+  //document.querySelector('.validacion-AI')?.replaceChildren() // Limpiar mensaje de validación AI
 
 
   if (!form.value.departamento_id) return
@@ -530,7 +530,10 @@ const seleccionarFoto = async (e: Event) => {
     previewFoto.value = URL.createObjectURL(archivo)
     procesandoAI.value = true
     try {
-      await validarConAi(archivo)
+      const resultado = await validarConAi(archivo)
+      if (resultado === 2){
+        submitBtn.disabled = false
+      }
     } finally {
       procesandoAI.value = false
     }
@@ -563,33 +566,39 @@ const obtenerSlugDepartamento = (id: string | number): string => {
 }
 
 const validarConAi = async (file: File) => {
-  const spanValidacionAI = document.querySelector('.validacion-AI') as HTMLSpanElement
+  //const spanValidacionAI = document.querySelector('.validacion-AI') as HTMLSpanElement
 
-  if (spanValidacionAI) {
-    spanValidacionAI.textContent = `Validando tu foto con AI...`
-    spanValidacionAI.style.color = '#000000'
-  }
+  //if (spanValidacionAI) {
+  //  spanValidacionAI.textContent = `Validando tu foto con AI...`
+  //  spanValidacionAI.style.color = '#000000'
+  //}
 
   const departamentoId = form.value.departamento_id
   const departamentoSlug = obtenerSlugDepartamento(departamentoId)
   const resultadoAI = await validarAI(file, departamentoSlug)
 
-  if (spanValidacionAI) {
+  //if (spanValidacionAI) {
     if (resultadoAI) {
       // Guardar los datos de la IA en nuestro state del formulario
       form.value.fotoTipoID = resultadoAI.type;
-      form.value.mensajeAI = resultadoAI.data.message;
 
-      spanValidacionAI.textContent = `${resultadoAI.data.message}`
-      spanValidacionAI.style.color = resultadoAI.type === 0 ? '#008998' : '#FF0000'
+      if (resultadoAI.type === 2){
+        form.value.mensajeAI = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta';
+      } else{
+        form.value.mensajeAI = resultadoAI.data.message;
+      }
+      //spanValidacionAI.textContent = `${resultadoAI.data.message}`
+      //spanValidacionAI.style.color = resultadoAI.type === 0 ? '#008998' : '#FF0000'
+      return resultadoAI.type
+
     } else {
       form.value.fotoTipoID = 2; // 2 = Error según tu interfaz
       form.value.mensajeAI = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta';
-
-      spanValidacionAI.textContent = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta'
-      spanValidacionAI.style.color = '#FF0000'
+      return 2
+      //spanValidacionAI.textContent = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta'
+      //spanValidacionAI.style.color = '#FF0000'
     }
-  }
+  //}
 }
 
 const limpiarFormulario = () => {

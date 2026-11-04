@@ -1892,6 +1892,7 @@ router.post('/obtener/reportes/supervisor', async (req, res) => {
             'referencias',
             'mensajeAI',
             'fotoTipoID',
+            'fotoDepartamentoID',
             'foto_url',
             'created_at',
             'problemas(id,nombre)',
@@ -3607,6 +3608,56 @@ router.put('/actualizar/usuario/fechaAlta', async (req, res) => {
     responder(res, result)
 })
 
+// (actualizarFotoDepartamentoReporte)
+router.put('/actualizar/reporte/fotoDepartamentoID', async (req, res) => {
+    const { folio, fotoDepartamentoID, user } = req.body;
+    const rolesPermitidos =
+        [//1, //Director General
+            //2, //Administrador Interno
+            3, //Supervisor
+            //4, //Jefe
+            //5, //Trabajador
+            //6, //Administrador Externo
+        ]
 
+    // Validacion de Autenticacion del Usuario
+    if (!await validarAutenticacion(user)) {
+        return res.status(401).json({
+            // Error para el usuario
+            error: 'No estas autenticado o no estas de alta, por favor inicia sesión nuevamente.'
+        });
+    }
+
+    // Validacion de Autorizacion del Usuario
+    if (!await validarAutorizacion(user, rolesPermitidos)) {
+        return res.status(403).json({
+            // Error para el usuario
+            error: 'No tienes permisos para realizar esta acción.'
+        });
+    }
+
+    // Validacion de datos
+    // folio = string || number
+    // fotoDepartamentoID = string || number
+    if (!folio || (typeof folio !== 'string' && typeof folio !== 'number')) {
+        console.log('Folio no proporcionado o tipo inválido:', folio, 'Tipo:', typeof folio);
+        return res.status(400).json({
+            error: 'Folio no proporcionado o tipo inválido. Por favor, ingresa un folio válido.'
+        });
+    }
+    if (!fotoDepartamentoID || (typeof fotoDepartamentoID !== 'string' && typeof fotoDepartamentoID !== 'number')) {
+        console.log('Foto Departamento ID no proporcionado o tipo inválido:', fotoDepartamentoID, 'Tipo:', typeof fotoDepartamentoID);
+        return res.status(400).json({
+            error: 'Foto Departamento ID no proporcionado o tipo inválido. Por favor, ingresa un ID válido.'
+        });
+    }
+
+    // Realizacion de la consulta a la base de datos
+    const result = await supabase
+        .from('reportes')
+        .update({ fotoDepartamentoID: fotoDepartamentoID })
+        .eq('folio', folio);
+    responder(res, result)
+})
 
 export default router

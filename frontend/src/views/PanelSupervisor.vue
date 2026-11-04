@@ -155,6 +155,11 @@
     <DescargarPdfModal :visible="modalPdfVisible" :folio="reportePdf?.folio || ''"
       :correo-inicial="supervisor?.correo || ''" :procesando="procesandoPdf" @close="cerrarModalPdf"
       @descargar="descargarSoloLocal" @enviar="descargarYEnviar" />
+
+    <RetroalimentacionFotoAIModal :visible="modalFotoAIVisible" :folio="reporteFotoAI?.folio || ''"
+      :foto-url="reporteFotoAI?.foto_url || ''" :departamento-nombre="supervisor?.departamento || ''"
+      :departamentos="departamentosFoto" :guardando="guardandoFotoAI" @close="cerrarModalFotoAI"
+      @confirm="confirmarFotoAI" />
   </div>
 </template>
 
@@ -186,6 +191,14 @@ import AsignarJefeModal from '../components/AsignarJefeModal.vue'
 import FinalizarReporteModal from '../components/FinalizarReporteModal.vue'
 import DescargarPdfModal from '../components/DescargarPdfModal.vue'
 import { enviarCorreoFinalizacionReporte, enviarCorreoReportePDF } from '../services/gmailController'
+import { obtenerTodosDepartamentosInternos, actualizarFotoDepartamentoReporte } from '../services/supabaseController'
+import RetroalimentacionFotoAIModal from '../components/RetroalimentacionFotoAIModal.vue'
+
+const modalFotoAIVisible = ref(false)
+const reporteFotoAI = ref<any>(null)
+const accionPendienteFoto = ref<(() => void) | null>(null)
+const guardandoFotoAI = ref(false)
+const departamentosFoto = ref<any[]>([]) // internos, sin el del supervisor
 
 const modalPdfVisible = ref(false)
 const reportePdf = ref<any>(null)
@@ -417,6 +430,13 @@ const cargarCatalogos = async () => {
   const { data: catData, error: catError } = await obtenerCategoriaHistorial(3) // 3 = Confirmacion de Finalización
   if (catError) console.error('Error al cargar categoría:', catError.message)
   else categoriaFinalizacion.value = catData?.[0]?.nombre || ''
+
+  const { data: depsData, error: depsError } = await obtenerTodosDepartamentosInternos()
+  if (depsError) console.error('Error al cargar departamentos:', depsError.message)
+  else
+    departamentosFoto.value = (depsData || []).filter(
+      (d: any) => d.id !== supervisor.value.departamento_id,
+    )
 }
 
 const cargarReportes = async () => {
@@ -531,6 +551,68 @@ const cerrarModalVer = () => {
     reporteActivo.value = null
   }, 300)
 }
+
+// ---- Retroalimentación de foto (IA) ----
+
+// Si el reporte tiene foto y aún no tiene fotoDepartamentoID, pide la retroalimentación
+// primero; al enviarla se ejecuta la acción original. Si ya la tiene, la acción sigue directo.
+const conRetroalimentacionFoto = (folio: string, accion: () => void) => {
+  const reporte = reportes.value.find((r) => r.folio === folio)
+  const sinRespuesta = reporte && reporte.fotoDepartamentoID == null && reporte.foto_url
+
+  if (!sinRespuesta) {
+    accion()
+    return
+  }
+
+  cerrarModalVer() // por si se llamó desde el modal de detalle
+  reporteFotoAI.value = reporte
+  accionPendienteFoto.value = accion
+  modalFotoAIVisible.value = true
+}
+
+// Cancelar omite por completo la acción (no se asigna ni se devuelve)
+const cerrarModalFotoAI = () => {
+  modalFotoAIVisible.value = false
+  accionPendienteFoto.value = null
+  reporteFotoAI.value = null
+}
+
+const confirmarFotoAI = async (departamentoElegido: number | null) => {
+  const reporte = reporteFotoAI.value
+  if (!reporte) return
+
+  // null = "Sí" (es de mi departamento); -1 = externo; otro número = id del departamento
+  const fotoDepartamentoID = departamentoElegido ?? supervisor.value.departamento_id
+
+  guardandoFotoAI.value = true
+  try {
+    const { error } = await actualizarFotoDepartamentoReporte(reporte.folio, fotoDepartamentoID)
+    if (error) {
+      console.error('Error al guardar la retroalimentación:', error)
+      Swal.fire('Error', 'No se pudo guardar la retroalimentación de la imagen.', 'error')
+      return
+    }
+
+    // Se actualiza en memoria para no volver a preguntar en esta sesión
+    reporte.fotoDepartamentoID = fotoDepartamentoID
+
+    const accion = accionPendienteFoto.value
+    modalFotoAIVisible.value = false
+    accionPendienteFoto.value = null
+    reporteFotoAI.value = null
+    accion?.()
+  } finally {
+    guardandoFotoAI.value = false
+  }
+}
+
+// ---- Puntos de entrada (los usan los botones y el modal de detalle) ----
+
+const asignarReporte = (folio: string) => conRetroalimentacionFoto(folio, () => iniciarAsignacion(folio))
+
+const abrirModalDevolucion = (folio: string) =>
+  conRetroalimentacionFoto(folio, () => iniciarDevolucion(folio))
 
 const rechazarReporte = async (folio: string) => {
   if (foliosProcesando.value.has(folio)) return
@@ -703,9 +785,8 @@ const buscarEstadoId = async (estado: string): Promise<string | null> => {
   }
 }
 
-// Paso 1: solo abre el modal con el formulario
-const abrirModalDevolucion = (folio: string) => {
-  cerrarModalVer() // cierra el modal de detalle si estaba abierto
+const iniciarDevolucion = (folio: string) => {
+  cerrarModalVer()
   folioADevolver.value = folio
   modalDevolucionVisible.value = true
 }
@@ -788,15 +869,15 @@ const confirmarDevolucion = async (formData: { titulo_id: number | string; notas
     guardandoDevolucion.value = false
   }
 }
-// Paso 1: solo abre el modal
-const asignarReporte = (folio: string) => {
+const iniciarAsignacion = (folio: string) => {
   if (!folio) return
   const reporte = reportes.value.find((r) => r.folio === folio)
-  cerrarModalVer() // por si se llamó desde el modal de detalle
+  cerrarModalVer()
   folioAAsignar.value = folio
   problemaAAsignar.value = reporte?.problemas?.nombre || ''
   modalAsignarJefeVisible.value = true
 }
+// Paso 1: solo abre el modal
 
 const cerrarModalAsignarJefe = () => {
   modalAsignarJefeVisible.value = false
