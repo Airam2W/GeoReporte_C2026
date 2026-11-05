@@ -275,7 +275,7 @@ import 'leaflet/dist/leaflet.css'
 import Image from '@primeicons/vue/image';
 import Camera from '@primeicons/vue/camera';
 import Map from '@primeicons/vue/map';
-
+import Swal from 'sweetalert2';
 
 import {
   obtenerDepartamentosOrdenadosPorId,
@@ -369,6 +369,9 @@ const onDepartamentoSeleccionado = async () => {
 
   if (!error && data) {
     problemas.value = data
+  }else{
+    // Manejo de error: mostrar alerta al usuario
+    Swal.fire('Error', 'No se pudieron cargar los problemas para el departamento seleccionado. Intenta de nuevo más tarde.', 'error')
   }
 }
 
@@ -453,6 +456,7 @@ const confirmarDireccion = async () => {
 }
 
 import { useRouter } from 'vue-router'
+
 const router = useRouter()
 
 const irA = (ruta: string) => {

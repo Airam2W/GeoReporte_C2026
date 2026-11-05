@@ -2,14 +2,7 @@
   <div class="dashboard-layout">
     <nav class="topbar">
       <div class="topbar-logo">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          width="24"
-          height="24"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
           <circle cx="12" cy="10" r="3"></circle>
         </svg>
@@ -21,14 +14,7 @@
           <span class="user-dept">¡Bienvenido Director!</span>
         </div>
         <button class="btn-logout" @click="cerrarSesion" title="Cerrar Sesión">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            width="18"
-            height="18"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
             <polyline points="16 17 21 12 16 7"></polyline>
             <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -39,22 +25,15 @@
 
     <main class="dashboard-content">
       <nav class="tabs-secciones" aria-label="Secciones del panel">
-        <button
-          v-for="seccion in secciones"
-          :key="seccion.valor"
-          type="button"
+        <button v-for="seccion in secciones" :key="seccion.valor" type="button"
           :class="['tab-seccion', { activa: filtros.seccion === seccion.valor }]"
           :aria-current="filtros.seccion === seccion.valor ? 'page' : undefined"
-          @click="seleccionarSeccion(seccion.valor)"
-        >
+          @click="seleccionarSeccion(seccion.valor)">
           {{ seccion.etiqueta }}
         </button>
       </nav>
 
-      <header
-        class="content-header"
-        style="display: flex; justify-content: space-between; align-items: center"
-      >
+      <header class="content-header" style="display: flex; justify-content: space-between; align-items: center">
         <div>
           <h2>
             {{
@@ -75,23 +54,18 @@
             }}
           </p>
         </div>
-        <button
-          class="btn-primario"
-          :title="
-            filtros.seccion === 'departamentos'
-              ? 'Agregar departamento'
-              : filtros.seccion === 'problematicas'
-                ? 'Agregar problemática'
-                : 'Agregar usuario'
-          "
-          @click="
+        <button class="btn-primario" :title="filtros.seccion === 'departamentos'
+          ? 'Agregar departamento'
+          : filtros.seccion === 'problematicas'
+            ? 'Agregar problemática'
+            : 'Agregar usuario'
+          " @click="
             filtros.seccion === 'departamentos'
               ? abrirModalFormDepto()
               : filtros.seccion === 'problematicas'
                 ? abrirModalFormProblematica()
                 : abrirModalForm()
-          "
-          style="
+            " style="
             background-color: #1a6b2f;
             padding: 10px 20px;
             color: white;
@@ -99,8 +73,7 @@
             font-weight: bold;
             border: none;
             cursor: pointer;
-          "
-        >
+          ">
           {{
             filtros.seccion === 'departamentos'
               ? 'Agregar Departamento'
@@ -113,28 +86,16 @@
 
       <section class="filtros-card">
         <div class="filtro-grupo input-icono">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#888"
-            stroke-width="2"
-            width="18"
-            height="18"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" width="18" height="18">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input
-            v-model="filtros.busqueda"
-            type="text"
-            :placeholder="
-              filtros.seccion === 'departamentos'
-                ? 'Buscar por nombre de departamento...'
-                : filtros.seccion === 'problematicas'
-                  ? 'Buscar por nombre de problemática...'
-                  : 'Buscar por nombre, apellidos o correo...'
-            "
-          />
+          <input v-model="filtros.busqueda" type="text" :placeholder="filtros.seccion === 'departamentos'
+            ? 'Buscar por nombre de departamento...'
+            : filtros.seccion === 'problematicas'
+              ? 'Buscar por nombre de problemática...'
+              : 'Buscar por nombre, apellidos o correo...'
+            " />
         </div>
 
         <!-- Filtros exclusivos de Personal Administrativo -->
@@ -206,11 +167,8 @@
           </div>
 
           <div class="filtro-grupo">
-            <select
-              name="departamentoProblematica"
-              v-model="filtros.departamentoProblematica"
-              :disabled="filtros.tipoProblematica === ''"
-            >
+            <select name="departamentoProblematica" v-model="filtros.departamentoProblematica"
+              :disabled="filtros.tipoProblematica === ''">
               <option value="">Todos los departamentos</option>
 
               <!-- Solo Internos -->
@@ -274,21 +232,15 @@
                 }}</span>
               </td>
               <td>
-                <span
-                  :class="[
-                    'badge',
-                    user.estadoadministrativo === 'Alta' ? 'badge-verde' : 'badge-rojo',
-                  ]"
-                >
+                <span :class="[
+                  'badge',
+                  user.estadoadministrativo === 'Alta' ? 'badge-verde' : 'badge-rojo',
+                ]">
                   {{ user.estadoadministrativo }}
                 </span>
               </td>
               <td class="acciones-celda">
-                <button
-                  class="btn-accion btn-ver"
-                  title="Ver detalles"
-                  @click="abrirModalVer(user)"
-                >
+                <button class="btn-accion btn-ver" title="Ver detalles" @click="abrirModalVer(user)">
                   👁️
                 </button>
                 <button class="btn-accion btn-editar" title="Editar" @click="abrirModalForm(user)">
@@ -317,12 +269,7 @@
             <tr v-else-if="departamentosFiltrados.length === 0" class="fila-vacia">
               <td colspan="4">No se encontraron departamentos con estos filtros.</td>
             </tr>
-            <tr
-              v-else
-              v-for="depto in departamentosFiltrados"
-              :key="`${depto.tipo}-${depto.id}`"
-              class="fila-datos"
-            >
+            <tr v-else v-for="depto in departamentosFiltrados" :key="`${depto.tipo}-${depto.id}`" class="fila-datos">
               <td class="font-bold">{{ truncarTexto(depto.nombre, 25) }}</td>
               <td>{{ truncarTexto(depto.nombreamigable, 25) || 'Sin asignar' }}</td>
               <td>
@@ -331,32 +278,20 @@
                 </span>
               </td>
               <td>
-                <span
-                  :class="['badge', depto.raw.estado === 'Alta' ? 'badge-verde' : 'badge-rojo']"
-                >
+                <span :class="['badge', depto.raw.estado === 'Alta' ? 'badge-verde' : 'badge-rojo']">
                   {{ depto.raw.estado || 'N/A' }}
                 </span>
               </td>
               <td class="acciones-celda">
-                <button
-                  class="btn-accion btn-ver"
-                  title="Ver detalles"
-                  @click="abrirModalVerDepto(depto)"
-                >
+                <button class="btn-accion btn-ver" title="Ver detalles" @click="abrirModalVerDepto(depto)">
                   👁️
                 </button>
-                <button
-                  class="btn-accion btn-editar"
-                  title="Editar"
-                  @click="abrirModalFormDepto(depto)"
-                >
+                <button class="btn-accion btn-editar" title="Editar" @click="abrirModalFormDepto(depto)">
                   ✏️
                 </button>
-                <button
-                  class="btn-accion btn-eliminar"
+                <button class="btn-accion btn-eliminar"
                   :title="depto.raw.estado === 'Alta' ? 'Dar de baja' : 'Dar de alta'"
-                  @click="cambiarEstadoDepartamento(depto)"
-                >
+                  @click="cambiarEstadoDepartamento(depto)">
                   {{ depto.raw.estado === 'Alta' ? '⬇️' : '⬆️' }}
                 </button>
               </td>
@@ -382,12 +317,7 @@
             <tr v-else-if="problematicasFiltradas.length === 0" class="fila-vacia">
               <td colspan="5">No se encontraron problemáticas con estos filtros.</td>
             </tr>
-            <tr
-              v-else
-              v-for="prob in problematicasFiltradas"
-              :key="`${prob.tipo}-${prob.id}`"
-              class="fila-datos"
-            >
+            <tr v-else v-for="prob in problematicasFiltradas" :key="`${prob.tipo}-${prob.id}`" class="fila-datos">
               <td class="font-bold">{{ truncarTexto(prob.nombre, 25) }}</td>
               <td>{{ truncarTexto(prob.nombreamigable, 25) || 'Sin asignar' }}</td>
               <td>{{ truncarTexto(prob.departamentoNombre, 25) }}</td>
@@ -402,25 +332,14 @@
                 </span>
               </td>
               <td class="acciones-celda">
-                <button
-                  class="btn-accion btn-ver"
-                  title="Ver detalles"
-                  @click="abrirModalVerProblematica(prob)"
-                >
+                <button class="btn-accion btn-ver" title="Ver detalles" @click="abrirModalVerProblematica(prob)">
                   👁️
                 </button>
-                <button
-                  class="btn-accion btn-editar"
-                  title="Editar"
-                  @click="abrirModalFormProblematica(prob)"
-                >
+                <button class="btn-accion btn-editar" title="Editar" @click="abrirModalFormProblematica(prob)">
                   ✏️
                 </button>
-                <button
-                  class="btn-accion btn-eliminar"
-                  :title="prob.estado === 'Alta' ? 'Dar de baja' : 'Dar de alta'"
-                  @click="cambiarEstadoProblema(prob)"
-                >
+                <button class="btn-accion btn-eliminar" :title="prob.estado === 'Alta' ? 'Dar de baja' : 'Dar de alta'"
+                  @click="cambiarEstadoProblema(prob)">
                   {{ prob.estado === 'Alta' ? '⬇️' : '⬆️' }}
                 </button>
               </td>
@@ -430,54 +349,26 @@
       </div>
     </main>
 
-    <UsuarioFormModal
-      :visible="modalFormVisible"
-      :usuarioAEditar="usuarioActivo"
-      :roles="rolesOpciones"
-      :departamentos="departamentosOpciones"
-      :departamentos-externos="departamentosExternosOpciones"
-      :supervisores="supervisoresOpciones"
-      :jefes="jefesOpciones"
-      @close="cerrarModalForm"
-      @save="ejecutarGuardadoUsuario"
-    />
+    <UsuarioFormModal :visible="modalFormVisible" :usuarioAEditar="usuarioActivo" :roles="rolesOpciones"
+      :departamentos="departamentosOpciones" :departamentos-externos="departamentosExternosOpciones"
+      :supervisores="supervisoresOpciones" :jefes="jefesOpciones" @close="cerrarModalForm"
+      @save="ejecutarGuardadoUsuario" />
 
-    <UsuarioDetalleModal
-      :visible="modalVisible"
-      :usuario="usuarioActivo"
-      @close="cerrarModalVer"
-      @cambiarEstado="cambiarEstadoUsuario"
-    />
+    <UsuarioDetalleModal :visible="modalVisible" :usuario="usuarioActivo" @close="cerrarModalVer"
+      @cambiarEstado="cambiarEstadoUsuario" />
 
-    <DepartamentoFormModal
-      :visible="modalDeptoFormVisible"
-      :departamentoAEditar="departamentoActivo"
-      @close="cerrarModalFormDepto"
-      @save="ejecutarGuardadoDepartamento"
-    />
+    <DepartamentoFormModal :visible="modalDeptoFormVisible" :departamentoAEditar="departamentoActivo"
+      @close="cerrarModalFormDepto" @save="ejecutarGuardadoDepartamento" />
 
-    <DepartamentoDetalleModal
-      :visible="modalDeptoDetalleVisible"
-      :departamento="departamentoActivo"
-      @close="cerrarModalVerDepto"
-      @cambiarEstado="cambiarEstadoDepartamento"
-    />
+    <DepartamentoDetalleModal :visible="modalDeptoDetalleVisible" :departamento="departamentoActivo"
+      @close="cerrarModalVerDepto" @cambiarEstado="cambiarEstadoDepartamento" />
 
-    <ProblematicaFormModal
-      :visible="modalProblematicaFormVisible"
-      :problematicaAEditar="problematicaActivo"
-      :departamentos="departamentosOpciones"
-      :departamentos-externos="departamentosExternosOpciones"
-      @close="cerrarModalFormProblematica"
-      @save="ejecutarGuardadoProblematica"
-    />
+    <ProblematicaFormModal :visible="modalProblematicaFormVisible" :problematicaAEditar="problematicaActivo"
+      :departamentos="departamentosOpciones" :departamentos-externos="departamentosExternosOpciones"
+      @close="cerrarModalFormProblematica" @save="ejecutarGuardadoProblematica" />
 
-    <ProblematicaDetalleModal
-      :visible="modalProblematicaDetalleVisible"
-      :problematica="problematicaActivo"
-      @close="cerrarModalVerProblematica"
-      @cambiarEstado="cambiarEstadoProblema"
-    />
+    <ProblematicaDetalleModal :visible="modalProblematicaDetalleVisible" :problematica="problematicaActivo"
+      @close="cerrarModalVerProblematica" @cambiarEstado="cambiarEstadoProblema" />
   </div>
 </template>
 
@@ -581,21 +472,40 @@ const { mostrarCargando, ocultarCargando } = useCargando()
 
 onMounted(async () => {
   mostrarCargando() // Mostrar el indicador de carga al iniciar
-  const sessionData = localStorage.getItem('userSession')
-  if (!sessionData) {
+  // 1. Leemos únicamente el token de autenticación
+  const userToken = localStorage.getItem('userToken')
+
+  if (!userToken) {
     router.push('/')
     return
   }
-  const sesion = JSON.parse(sessionData)
 
-  if (sesion.tipo_id !== 1) {
-    Swal.fire('Acceso Denegado', 'No tienes permisos para ver esta sección.', 'error')
-    redireccionarUsuario()
-    return
-  }
-  director.value = sesion
+  let sesion: any;
 
   try {
+    // 2. Decodificamos el payload de tu JWT
+    const base64Url = userToken.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      window.atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    )
+
+    // 3. Obtenemos el objeto con los datos del usuario listo para usar en tu lógica
+    sesion = JSON.parse(jsonPayload)
+
+
+
+    if (sesion.tipo_id !== 1) {
+      Swal.fire('Acceso Denegado', 'No tienes permisos para ver esta sección.', 'error')
+      redireccionarUsuario()
+      return
+    }
+    director.value = sesion
+
+
     await esperarUsuario(2000).catch(() => null) // Espera máx 2 segundos
     await cargarCatalogos()
     await cargarDatos()
@@ -641,15 +551,28 @@ const cargarListaProblematicas = async () => {
     }))
 
     problematicasData.value = [...listaInternas, ...listaExternas]
+  } else if (errorInt || errorExt) {
+    console.error('Error al cargar problemáticas:', errorInt || errorExt)
+    Swal.fire('Error', 'Ocurrió un problema al cargar las problemáticas.', 'error')
   }
 
   cargando.value = false
 }
 
 const cargarDepartamentos = async () => {
-  const { data: internos } = await obtenerTodosDepartamentosInternos()
+  const { data: internos, error: errorInt } = await obtenerTodosDepartamentosInternos()
+  if (errorInt) {
+    console.error('Error al cargar departamentos internos:', errorInt)
+    Swal.fire('Error', 'Ocurrió un problema al cargar los departamentos internos.', 'error')
+    return
+  }
 
-  const { data: externos } = await obtenerTodosDepartamentosExternos()
+  const { data: externos, error: errorExt } = await obtenerTodosDepartamentosExternos()
+  if (errorExt) {
+    console.error('Error al cargar departamentos externos:', errorExt)
+    Swal.fire('Error', 'Ocurrió un problema al cargar los departamentos externos.', 'error')
+    return
+  }
 
   departamentosInternos.value = internos || []
   departamentosExternos.value = externos || []
@@ -682,6 +605,9 @@ const cargarListaDepartamentos = async () => {
     }))
 
     departamentosData.value = [...listaInternos, ...listaExternos]
+  } else if (errorInt || errorExt) {
+    console.error('Error al cargar departamentos:', errorInt || errorExt)
+    Swal.fire('Error', 'Ocurrió un problema al cargar los departamentos.', 'error')
   }
 
   cargando.value = false
@@ -698,23 +624,49 @@ const cargarDatos = async () => {
 }
 
 const cargarCatalogos = async () => {
-  const { data: rData } = await obtenerUsuarioExcepto(1) // Excluir al Director General (tipousuario_id = 1)
+  const { data: rData, error: rError } = await obtenerUsuarioExcepto(1) // Excluir al Director General (tipousuario_id = 1)
+  if (rError) {
+    console.error('Error al cargar roles:', rError)
+    Swal.fire('Error', 'Ocurrió un problema al cargar los roles.', 'error')
+    return
+  }
 
   if (rData) rolesOpciones.value = rData
 
-  const { data: dData } = await obtenerTodosDepartamentosInternos()
+  const { data: dData, error: dError } = await obtenerTodosDepartamentosInternos()
+  if (dError) {
+    console.error('Error al cargar departamentos internos:', dError)
+    Swal.fire('Error', 'Ocurrió un problema al cargar los departamentos internos.', 'error')
+    return
+  }
 
   if (dData) departamentosOpciones.value = dData
 
-  const { data: deData } = await obtenerTodosDepartamentosExternos()
+  const { data: deData, error: deError } = await obtenerTodosDepartamentosExternos()
+  if (deError) {
+    console.error('Error al cargar departamentos externos:', deError)
+    Swal.fire('Error', 'Ocurrió un problema al cargar los departamentos externos.', 'error')
+    return
+  }
 
   if (deData) departamentosExternosOpciones.value = deData
 
-  const { data: sData } = await obtenerTodosSupervisores()
+  const { data: sData, error: sError } = await obtenerTodosSupervisores()
+  if (sError) {
+    console.error('Error al cargar supervisores:', sError)
+    Swal.fire('Error', 'Ocurrió un problema al cargar los supervisores.', 'error')
+    return
+  }
 
   if (sData) supervisoresOpciones.value = sData
 
-  const { data: jData } = await obtenerTodosJefes()
+  const { data: jData, error: jError } = await obtenerTodosJefes()
+
+  if (jError) {
+    console.error('Error al cargar jefes:', jError)
+    Swal.fire('Error', 'Ocurrió un problema al cargar los jefes.', 'error')
+    return
+  }
 
   if (jData) jefesOpciones.value = jData
 }
@@ -773,6 +725,9 @@ const cargarUsuarios = async () => {
           '',
       }
     })
+  } else if (error) {
+    console.error('Error al cargar usuarios:', error)
+    Swal.fire('Error', 'Ocurrió un problema al cargar los usuarios.', 'error')
   }
   cargando.value = false
 }
@@ -1200,6 +1155,10 @@ const cambiarEstadoUsuario = async (user: any, nuevoEstado: 'Alta' | 'Baja') => 
 
   if (result.isConfirmed) {
     const { error } = await actualizarEstadoUsuario(user.id, { estadoadministrativo: nuevoEstado })
+    if (error) {
+      Swal.fire('Error', 'No se pudo actualizar el estado.', 'error')
+      return
+    }
 
     // Si pasa de Alta -> Baja else si pasa de Baja -> Alta entonces cambiar Columna FechaBaja o FechaAlta con la fecha actual
     if (user.estadoadministrativo === 'Alta' && nuevoEstado === 'Baja') {
@@ -1229,10 +1188,15 @@ const cambiarEstadoUsuario = async (user: any, nuevoEstado: 'Alta' | 'Baja') => 
     }
   }
 }
+
 const cerrarSesion = () => {
-  localStorage.removeItem('userSession')
+  // 1. Eliminamos el token de autenticación
+  localStorage.removeItem('userToken')
+
+  // 2. Redirigimos al usuario a la pantalla de inicio o login
   router.push('/')
 }
+
 </script>
 
 <style src="../assets/panelAdministrador.css" />

@@ -212,12 +212,33 @@ const conteoPorEstado = computed(() => {
 onMounted(async () => {
   mostrarCargando()
   try {
-    const sessionData = localStorage.getItem('userSession')
-    if (!sessionData) {
+    // 1. Leemos únicamente el token
+    const userToken = localStorage.getItem('userToken')
+
+    if (!userToken) {
       router.push('/')
       return
     }
-    jefe.value = JSON.parse(sessionData)
+
+    try {
+      // 2. Decodificamos la sección del payload del token (segunda parte del JWT)
+      const base64Url = userToken.split('.')[1] // .split('.')[1] asegura tomar exactamente el payload
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+      const jsonPayload = decodeURIComponent(
+        window.atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      )
+
+      // 3. Asignamos los datos directamente a tu variable reactiva 'jefe'
+      jefe.value = JSON.parse(jsonPayload)
+
+    } catch (error) {
+      console.error("Error al procesar el token de jefe:", error)
+      router.push('/')
+    }
+
 
     if (jefe.value.tipo_id !== 4) {
       Swal.fire('Acceso Denegado', 'No tienes permisos para ver esta sección.', 'error')
@@ -307,10 +328,18 @@ const cargarReportes = async () => {
     Swal.fire('Error', 'No se pudieron cargar los reportes.', 'error')
   }
 
-  const { data: tFin } = await obtenerTitulos(3) // categoría 3 = Finalización
+  const { data: tFin, error: tFinError } = await obtenerTitulos(3) // categoría 3 = Finalización
+  if (tFinError) {
+    console.error('Error al cargar títulos de finalización:', tFinError.message)
+    Swal.fire('Error', 'No se pudieron cargar los títulos de finalización.', 'error')
+  }
   tituloFinalizacion.value = (tFin || []).slice(0, 1)
 
-  const { data: tAv } = await obtenerTitulos(4) // categoría 4 = Avance
+  const { data: tAv, error: tAvError } = await obtenerTitulos(4) // categoría 4 = Avance
+  if (tAvError) {
+    console.error('Error al cargar títulos de avance:', tAvError.message)
+    Swal.fire('Error', 'No se pudieron cargar los títulos de avance.', 'error')
+  }
   titulosAvance.value = tAv || []
 
   cargando.value = false
@@ -508,7 +537,12 @@ const confirmarEvidencia = async (datos: {
       Swal.fire('Error', 'No se pudo subir la imagen.', 'error')
       return
     }
-    const { data: urlData } = await getPublicUrl(ruta, 'fotos_avances')
+    const { data: urlData, error: urlError } = await getPublicUrl(ruta, 'fotos_avances')
+    if (urlError) {
+      console.error('Error al obtener la URL de la foto:', urlError)
+      Swal.fire('Error', 'No se pudo obtener la URL de la imagen.', 'error')
+      return
+    }
     const fotoUrl = urlData?.publicUrl
     if (!fotoUrl) {
       Swal.fire('Error', 'No se pudo obtener la URL de la imagen.', 'error')
@@ -562,9 +596,13 @@ const confirmarEvidencia = async (datos: {
 }
 
 const cerrarSesion = () => {
-  localStorage.removeItem('userSession')
+  // 1. Eliminamos el token de autenticación
+  localStorage.removeItem('userToken')
+
+  // 2. Redirigimos al usuario a la pantalla de inicio o login
   router.push('/')
 }
+
 </script>
 
 <style src="../assets/estadosBotones.css"></style>

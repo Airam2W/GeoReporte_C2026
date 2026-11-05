@@ -12,8 +12,8 @@
 
         <div class="modal-body form-grid">
           <p class="intro">
-            Para continuar, confirma si la evidencia fotográfica corresponde al área de tu
-            departamento. Tu respuesta ayuda a mejorar la clasificación automática de reportes.
+            Para continuar, evalúa la evidencia fotográfica del reporte. Tus respuestas ayudan a
+            mejorar la clasificación automática de reportes.
           </p>
 
           <div class="foto-box">
@@ -23,7 +23,31 @@
             <span v-else class="sin-foto">Sin imagen</span>
           </div>
 
-          <fieldset class="pregunta" :class="{ 'pregunta-error': errores.respuesta }">
+          <!-- Pregunta 1: calidad de la foto -->
+          <fieldset class="pregunta" :class="{ 'pregunta-error': errores.buena }">
+            <legend>
+              ¿La imagen es adecuada y permite identificar claramente la problemática reportada?
+            </legend>
+
+            <div class="opciones">
+              <label class="opcion" :class="{ activa: buena === 'si' }">
+                <input v-model="buena" type="radio" name="foto-buena" value="si" />
+                <span>Sí</span>
+              </label>
+              <label class="opcion" :class="{ activa: buena === 'no' }">
+                <input v-model="buena" type="radio" name="foto-buena" value="no" />
+                <span>No</span>
+              </label>
+            </div>
+            <span v-if="errores.buena" class="msg-error">{{ errores.buena }}</span>
+          </fieldset>
+
+          <!-- Pregunta 2: solo si la foto es buena -->
+          <fieldset
+            v-if="buena === 'si'"
+            class="pregunta"
+            :class="{ 'pregunta-error': errores.respuesta }"
+          >
             <legend>
               ¿La imagen corresponde a una problemática del departamento
               <strong>{{ departamentoNombre }}</strong>?
@@ -42,7 +66,8 @@
             <span v-if="errores.respuesta" class="msg-error">{{ errores.respuesta }}</span>
           </fieldset>
 
-          <div v-if="respuesta === 'no'" class="input-grupo">
+          <!-- Select: solo si la foto es buena y no es de su departamento -->
+          <div v-if="buena === 'si' && respuesta === 'no'" class="input-grupo">
             <label>¿A qué departamento corresponde la imagen?</label>
             <select v-model="departamentoElegido" :class="{ 'input-error': errores.departamento }">
               <option value="">Seleccione un departamento...</option>
@@ -80,6 +105,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['close', 'confirm'])
 
+const buena = ref<'' | 'si' | 'no'>('')
 const respuesta = ref<'' | 'si' | 'no'>('')
 const departamentoElegido = ref<string | number>('')
 const errores = ref<Record<string, string>>({})
@@ -88,6 +114,7 @@ watch(
   () => props.visible,
   (v) => {
     if (v) {
+      buena.value = ''
       respuesta.value = ''
       departamentoElegido.value = ''
       errores.value = {}
@@ -95,7 +122,15 @@ watch(
   },
 )
 
-// Al cambiar a "Sí" se descarta el departamento elegido
+// Si la foto no es buena, se descartan las respuestas de la segunda pregunta
+watch(buena, (b) => {
+  if (b !== 'si') {
+    respuesta.value = ''
+    departamentoElegido.value = ''
+  }
+})
+
+// Si es de su departamento, se descarta el departamento elegido
 watch(respuesta, (r) => {
   if (r !== 'no') departamentoElegido.value = ''
 })
@@ -106,6 +141,18 @@ const cerrar = () => {
 
 const enviar = () => {
   errores.value = {}
+
+  if (!buena.value) {
+    errores.value.buena = 'Selecciona una opción'
+    return
+  }
+
+  // Foto no buena -> -2 directamente
+  if (buena.value === 'no') {
+    emit('confirm', -2)
+    return
+  }
+
   if (!respuesta.value) {
     errores.value.respuesta = 'Selecciona una opción'
     return
@@ -114,7 +161,8 @@ const enviar = () => {
     errores.value.departamento = 'Selecciona un departamento'
     return
   }
-  // "Sí" -> se avisa con null y el panel usa el departamento del supervisor
+
+  // "Sí" -> null (el panel usa el departamento del supervisor); si no, el id o -1 (externo)
   emit('confirm', respuesta.value === 'si' ? null : Number(departamentoElegido.value))
 }
 </script>
@@ -128,34 +176,13 @@ const enviar = () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 100px;
   background: #fafafa;
-  height: 250px; /* 💡 Asegúrate de definir una altura fija o máxima para el contenedor (ajústala a tu diseño) */
-  width: 100%;
   border: 1px solid #eee;
   border-radius: 10px;
   overflow: hidden;
 }
-
-/* Hacemos que el enlace ocupe todo el cuadro */
-.foto-box a {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
-
-.foto-box img { 
-  display: block; 
-  max-width: 100%; 
-  max-height: 100%; 
-  object-fit: contain; /* Esto garantiza que la imagen completa se vea sin recortarse */
-}
-
-.sin-foto {
-  color: #888;
-  font-size: 14px;
-}
+.foto-box img { display: block; width: 100%; max-height: 280px; object-fit: contain; }
 .sin-foto { color: #aaa; font-style: italic; padding: 24px; }
 
 .pregunta {

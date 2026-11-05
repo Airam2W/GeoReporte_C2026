@@ -153,13 +153,10 @@ export const iniciarSesion = () => {
         return
       }
 
-      // Agregar al objeto Usuario el correo
-      data[0].correo = email
+      const usuario = data.usuario
+      const tokenUsuario = data.token
 
-
-      const usuario = data[0]
-
-      if (usuario.estado !== 'Alta' && usuario.estado !== 'Activo') {
+      if (usuario.estado !== 'Alta') {
         errorGlobal.textContent =
           'Esta cuenta ha sido dada de baja. Porfavor, contacta con el Director General'
         errorGlobal.style.display = 'block'
@@ -172,10 +169,10 @@ export const iniciarSesion = () => {
       if (usuario.tipo_id === 3 || usuario.tipousuario_id === 3) {
         const { data: supData, error: supError } = await obtenerSupervisorIDPorUsuarioID(usuario.id)
         if (!supError && supData && supData.length > 0) {
-          usuario.id_supervisor = supData[0].id
+          usuario.id_supervisor = supData.id
           // Si el RPC no trae ya el departamento_id, lo tomamos de aquí también
           if (!usuario.departamento_id) {
-            usuario.departamento_id = supData[0].departamento_id
+            usuario.departamento_id = supData.departamento_id
           }
         } else {
           console.error(supError)
@@ -187,16 +184,16 @@ export const iniciarSesion = () => {
         const { data: jefeData, error: jefeError } = await obtenerJefeIDPorUsuarioID(usuario.id)
 
         if (!jefeError && jefeData && jefeData.length > 0) {
-          usuario.id_jefe = jefeData[0].id
+          usuario.id_jefe = jefeData.id
           if (!usuario.departamento_id) {
-            usuario.departamento_id = jefeData[0].supervisores?.departamento_id
+            usuario.departamento_id = jefeData.supervisores?.departamento_id
           }
         } else {
           console.error(jefeError)
         }
       }
 
-      localStorage.setItem('userSession', JSON.stringify(usuario))
+      localStorage.setItem('userToken', tokenUsuario)
 
       // Para éxito
       //Toast.fire({

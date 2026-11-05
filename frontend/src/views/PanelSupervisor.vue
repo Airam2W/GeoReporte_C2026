@@ -263,20 +263,37 @@ const { mostrarCargando, ocultarCargando } = useCargando()
 
 onMounted(async () => {
   mostrarCargando() // Mostrar el indicador de carga al iniciar
-  const sessionData = localStorage.getItem('userSession')
-  if (!sessionData) {
-    router.push('/')
-    return
-  }
-  supervisor.value = JSON.parse(sessionData)
+  // 1. Leemos únicamente el token
+  const userToken = localStorage.getItem('userToken')
 
-  if (supervisor.value.tipo_id !== 3) {
-    Swal.fire('Acceso Denegado', 'No tienes permisos para ver esta sección.', 'error')
-    redireccionarUsuario()
+  if (!userToken) {
+    router.push('/')
     return
   }
 
   try {
+    // 2. Decodificamos la sección del payload del token (segunda parte del JWT)
+    const base64Url = userToken.split('.')[1] // Tomamos el índice 1 (el payload)
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      window.atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    )
+
+    // 3. Asignamos los datos directamente a tu variable reactiva 'supervisor'
+    supervisor.value = JSON.parse(jsonPayload)
+
+
+
+    if (supervisor.value.tipo_id !== 3) {
+      Swal.fire('Acceso Denegado', 'No tienes permisos para ver esta sección.', 'error')
+      redireccionarUsuario()
+      return
+    }
+
+
     await esperarUsuario(2000).catch(() => null) // Espera máx 2 segundos
     await cargarCatalogos()
     await cargarReportes()
@@ -947,9 +964,13 @@ const irACrearReporte = () => {
 }
 
 const cerrarSesion = () => {
-  localStorage.removeItem('userSession')
+  // 1. Eliminamos el token de autenticación
+  localStorage.removeItem('userToken')
+
+  // 2. Redirigimos al usuario a la pantalla de inicio o login
   router.push('/')
 }
+
 
 defineExpose({
   supervisor,

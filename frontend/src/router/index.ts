@@ -23,14 +23,17 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const userSession = localStorage.getItem('userSession')
+  // 1. Leemos únicamente el token de autenticación
+  const userToken = localStorage.getItem('userToken')
 
-  if (to.path === '/dashboard' && !userSession) {
-    next('/') // no hay sesión -> redirige al home
+  // 2. Si intenta ir al dashboard y no tiene token, se bloquea el acceso
+  if (to.path === '/dashboard' && !userToken) {
+    next('/') // No está autenticado -> redirige al login/home
   } else {
-    next() // hay sesión -> deja pasar
+    next() // Tiene token o va a una ruta pública -> deja pasar
   }
 })
+
 
 
 

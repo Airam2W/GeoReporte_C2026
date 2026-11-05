@@ -2,6 +2,7 @@ import { Router } from 'express'
 import multer from 'multer'
 import { supabase } from '../config/supabase.js'
 import { responder } from '../helpers/response.js'
+import jwt from 'jsonwebtoken'
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage() })

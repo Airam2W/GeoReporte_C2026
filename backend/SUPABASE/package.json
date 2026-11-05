@@ -1,5 +1,5 @@
 {
-  "name": "georeporte_ai_vi",
+  "name": "GeoReporte_SUPABASE",
   "version": "1.0.0",
   "description": "Inteligencia Artificial para la validacion de imagenes de reportes & Backend de GeoReporte",
   "main": "src/index.js",
@@ -12,21 +12,22 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Airam2W/GeoReporte_AI_VI.git"
+    "url": "git+https://github.com/Airam2W/GeoReporte_C2026.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/Airam2W/GeoReporte_AI_VI/issues"
+    "url": "https://github.com/Airam2W/GeoReporte_C2026/issues"
   },
-  "homepage": "https://github.com/Airam2W/GeoReporte_AI_VI#readme",
+  "homepage": "https://github.com/Airam2W/GeoReporte_C2026#readme",
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",
     "cors": "^2.8.6",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
-    "multer": "^2.4.0"
+    "multer": "^2.4.0",
+    "jsonwebtoken": "^9.0.2"
   }
 }
