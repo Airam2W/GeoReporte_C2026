@@ -678,6 +678,16 @@ const enviarReporte = async () => {
     esValido = false
   }
 
+  if( form.value.foto && !form.value.fotoTipoID){
+    errores.value.foto = 'La foto no recibio ID de validación, por favor intenta con otra foto'
+    esValido = false
+  }
+
+  if( form.value.foto && !form.value.mensajeAI){
+    errores.value.foto = 'La foto no recibio mensaje de validación, por favor intenta con otra foto'
+    esValido = false
+  }
+
   if (!esValido) return
 
   //Desactivar el botón de enviar mientras se procesa la solicitud

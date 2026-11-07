@@ -460,6 +460,39 @@ router.post('/reporte', async (req, res) => {
             })
         }
 
+        // Validación de foto URL.
+        if (
+            data.foto_url !== undefined &&
+            data.foto_url !== null &&
+            typeof data.foto_url !== 'string'
+        ) {
+            return res.status(400).json({
+                error: 'La foto URL debe ser un texto o null.'
+            })
+        }
+
+        // Validación de fotoTipoID.
+        if (
+            data.fotoTipoID !== undefined &&
+            data.fotoTipoID !== null &&
+            !esIdValido(data.fotoTipoID)
+        ) {
+            return res.status(400).json({
+                error: 'Foto Tipo ID inválido. Debe ser un número entero positivo o null.'
+            })
+        }
+
+        // Validación de mensajeAI.
+        if (
+            data.mensajeAI !== undefined &&
+            data.mensajeAI !== null &&
+            typeof data.mensajeAI !== 'string'
+        ) {
+            return res.status(400).json({
+                error: 'El mensaje AI debe ser un texto o null.'
+            })
+        }
+
         // Construcción y ejecución de la inserción.
         const result = await supabase
             .from('reportes')
@@ -473,7 +506,9 @@ router.post('/reporte', async (req, res) => {
                 correo: data.correo?.trim() || null,
                 domicilio: data.domicilio.trim(),
                 referencias: data.referencias?.trim() || null,
-                foto_url: data.foto_url ?? null
+                foto_url: data.foto_url ?? null,
+                fotoTipoID: data.fotoTipoID ?? null,
+                mensajeAI: data.mensajeAI?.trim() || null
             })
 
         return responder(res, result)

@@ -354,7 +354,7 @@ export async function actualizarFechaAltaUsuario(id: number | string, data: any)
 export async function actualizarFotoDepartamentoReporte(folio: string, fotoDepartamentoID: number) {
   return request(`/reporte/fotoDepartamentoID`, {
     method: 'PUT',
-    body: JSON.stringify({ folio, fotoDepartamentoId }),
+    body: JSON.stringify({ folio, fotoDepartamentoID }),
   })
 }
 

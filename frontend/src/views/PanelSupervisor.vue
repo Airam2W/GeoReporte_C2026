@@ -597,9 +597,10 @@ const cerrarModalFotoAI = () => {
 
 const confirmarFotoAI = async (departamentoElegido: number | null) => {
   const reporte = reporteFotoAI.value
+  console.log('Reporte', reporte)
   if (!reporte) return
 
-  // null = "Sí" (es de mi departamento); -1 = externo; otro número = id del departamento
+  // null = "Sí" (es de mi departamento); -1 = externo; -2 = foto mala; otro número = id del departamento
   const fotoDepartamentoID = departamentoElegido ?? supervisor.value.departamento_id
 
   guardandoFotoAI.value = true
@@ -613,6 +614,8 @@ const confirmarFotoAI = async (departamentoElegido: number | null) => {
 
     // Se actualiza en memoria para no volver a preguntar en esta sesión
     reporte.fotoDepartamentoID = fotoDepartamentoID
+    console.log(`Retroalimentación de foto guardada para folio ${reporte.folio}:`, fotoDepartamentoID)
+    console.log('Actualizacion', reporte.fotoDepartamentoID)
 
     const accion = accionPendienteFoto.value
     modalFotoAIVisible.value = false
