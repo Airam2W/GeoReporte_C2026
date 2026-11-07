@@ -79,6 +79,15 @@
             </option>
           </select>
         </div>
+
+        <div class="filtro-grupo">
+          <select v-model="filtros.validacionAI">
+            <option value="">Todas las validaciones por IA</option>
+            <option value="0">Posiblemente Correcto</option>
+            <option value="1">Posiblemente Incorrecto</option>
+          </select>
+        </div>
+
       </section>
 
       <!-- Tabla de Datos -->
@@ -242,6 +251,7 @@ const filtros = ref({
   problema: '',
   estado: 'Pendiente de Asignación',
   jefe: '',
+  validacionAI: '',
 })
 
 const estados = [
@@ -552,7 +562,12 @@ const reportesFiltrados = computed(() => {
       coincideFecha = fechaFormateadaLocal === filtros.value.fecha
     }
 
-    return coincideBusqueda && coincideProblema && coincideEstado && coincideJefe && coincideFecha
+    const coincideValidacionAI =
+      filtros.value.validacionAI === '' ||
+      (filtros.value.validacionAI === '0' && r.fotoDepartamentoID === 0) ||
+      (filtros.value.validacionAI === '1' && r.fotoDepartamentoID !== 0)
+
+    return coincideBusqueda && coincideProblema && coincideEstado && coincideJefe && coincideFecha && coincideValidacionAI
   })
 })
 
@@ -597,9 +612,10 @@ const cerrarModalFotoAI = () => {
 
 const confirmarFotoAI = async (departamentoElegido: number | null) => {
   const reporte = reporteFotoAI.value
+  console.log('Reporte', reporte)
   if (!reporte) return
 
-  // null = "Sí" (es de mi departamento); -1 = externo; otro número = id del departamento
+  // null = "Sí" (es de mi departamento); -1 = externo; -2 = foto mala; otro número = id del departamento
   const fotoDepartamentoID = departamentoElegido ?? supervisor.value.departamento_id
 
   guardandoFotoAI.value = true
@@ -613,6 +629,8 @@ const confirmarFotoAI = async (departamentoElegido: number | null) => {
 
     // Se actualiza en memoria para no volver a preguntar en esta sesión
     reporte.fotoDepartamentoID = fotoDepartamentoID
+    console.log(`Retroalimentación de foto guardada para folio ${reporte.folio}:`, fotoDepartamentoID)
+    console.log('Actualizacion', reporte.fotoDepartamentoID)
 
     const accion = accionPendienteFoto.value
     modalFotoAIVisible.value = false

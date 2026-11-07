@@ -33,6 +33,7 @@ jobs:
           VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
           VITE_AI_BACKEND_URL: ${{ secrets.VITE_AI_BACKEND_URL }}
           VITE_GMAIL_SERVICE: ${{ secrets.VITE_GMAIL_SERVICE }}
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
 
       - name: Build project
         run: npm run build
@@ -40,13 +41,14 @@ jobs:
           VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
           VITE_AI_BACKEND_URL: ${{ secrets.VITE_AI_BACKEND_URL }}
           VITE_GMAIL_SERVICE: ${{ secrets.VITE_GMAIL_SERVICE }}
-
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
       - name: Pruebas E2E Cypress
         run: npm run test:e2e
         env:
           VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
           VITE_AI_BACKEND_URL: ${{ secrets.VITE_AI_BACKEND_URL }}
           VITE_GMAIL_SERVICE: ${{ secrets.VITE_GMAIL_SERVICE }}
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

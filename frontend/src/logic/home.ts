@@ -4,7 +4,7 @@ import { ref } from 'vue'
 import { redireccionarUsuario } from './redirectUser'
 export const menuAbierto = ref(false)
 export const menuRef = ref<HTMLElement | null>(null)
-import { obtenerUsuarioPorCorreoYContrasena, obtenerSupervisorIDPorUsuarioID, obtenerJefeIDPorUsuarioID } from '../services/supabaseController'
+import { obtenerUsuarioPorCorreoYContrasena } from '../services/supabaseController'
 
 const ICONO_OJO_ABIERTO = `
   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -153,45 +153,7 @@ export const iniciarSesion = () => {
         return
       }
 
-      const usuario = data.usuario
       const tokenUsuario = data.token
-
-      if (usuario.estado !== 'Alta') {
-        errorGlobal.textContent =
-          'Esta cuenta ha sido dada de baja. Porfavor, contacta con el Director General'
-        errorGlobal.style.display = 'block'
-        submitBtn.disabled = false
-        submitBtn.textContent = 'Iniciar sesión'
-        return
-      }
-
-      // Si el usuario es Supervisor (tipo_id === 3), traer su id de la tabla "supervisores"
-      if (usuario.tipo_id === 3 || usuario.tipousuario_id === 3) {
-        const { data: supData, error: supError } = await obtenerSupervisorIDPorUsuarioID(usuario.id)
-        if (!supError && supData && supData.length > 0) {
-          usuario.id_supervisor = supData.id
-          // Si el RPC no trae ya el departamento_id, lo tomamos de aquí también
-          if (!usuario.departamento_id) {
-            usuario.departamento_id = supData.departamento_id
-          }
-        } else {
-          console.error(supError)
-        }
-      }
-
-      // Si el usuario es Jefe (tipo_id === 4), traer su id y su departamento
-      if (usuario.tipo_id === 4 || usuario.tipousuario_id === 4) {
-        const { data: jefeData, error: jefeError } = await obtenerJefeIDPorUsuarioID(usuario.id)
-
-        if (!jefeError && jefeData && jefeData.length > 0) {
-          usuario.id_jefe = jefeData.id
-          if (!usuario.departamento_id) {
-            usuario.departamento_id = jefeData.supervisores?.departamento_id
-          }
-        } else {
-          console.error(jefeError)
-        }
-      }
 
       localStorage.setItem('userToken', tokenUsuario)
 

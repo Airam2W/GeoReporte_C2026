@@ -3,6 +3,7 @@ import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { responder } from '../helpers/response.js'
 import jwt from 'jsonwebtoken'
+import { verificarTurnstile } from '../middleware/verificarTurnstile.js'
 
 import {
     verificarTokenJWT,
@@ -25,7 +26,11 @@ const esTextoValido = (valor) => {
 }
 
 const esIdValido = (valor) => {
-    return Number.isInteger(valor) && valor > 0
+    // id -> number | string(numeros y letras y caracteres especiales)
+    return (
+        (typeof valor === 'number' && Number.isSafeInteger(valor) && valor > 0) ||
+        (typeof valor === 'string' && /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+$/.test(valor) && valor.trim().length > 0)
+    )
 }
 
 const correoRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -140,7 +145,7 @@ router.post('/usuarios/CorreoContrasena', manejarErrores(async (req, res) => {
     if (usuario.estado !== 'Alta') {
         return res.status(403).json({
             data: null,
-            error: { message: 'Tu usuario no se encuentra activo.'+ usuario.estado }
+            error: { message: 'Tu usuario no se encuentra activo.' }
         })
     }
 
@@ -154,22 +159,62 @@ router.post('/usuarios/CorreoContrasena', manejarErrores(async (req, res) => {
         })
     }
 
-    // La RPC valida las credenciales. Se agrega el correo usado en el login
-    // porque la función SQL no lo incluye en sus datos de salida.
+    // ─────────────────────────────────────────────────────────────────
+    // NUEVA LÓGICA: Enriquecer según el rol (Supervisor o Jefe)
+    // ─────────────────────────────────────────────────────────────────
+    let id_supervisor = null;
+    let id_jefe = null;
+    let departamento_id = usuario.departamento_id;
+
+    if (tipo_id === 3) { // Supervisor
+        const { data: supData, error: supError } = await supabase
+            .from('supervisores')
+            .select('id, departamento_id')
+            .eq('usuario_id', usuario.id)
+            .maybeSingle()
+
+        if (!supError && supData) {
+            id_supervisor = supData.id;
+            if (!departamento_id) departamento_id = supData.departamento_id;
+        }
+    } else if (tipo_id === 4) { // Jefe
+        const { data: jefeData, error: jefeError } = await supabase
+            .from('jefes')
+            .select('id, supervisor_id, supervisores(departamento_id)')
+            .eq('usuario_id', usuario.id)
+            .maybeSingle()
+
+        if (!jefeError && jefeData) {
+            id_jefe = jefeData.id;
+            // Si la estructura te trae el departamento a través de la relación de supervisor
+            if (!departamento_id && jefeData.supervisores) {
+                departamento_id = Array.isArray(jefeData.supervisores) 
+                    ? jefeData.supervisores[0]?.departamento_id 
+                    : jefeData.supervisores?.departamento_id;
+            }
+        }
+    }
+
+    // Objeto consolidado para la respuesta y el token
     const usuarioRespuesta = {
         ...usuario,
-        correo
+        correo,
+        departamento_id,
+        ...(id_supervisor && { id_supervisor }),
+        ...(id_jefe && { id_jefe })
     }
 
     const token = jwt.sign(
         {
             apellido_p: usuario.apellido_p,
-            departamento_id: usuario.departamento_id,
+            departamento_id,
             id: usuario.id,
             nombre: usuario.nombre,
             correo,
             tipo_id,
-            estado: usuario.estado
+            estado: usuario.estado,
+            ...(id_supervisor && { id_supervisor }),
+            ...(id_jefe && { id_jefe })
         },
         process.env.JWT_SECRET,
         { expiresIn: '8h' }
@@ -260,15 +305,20 @@ router.post(
             // Validación de contraseña.
             if (
                 p_contrasena !== null &&
+                p_contrasena !== '' && // 👈 Permitir cadena vacía para indicar "sin cambios"
                 (
                     typeof p_contrasena !== 'string' ||
                     p_contrasena.length < 6
                 )
             ) {
                 return res.status(400).json({
-                    error: 'La contraseña debe tener al menos 6 caracteres o ser null.'
+                    error: 'La contraseña debe tener al menos 6 caracteres o dejarse en blanco.'
                 })
             }
+
+            const contrasenaLimpia = (typeof p_contrasena === 'string' && p_contrasena.trim().length > 0) 
+                ? p_contrasena 
+                : null;
 
             // Validación de tipo de usuario.
             if (!esIdValido(p_tipousuario_id)) {
@@ -301,7 +351,7 @@ router.post(
                 p_apellido_p,
                 p_apellido_m,
                 p_correo: p_correo.trim(),
-                p_contrasena,
+                p_contrasena: contrasenaLimpia,
                 p_tipousuario_id,
                 p_departamento_id,
                 p_estado
@@ -322,7 +372,7 @@ router.post(
 
 // (crearReporte)
 // Endpoint público: no requiere autenticación ni autorización.
-router.post('/reporte', async (req, res) => {
+router.post('/reporte', verificarTurnstile, async (req, res) => {
     try {
         const data = req.body
 
@@ -411,6 +461,39 @@ router.post('/reporte', async (req, res) => {
             })
         }
 
+        // Validación de foto URL.
+        if (
+            data.foto_url !== undefined &&
+            data.foto_url !== null &&
+            typeof data.foto_url !== 'string'
+        ) {
+            return res.status(400).json({
+                error: 'La foto URL debe ser un texto o null.'
+            })
+        }
+
+        // Validación de fotoTipoID.
+        if (
+            data.fotoTipoID !== undefined &&
+            data.fotoTipoID !== null &&
+            !esIdValido(data.fotoTipoID)
+        ) {
+            return res.status(400).json({
+                error: 'Foto Tipo ID inválido. Debe ser un número entero positivo o null.'
+            })
+        }
+
+        // Validación de mensajeAI.
+        if (
+            data.mensajeAI !== undefined &&
+            data.mensajeAI !== null &&
+            typeof data.mensajeAI !== 'string'
+        ) {
+            return res.status(400).json({
+                error: 'El mensaje AI debe ser un texto o null.'
+            })
+        }
+
         // Construcción y ejecución de la inserción.
         const result = await supabase
             .from('reportes')
@@ -424,7 +507,9 @@ router.post('/reporte', async (req, res) => {
                 correo: data.correo?.trim() || null,
                 domicilio: data.domicilio.trim(),
                 referencias: data.referencias?.trim() || null,
-                foto_url: data.foto_url ?? null
+                foto_url: data.foto_url ?? null,
+                fotoTipoID: data.fotoTipoID ?? null,
+                mensajeAI: data.mensajeAI?.trim() || null
             })
 
         return responder(res, result)

@@ -220,7 +220,8 @@
             </tr>
             <tr v-else v-for="user in usuariosFiltrados" :key="user.id" class="fila-datos">
               <td class="font-bold">
-                {{ truncarTexto(user.nombre + ' ' + user.apellido_p + ' ' + user.apellido_m, 25) }}
+                {{ truncarTexto(user.nombre + ' ' + user.apellido_p + ' ' + (user.apellido_m ? user.apellido_m : ''),
+                25) }}
               </td>
               <td>{{ truncarTexto(user.correo, 25) }}</td>
               <td>
@@ -229,7 +230,7 @@
               <td>
                 <span class="badge badge-gris">{{
                   truncarTexto(user.departamentoNombre || '-', 25)
-                }}</span>
+                  }}</span>
               </td>
               <td>
                 <span :class="[
@@ -1100,16 +1101,18 @@ const ejecutarGuardadoUsuario = async (formData: any, esEdicion: boolean) => {
       p_apellido_p: formData.apellido_p,
       p_apellido_m: formData.apellido_m || null,
       p_correo: formData.correo,
-      p_contrasena: formData.contrasena || null,
+      p_contrasena: (formData.contrasena && formData.contrasena.trim().length > 0) ? formData.contrasena : null,
       p_tipousuario_id: parseInt(formData.tipousuario_id),
       p_departamento_id: formData.departamento_id ? parseInt(formData.departamento_id) : null,
       p_estado: formData.estadoadministrativo || 'Alta',
     })
 
     if (error && !data) {
+      // 👇 Protegemos con ? y con || '' para evitar que truene si error.message no existe
+      const mensajeError = error?.message || error?.error || ''
       const esDuplicado =
-        error.message.toLowerCase().includes('unique') ||
-        error.message.toLowerCase().includes('duplicate')
+        mensajeError.toLowerCase().includes('unique') ||
+        mensajeError.toLowerCase().includes('duplicate')
 
       if (esDuplicado) {
         Swal.fire(
@@ -1135,7 +1138,7 @@ const ejecutarGuardadoUsuario = async (formData: any, esEdicion: boolean) => {
     cerrarModalForm()
     await cargarDatos()
   } catch (error: any) {
-    console.error('Error al guardar usuariro: ', error)
+    console.error('Error al guardar usuario: ', error)
     Swal.fire('Error', 'Ocurrió un problema al guardar el usuario. ', 'error')
   }
 }

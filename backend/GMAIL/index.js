@@ -363,7 +363,7 @@ app.post('/enviar/correo/creacion-reporte', async (req, res) => {
         ['Referencias', referencias],
       ])}
       ${parrafo('Utiliza el siguiente enlace para <strong>consultar el estado actual de tu reporte</strong> con tu número de folio:')}
-      ${botonLink('Consultar estado de mi reporte', URL_BUSCADOR)}
+      ${botonLink('Consultar estado de mi reporte', URL_BUSCADOR + `/#/?folio=${folio}`)}
       ${parrafo('Gracias por utilizar <strong>GeoReporte</strong> y por contribuir al mejoramiento de nuestra ciudad. Te mantendremos informado(a) por este medio sobre cualquier cambio en el estado de tu reporte.')}
       ${parrafo('Atentamente,<br><strong>Ayuntamiento de Culiacán</strong>')}`
 
@@ -408,7 +408,7 @@ app.post('/enviar/correo/rechazo-reporte', async (req, res) => {
         ['Problemática', problema],
       ])}
       ${parrafo('Si consideras que se trata de un error o deseas aportar más información, puedes levantar un nuevo reporte desde la plataforma GeoReporte.')}
-      ${botonLink('Consultar mi reporte', URL_BUSCADOR)}
+      ${botonLink('Consultar mi reporte', URL_BUSCADOR + `/#/?folio=${folio}`)}
       ${parrafo('Agradecemos tu participación y tu interés en mejorar Culiacán.')}
       ${parrafo('Atentamente,<br><strong>Ayuntamiento de Culiacán</strong>')}`
 
@@ -464,7 +464,7 @@ app.post('/enviar/correo/finalizacion-reporte', async (req, res) => {
         ['Personal que atendió', jefe],
       ])}
       ${parrafo('Puedes consultar el estado de tu reporte en cualquier momento con tu número de folio:')}
-      ${botonLink('Consultar estado de mi reporte', URL_BUSCADOR)}
+      ${botonLink('Consultar estado de mi reporte', URL_BUSCADOR + `/#/?folio=${folio}`)}
       ${parrafo(aceptada ? 'Gracias por tu participación y por ayudarnos a construir una mejor ciudad.' : 'Te seguiremos informando por este medio sobre cualquier avance.')}
       ${parrafo('Atentamente,<br><strong>Ayuntamiento de Culiacán</strong>')}`
 
@@ -511,7 +511,7 @@ app.post('/enviar/correo/turnado-reporte', async (req, res) => {
         ['Administrador responsable', administrador],
       ])}
       ${parrafo('Este cambio no requiere ninguna acción de tu parte. Puedes consultar el estado de tu reporte con tu número de folio:')}
-      ${botonLink('Consultar estado de mi reporte', URL_BUSCADOR)}
+      ${botonLink('Consultar estado de mi reporte', URL_BUSCADOR + `/#/?folio=${folio}`)}
       ${parrafo('Gracias por tu paciencia y por utilizar <strong>GeoReporte</strong>. Te seguiremos informando por este medio.')}
       ${parrafo('Atentamente,<br><strong>Ayuntamiento de Culiacán</strong>')}`
 

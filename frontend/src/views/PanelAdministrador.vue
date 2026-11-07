@@ -92,6 +92,14 @@
           </select>
         </div>
 
+        <div class="filtro-grupo">
+          <select v-model="filtros.validacionAI">
+            <option value="">Todas las validaciones por IA</option>
+            <option value="0">Posiblemente Correcto</option>
+            <option value="1">Posiblemente Incorrecto</option>
+          </select>
+        </div>
+
         <!--<div class="filtro-grupo">
           <select
             name="estado"
@@ -293,6 +301,7 @@ const filtros = ref({
   estado: 'Pendiente',
   supervisor: '',
   jefe: '',
+  validacionAI: '',
 })
 
 // Al cambiar de supervisor, el jefe elegido ya no aplica
@@ -790,13 +799,19 @@ const reportesFiltrados = computed(() => {
         ? !r.detalle_reporte?.jefe_id
         : r.detalle_reporte?.jefe_id == filtros.value.jefe)
 
+    const coincideValidacionAI =
+      filtros.value.validacionAI === '' ||
+      (filtros.value.validacionAI === '0' && r.fotoTipoID === 0) ||
+      (filtros.value.validacionAI === '1' && r.fotoTipoID !== 0)
+
     return (
       coincideBusqueda &&
       coincideProblema &&
       coincideEstado &&
       coincideFecha &&
       coincideSupervisor &&
-      coincideJefe
+      coincideJefe &&
+      coincideValidacionAI
     )
   })
 })

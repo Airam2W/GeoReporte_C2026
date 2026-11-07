@@ -452,7 +452,7 @@ router.get(
     validarAutenticacion,
     validarAutorizacion([1]),
     manejarErrores(async (req, res) => {
-        const { valor } = req.query
+        const { valor, id } = req.query
 
         if (typeof valor !== 'string' || !valor.trim()) {
             return res.status(400).json({
@@ -481,10 +481,16 @@ router.get(
         }
 
         if (existingResult.data && existingResult.data.length > 0) {
-            return res.status(400).json({
-                data: null,
-                error: { message: 'El correo que estás ingresando ya existe.' }
-            })
+            // Validar que si el correo ya existe pero pertenece exactamente al mismo usuario (por id), no se considere duplicado.
+            const esMismoUsuario = id &&
+                existingResult.data.some(usuario => String(usuario.id) === String(id))
+
+            if (!esMismoUsuario) {
+                return res.status(400).json({
+                    data: null,
+                    error: { message: 'El correo que estás ingresando ya existe.' }
+                })
+            }
         }
 
         const result = await supabase

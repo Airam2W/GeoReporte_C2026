@@ -268,10 +268,10 @@ const guardar = async () => {
   if (!esValido) return
 
   // --- Validación de correo duplicado contra la base de datos ---
-  const { error: errorCheck } = await obtenerCorreoUnico(form.value.correo.trim())
+  const { error: errorCheck } = await obtenerCorreoUnico(form.value.correo.trim(), form.value.id)
 
   if (errorCheck) {
-    const mensajeBackend = errorCheck || 'Error al verificar el correo'
+    const mensajeBackend = errorCheck.message || 'Error al verificar el correo'
     errores.value.correo = mensajeBackend
     return
   }
