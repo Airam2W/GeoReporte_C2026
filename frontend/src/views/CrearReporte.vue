@@ -523,7 +523,10 @@ const abrirPanel = () => {
 const seleccionarFoto = async (e: Event) => {
   const submitBtn = document.getElementsByName('enviar')[0] as HTMLButtonElement
 
-  if (submitBtn) submitBtn.disabled = true
+  if (submitBtn){
+    submitBtn.disabled = true
+    submitBtn.textContent = 'Estamos validando tu evidencia, por favor espera...'
+  }
 
   const input = e.target as HTMLInputElement
 
@@ -537,13 +540,17 @@ const seleccionarFoto = async (e: Event) => {
       const resultado = await validarConAi(archivo)
       if (resultado === 2){
         submitBtn.disabled = false
+        submitBtn.textContent = 'Enviar Reporte'
       }
     } finally {
       procesandoAI.value = false
     }
   }
 
-  if (submitBtn) submitBtn.disabled = false
+  if (submitBtn){
+    submitBtn.disabled = false
+    submitBtn.textContent = 'Enviar Reporte'
+  }
 }
 
 const obtenerSlugDepartamento = (id: string | number): string => {
@@ -675,7 +682,10 @@ const enviarReporte = async () => {
 
   //Desactivar el botón de enviar mientras se procesa la solicitud
   const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
-  if (submitBtn) submitBtn.disabled = true
+  if (submitBtn){
+    submitBtn.textContent = 'Estamos validando tu evidencia, por favor espera...'
+    submitBtn.disabled = true
+  }
 
   // Generar el folio del reporte
   const depTresLetras = departamentos.value
@@ -786,7 +796,10 @@ const enviarReporte = async () => {
   } finally {
     enviando.value = false
     const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
-    if (submitBtn) submitBtn.disabled = false
+    if (submitBtn){
+      submitBtn.disabled = false
+      submitBtn.textContent = 'Enviar Reporte'
+    }
   }
 }
 

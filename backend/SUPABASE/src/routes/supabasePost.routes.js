@@ -25,7 +25,11 @@ const esTextoValido = (valor) => {
 }
 
 const esIdValido = (valor) => {
-    return Number.isInteger(valor) && valor > 0
+    // id -> number | string(numeros y letras y caracteres especiales)
+    return (
+        (typeof valor === 'number' && Number.isSafeInteger(valor) && valor > 0) ||
+        (typeof valor === 'string' && /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+$/.test(valor) && valor.trim().length > 0)
+    )
 }
 
 const correoRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -260,15 +264,20 @@ router.post(
             // Validación de contraseña.
             if (
                 p_contrasena !== null &&
+                p_contrasena !== '' && // 👈 Permitir cadena vacía para indicar "sin cambios"
                 (
                     typeof p_contrasena !== 'string' ||
                     p_contrasena.length < 6
                 )
             ) {
                 return res.status(400).json({
-                    error: 'La contraseña debe tener al menos 6 caracteres o ser null.'
+                    error: 'La contraseña debe tener al menos 6 caracteres o dejarse en blanco.'
                 })
             }
+
+            const contrasenaLimpia = (typeof p_contrasena === 'string' && p_contrasena.trim().length > 0) 
+                ? p_contrasena 
+                : null;
 
             // Validación de tipo de usuario.
             if (!esIdValido(p_tipousuario_id)) {
@@ -301,7 +310,7 @@ router.post(
                 p_apellido_p,
                 p_apellido_m,
                 p_correo: p_correo.trim(),
-                p_contrasena,
+                p_contrasena: contrasenaLimpia,
                 p_tipousuario_id,
                 p_departamento_id,
                 p_estado

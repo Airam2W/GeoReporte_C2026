@@ -30,10 +30,6 @@ export const validarAI = async (imageFile: File, depto: string): Promise<Respues
 
     const resultado: RespuestaAI = await response.json()
 
-    // Puedes evaluar el tipo de respuesta directamente aquí o en tu componente de Vue
-    console.log('Respuesta completa:', resultado)
-    console.log('Código de validación (type):', resultado.type)
-
     return resultado
 
   } catch (error) {

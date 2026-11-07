@@ -1,6 +1,8 @@
 // ================== VARIABLES GLOBALES ==================
 export const API_URL = import.meta.env.VITE_BACKEND_URL // URL del servidor en Render
 
+import router from '../router/index.ts'
+
 // Guardamos solo el estado del Token
 let usuarioToken: string | null = localStorage.getItem('userToken') || null;
 
@@ -34,7 +36,6 @@ export const esperarUsuario = (timeoutMs = 3000): Promise<string> => {
     }, intervalo);
   });
 }
-
 // Helper para llamadas — nunca lanza excepción, siempre devuelve { data, error }
 async function request(path: string, options: RequestInit = {}) {
   try {
@@ -62,12 +63,20 @@ async function request(path: string, options: RequestInit = {}) {
     });
     
     const result = await res.json();
+
+    // Si el token expiró o no es válido (HTTP 401), limpia el almacenamiento y expulsa al usuario
+    if (res.status === 401 || (result?.error && (result.error.message?.includes('expirado') || result.error.message?.includes('expired')))) {
+      localStorage.removeItem('userToken');
+      router.push('/');
+    }
+
     return result;
     
   } catch (err: any) {
     return { data: null, error: { message: err?.message || 'Error de red' } };
   }
 }
+
 
 
 // ================== GET ==================
@@ -141,8 +150,8 @@ export async function obtenerProblematicasExternasPorNombre(nombre: string) {//N
   })
 }
 
-export async function obtenerCorreoUnico(correo: string) {//NUEVO
-  return request(`/usuarios/correoUnico?${new URLSearchParams({ valor: String(correo) }).toString()}`, {
+export async function obtenerCorreoUnico(correo: string, id: number | string) {//NUEVO
+  return request(`/usuarios/correoUnico?${new URLSearchParams({ valor: String(correo), id: String(id) }).toString()}`, {
     method: 'GET',
   })
 }
