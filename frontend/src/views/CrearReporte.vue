@@ -679,12 +679,12 @@ const enviarReporte = async () => {
   }
 
   if( form.value.foto && !form.value.fotoTipoID){
-    errores.value.foto = 'La foto no recibio ID de validación, por favor intenta con otra foto'
+    errores.value.foto = 'La foto no pudo ser validada, por favor intentalo de nuevo'
     esValido = false
   }
 
   if( form.value.foto && !form.value.mensajeAI){
-    errores.value.foto = 'La foto no recibio mensaje de validación, por favor intenta con otra foto'
+    errores.value.foto = 'La foto no pudo ser validada, por favor intentalo de nuevo'
     esValido = false
   }
 

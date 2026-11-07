@@ -79,6 +79,15 @@
             </option>
           </select>
         </div>
+
+        <div class="filtro-grupo">
+          <select v-model="filtros.validacionAI">
+            <option value="">Todas las validaciones por IA</option>
+            <option value="0">Posiblemente Correcto</option>
+            <option value="1">Posiblemente Incorrecto</option>
+          </select>
+        </div>
+
       </section>
 
       <!-- Tabla de Datos -->
@@ -242,6 +251,7 @@ const filtros = ref({
   problema: '',
   estado: 'Pendiente de Asignación',
   jefe: '',
+  validacionAI: '',
 })
 
 const estados = [
@@ -552,7 +562,12 @@ const reportesFiltrados = computed(() => {
       coincideFecha = fechaFormateadaLocal === filtros.value.fecha
     }
 
-    return coincideBusqueda && coincideProblema && coincideEstado && coincideJefe && coincideFecha
+    const coincideValidacionAI =
+      filtros.value.validacionAI === '' ||
+      (filtros.value.validacionAI === '0' && r.fotoDepartamentoID === 0) ||
+      (filtros.value.validacionAI === '1' && r.fotoDepartamentoID !== 0)
+
+    return coincideBusqueda && coincideProblema && coincideEstado && coincideJefe && coincideFecha && coincideValidacionAI
   })
 })
 

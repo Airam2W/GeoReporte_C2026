@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { iniciarSesion, menuAbierto, menuRef } from '../logic/home'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import { obtenerReportePorFolio } from '../services/supabaseController'
@@ -9,6 +9,7 @@ import { onMounted, onUnmounted } from 'vue'
 
 
 const router = useRouter()
+const route = useRoute()
 
 // Variables reactivas para controlar el modal
 const modalVisible = ref(false)
@@ -38,6 +39,14 @@ const handleClickOutsideMenu = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutsideMenu)
+
+  // NUEVO: Detectar si la URL trae un folio por parámetro (ej. ?folio=XYZ)
+  const folioUrl = route.query.folio
+  if (folioUrl && typeof folioUrl === 'string') {
+    folioInput.value = folioUrl.trim()
+    // Disparamos la búsqueda de forma automática al cargar la página
+    ejecutarBusqueda()
+  }
 })
 
 onUnmounted(() => {
@@ -106,32 +115,16 @@ defineExpose({
     <header class="home-header">
       <div class="header-top">
         <div class="header-logos">
-          <img
-            src="../assets/logoAyuntamiento.svg"
-            alt="Logo Ayuntamiento de Culiacán"
-            class="logo-ayuntamiento"
-          />
+          <img src="../assets/logoAyuntamiento.svg" alt="Logo Ayuntamiento de Culiacán" class="logo-ayuntamiento" />
           <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo" />
         </div>
 
         <!-- Menú desplegable -->
         <nav class="menu" ref="menuRef">
-          <button
-            class="menu-btn"
-            @click="menuAbierto = !menuAbierto"
-            aria-haspopup="true"
-            :aria-expanded="menuAbierto"
-            aria-label="Abrir menú"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="22"
-              height="22"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            >
+          <button class="menu-btn" @click="menuAbierto = !menuAbierto" aria-haspopup="true" :aria-expanded="menuAbierto"
+            aria-label="Abrir menú">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round">
               <line x1="4" y1="7" x2="20" y2="7"></line>
               <line x1="4" y1="12" x2="20" y2="12"></line>
               <line x1="4" y1="17" x2="20" y2="17"></line>
@@ -140,14 +133,7 @@ defineExpose({
           <transition name="fade">
             <ul v-if="menuAbierto" class="menu-list" name="modal-IniciarSesion">
               <li @click="iniciarSesion">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="16"
-                  height="16"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
                   <polyline points="10 17 15 12 10 7"></polyline>
                   <line x1="15" y1="12" x2="3" y2="12"></line>
@@ -179,14 +165,7 @@ defineExpose({
       <section class="acciones-grid">
         <article class="accion-card">
           <div class="accion-icono accion-icono-verde">
-            <svg
-              viewBox="0 0 24 24"
-              width="28"
-              height="28"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 2v20M2 12h20"></path>
             </svg>
           </div>
@@ -197,14 +176,7 @@ defineExpose({
 
         <article class="accion-card">
           <div class="accion-icono accion-icono-cafe">
-            <svg
-              viewBox="0 0 24 24"
-              width="28"
-              height="28"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
@@ -221,34 +193,17 @@ defineExpose({
     </footer>
 
     <!-- ===== MODALES ===== -->
-    <ReporteDetalleModal
-      :visible="modalVisible"
-      :reporte="reporteEncontrado"
-      :esAdmin="false"
-      @close="modalVisible = false"
-      @buscar="abrirModalBusqueda"
-    />
+    <ReporteDetalleModal :visible="modalVisible" :reporte="reporteEncontrado" :esAdmin="false"
+      @close="modalVisible = false" @buscar="abrirModalBusqueda" />
 
     <transition name="fade">
       <div v-if="modalBusquedaVisible" class="modal-overlay">
         <div class="modal-busqueda">
           <div class="modal-busqueda-header">
             <h3>Consultar Reporte</h3>
-            <button
-              class="btn-cerrar-delgado"
-              @click="modalBusquedaVisible = false"
-              aria-label="Cerrar"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                width="22"
-                height="22"
-                stroke="currentColor"
-                stroke-width="1.5"
-                fill="none"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
+            <button class="btn-cerrar-delgado" @click="modalBusquedaVisible = false" aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="1.5" fill="none"
+                stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
@@ -258,12 +213,8 @@ defineExpose({
 
             <label class="label-folio">Folio del reporte</label>
             <div class="input-grupo">
-              <input
-                type="text"
-                v-model="folioInput"
-                placeholder="Ej. DEP-PRO-2026-..."
-                @keyup.enter="ejecutarBusqueda"
-              />
+              <input type="text" v-model="folioInput" placeholder="Ej. DEP-PRO-2026-..."
+                @keyup.enter="ejecutarBusqueda" />
               <button class="btn-buscar-verde" @click="ejecutarBusqueda">Buscar</button>
             </div>
             <p v-if="errorBusqueda" class="msg-error-modal">{{ errorBusqueda }}</p>
