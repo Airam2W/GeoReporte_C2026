@@ -3,7 +3,7 @@ import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { responder } from '../helpers/response.js'
 import jwt from 'jsonwebtoken'
-import { verificarTurnstile } from '../middleware/verificarTurnstile'
+import { verificarTurnstile } from '../middleware/verificarTurnstile.js'
 
 import {
     verificarTokenJWT,
