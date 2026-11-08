@@ -87,7 +87,7 @@
           <input type="text" :value="departamentos.find((d) => d.id === form.departamento_id)?.nombre || ''" disabled />
           <span v-if="errores.departamento_id" class="msg-error">{{
             errores.departamento_id
-            }}</span>
+          }}</span>
 
           <label>¿Qué problema quieres reportar?</label>
           <select name="problema" v-model="form.problema_id" :class="{ 'input-error': errores.problema_id }"
@@ -188,6 +188,19 @@
 
           <!--<span class="validacion-AI" disable></span>-->
 
+          <div class="terminos-check" :class="{ 'terminos-error': errores.terminos }">
+            <input id="aceptaTerminos" v-model="aceptaTerminos" type="checkbox" @change="errores.terminos = ''" />
+            <label for="aceptaTerminos">
+              He leído y acepto los
+              <button type="button" class="link-terminos" @click.prevent.stop="abrirTerminos">
+                Términos y Condiciones
+              </button>
+              y el Aviso de Privacidad de GeoReporte, y doy mi consentimiento para el tratamiento de mis
+              datos personales.
+            </label>
+          </div>
+          <span v-if="errores.terminos" class="msg-error">{{ errores.terminos }}</span>
+
           <button name="enviar" type="submit" class="btn-enviar" :disabled="enviando">
             {{ enviando ? 'Enviando...' : 'Enviar Reporte' }}
           </button>
@@ -197,6 +210,44 @@
     </section>
   </section>
   <div ref="turnstileContainer"></div>
+  <div v-if="mostrarModalTerminos" class="modal-overlay" @click.self="cerrarTerminos">
+    <div class="modal-terminos" role="dialog" aria-modal="true" aria-labelledby="terminos-titulo">
+      <header class="terminos-header">
+        <div>
+          <h3 id="terminos-titulo">Términos y Condiciones y Aviso de Privacidad</h3>
+          <p>H. Ayuntamiento de Culiacán · GeoReporte</p>
+        </div>
+        <button type="button" class="terminos-cerrar" aria-label="Cerrar" @click="cerrarTerminos">
+          ✕
+        </button>
+      </header>
+
+      <div class="terminos-body">
+        <p class="terminos-aviso">
+          Antes de enviar su reporte, le informamos que los datos que proporcione serán
+          recopilados, almacenados y analizados por el H. Ayuntamiento de Culiacán para las
+          finalidades descritas a continuación.
+        </p>
+
+        <section v-for="s in seccionesTerminos" :key="s.titulo" class="terminos-seccion">
+          <h4>{{ s.titulo }}</h4>
+          <p v-for="(p, i) in s.parrafos" :key="i">{{ p }}</p>
+          <ul v-if="s.lista">
+            <li v-for="(item, i) in s.lista" :key="i">{{ item }}</li>
+          </ul>
+        </section>
+
+        <p class="terminos-fecha">Última actualización: noviembre de 2026.</p>
+      </div>
+
+      <footer class="terminos-footer">
+        <button type="button" class="terminos-btn-sec" @click="cerrarTerminos">Cerrar</button>
+        <button type="button" class="terminos-btn-pri" @click="aceptarDesdeModal">
+          He leído y acepto
+        </button>
+      </footer>
+    </div>
+  </div>
   <div v-if="mostrarModalConsejos" class="modal-overlay" @click.self="mostrarModalConsejos = false">
     <div class="modal-consejos">
 
@@ -262,6 +313,103 @@ const errores = ref<Record<string, string>>({})
 
 const previewFoto = ref('')
 const mostrarModalConsejos = ref(false)
+
+const aceptaTerminos = ref(false)
+const mostrarModalTerminos = ref(false)
+
+const abrirTerminos = () => {
+  mostrarModalTerminos.value = true
+}
+
+const cerrarTerminos = () => {
+  mostrarModalTerminos.value = false
+}
+
+// Desde el modal: marca la casilla y cierra
+const aceptarDesdeModal = () => {
+  aceptaTerminos.value = true
+  errores.value.terminos = ''
+  mostrarModalTerminos.value = false
+}
+
+const seccionesTerminos = [
+  {
+    titulo: '1. Objeto y aceptación',
+    parrafos: [
+      'GeoReporte es la plataforma ciudadana del H. Ayuntamiento de Culiacán para el registro, canalización y seguimiento de reportes de servicios públicos municipales. Al marcar la casilla de aceptación y enviar su reporte, usted declara haber leído y comprendido estos Términos y Condiciones y el Aviso de Privacidad, y otorga su consentimiento libre e informado para el tratamiento de sus datos en los términos aquí descritos.',
+    ],
+  },
+  {
+    titulo: '2. Responsable del tratamiento',
+    parrafos: [
+      'El responsable del tratamiento de sus datos personales es el H. Ayuntamiento de Culiacán, Sinaloa, a través de GeoReporte, con domicilio en Avenida del Waja #404, Colonia Profe Ponga me Zien, C.P. 80000, Culiacán, Sinaloa.',
+    ],
+  },
+  {
+    titulo: '3. Datos que se recopilan',
+    parrafos: ['Al enviar un reporte, la plataforma recopila los siguientes datos:'],
+    lista: [
+      'Datos de contacto: teléfono (obligatorio), nombre y correo electrónico (opcionales).',
+      'Datos de ubicación: domicilio del incidente, coordenadas geográficas del punto seleccionado en el mapa y referencias que usted proporcione.',
+      'Contenido del reporte: departamento y problemática seleccionados, descripción del incidente y fotografía de evidencia.',
+      'Datos técnicos: información necesaria para la verificación de seguridad contra uso automatizado y fecha y hora del registro.',
+    ],
+  },
+  {
+    titulo: '4. Finalidades del tratamiento',
+    parrafos: ['Sus datos serán utilizados para las siguientes finalidades:'],
+    lista: [
+      'Registrar, canalizar y dar atención al reporte ciudadano por el área municipal competente.',
+      'Contactarle para aclaraciones, seguimiento y para notificarle por correo electrónico los cambios de estado de su reporte.',
+      'Analizar la información de manera estadística y geográfica para identificar zonas y problemáticas recurrentes, planear recursos y mejorar la prestación de los servicios públicos.',
+      'Validar y clasificar las fotografías mediante herramientas de inteligencia artificial, y mejorar la precisión de dicha clasificación.',
+      'Prevenir el uso indebido, los reportes falsos y el uso automatizado de la plataforma.',
+    ],
+  },
+  {
+    titulo: '5. Uso de inteligencia artificial',
+    parrafos: [
+      'La fotografía que usted adjunte será analizada por un sistema de inteligencia artificial para verificar que corresponda a la problemática y al departamento seleccionados. El resultado es un apoyo para el personal municipal y no sustituye su valoración. Las imágenes y las retroalimentaciones del personal podrán utilizarse para mejorar este sistema.',
+    ],
+  },
+  {
+    titulo: '6. Comunicación de datos',
+    parrafos: [
+      'Sus datos podrán ser compartidos con las dependencias municipales que intervengan en la atención del reporte y, cuando el asunto corresponda a otra instancia, con dependencias externas a las que el reporte sea turnado. Asimismo, intervienen proveedores tecnológicos que prestan servicios de almacenamiento, envío de correo electrónico, verificación de seguridad y mapas. Al seleccionar una ubicación, sus coordenadas se consultan en un servicio de mapas de terceros (OpenStreetMap) para obtener la dirección.',
+      'Fuera de estos supuestos, sus datos no serán transferidos, salvo requerimiento de autoridad competente debidamente fundado y motivado.',
+    ],
+  },
+  {
+    titulo: '7. Datos opcionales y contenido de la evidencia',
+    parrafos: [
+      'El nombre y el correo electrónico son opcionales; si no proporciona un correo, no recibirá notificaciones por ese medio. Le pedimos evitar que sus fotografías muestren rostros, placas u otros datos de terceras personas y no incluir información sensible en la descripción del reporte.',
+    ],
+  },
+  {
+    titulo: '8. Uso adecuado de la plataforma',
+    parrafos: [
+      'Usted se compromete a proporcionar información veraz y a utilizar GeoReporte únicamente para reportar problemáticas reales de servicios públicos. Los reportes falsos, ofensivos, duplicados de manera intencional o con contenido ilícito podrán ser rechazados sin responsabilidad para el Ayuntamiento, sin perjuicio de las acciones legales que correspondan. El envío de un reporte no garantiza un plazo determinado de atención.',
+    ],
+  },
+  {
+    titulo: '9. Conservación',
+    parrafos: [
+      'Sus datos se conservarán durante el tiempo necesario para atender el reporte y cumplir con las obligaciones legales y de archivo aplicables. La información estadística o disociada podrá conservarse por tiempo indefinido.',
+    ],
+  },
+  {
+    titulo: '10. Derechos de acceso, rectificación, cancelación y oposición',
+    parrafos: [
+      'Usted puede ejercer sus derechos de acceso, rectificación, cancelación y oposición (ARCO) ante la Unidad de Transparencia del Ayuntamiento de Culiacán, en [domicilio, correo electrónico y horario de atención], conforme a la normatividad aplicable en materia de protección de datos personales.',
+    ],
+  },
+  {
+    titulo: '11. Cambios a este documento',
+    parrafos: [
+      'El Ayuntamiento podrá modificar estos Términos y Condiciones. Las modificaciones se publicarán en esta plataforma y serán aplicables a los reportes enviados a partir de su publicación.',
+    ],
+  },
+]
 
 const inputCamara = ref<HTMLInputElement | null>(null)
 
@@ -668,6 +816,7 @@ const limpiarFormulario = () => {
   problemas.value = []
   errores.value = {}
   previewFoto.value = ''
+  aceptaTerminos.value = false
 
   if (inputCamara.value) inputCamara.value.value = ''
 
@@ -716,12 +865,17 @@ const enviarReporte = async () => {
   }
 
   if (form.value.foto && !form.value.fotoTipoID) {
-    errores.value.foto = 'La foto no pudo ser validada, por favor intentalo de nuevo'
+    errores.value.foto = 'La foto no pudo ser validada, por favor intentalo de nuevo.'
     esValido = false
   }
 
   if (form.value.foto && !form.value.mensajeAI) {
     errores.value.foto = 'La foto no pudo ser validada, por favor intentalo de nuevo'
+    esValido = false
+  }
+
+  if (!aceptaTerminos.value) {
+    errores.value.terminos = 'Debes aceptar los Términos y Condiciones para enviar tu reporte'
     esValido = false
   }
 
@@ -1153,5 +1307,133 @@ defineExpose({
   color: white;
 
   cursor: pointer;
+}
+
+.terminos-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0 6px;
+  padding: 12px;
+  background: #faf8f5;
+  border: 1px solid #e5e0da;
+  border-radius: 10px;
+}
+.terminos-check input[type='checkbox'] {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: #621132;
+  cursor: pointer;
+}
+.terminos-check label {
+  display: block;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #444;
+  cursor: pointer;
+}
+.terminos-error {
+  border-color: #e74c3c;
+  background: #fdf3f2;
+}
+
+/* Enlace azul subrayado */
+.link-terminos {
+  display: inline;
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  font-weight: 600;
+  color: #1a5fb4;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-terminos:hover { color: #0d3c7a; }
+
+/* Modal */
+.modal-terminos {
+  display: flex;
+  flex-direction: column;
+  width: 92%;
+  max-width: 640px;
+  max-height: 88vh;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+}
+.terminos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 20px;
+  background: #621132;
+  color: #fff;
+  border-bottom: 4px solid #d5c98a;
+}
+.terminos-header h3 { margin: 0 0 4px; font-size: 1.05rem; line-height: 1.3; }
+.terminos-header p { margin: 0; font-size: 0.8rem; opacity: 0.9; }
+.terminos-cerrar {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.85;
+}
+.terminos-cerrar:hover { opacity: 1; }
+
+.terminos-body {
+  flex: 1;
+  padding: 18px 20px;
+  overflow-y: auto;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #333;
+}
+.terminos-aviso {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  background: #f5e9ee;
+  border-left: 4px solid #621132;
+  border-radius: 6px;
+}
+.terminos-seccion { margin-bottom: 16px; }
+.terminos-seccion h4 { margin: 0 0 6px; font-size: 0.95rem; color: #621132; }
+.terminos-seccion p { margin: 0 0 8px; text-align: justify; }
+.terminos-seccion ul { margin: 0 0 8px; padding-left: 20px; }
+.terminos-seccion li { margin-bottom: 4px; }
+.terminos-fecha { margin: 8px 0 0; font-size: 0.8rem; color: #888; }
+
+.terminos-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  background: #fafafa;
+  border-top: 1px solid #eee;
+}
+.terminos-btn-sec,
+.terminos-btn-pri {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.terminos-btn-sec { background: #e0e0e0; color: #333; }
+.terminos-btn-pri { background: #621132; color: #fff; }
+.terminos-btn-pri:hover { background: #4a0e2c; }
+
+@media (max-width: 480px) {
+  .terminos-footer { flex-direction: column-reverse; }
+  .terminos-footer button { width: 100%; }
 }
 </style>
