@@ -3,6 +3,7 @@ import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { responder } from '../helpers/response.js'
 import jwt from 'jsonwebtoken'
+import { verificarTurnstile } from './middlewares/verificarTurnstile.js'
 
 import {
     verificarTokenJWT,
@@ -371,7 +372,7 @@ router.post(
 
 // (crearReporte)
 // Endpoint público: no requiere autenticación ni autorización.
-router.post('/reporte', async (req, res) => {
+router.post('/reporte', verificarTurnstile, async (req, res) => {
     try {
         const data = req.body
 

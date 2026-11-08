@@ -61,15 +61,15 @@
     <section v-if="panelAbierto" class="panel" :class="modoMapa ? 'panel--mapa' : 'panel--expandido'">
       <div v-if="modoMapa" class="franja-mapa">
         <button class="btn-cerrar-mapa" @click="cancelarModoMapa">✕</button>
-        <span class="handle-bar" @click="togglePanelAlto"></span>
+        <span class="handle-bar"></span>
         <h3 class="franja-titulo">Fija la dirección</h3>
         <p class="franja-sub">Mueve el mapa para seleccionar la ubicación</p>
         <button class="btn-confirmar-dir" @click="confirmarDireccion">Confirmar dirección</button>
       </div>
 
       <template v-else>
-        <header class="panel-header" @click.self="togglePanelAlto">
-          <div class="handle-bar" @click="togglePanelAlto"></div>
+        <header class="panel-header">
+          <div class="handle-bar"></div>
           <button class="btn-cerrar-panel" @click="abrirPanel">✕</button>
           <h2>Nuevo Reporte</h2>
         </header>
@@ -87,7 +87,7 @@
           <input type="text" :value="departamentos.find((d) => d.id === form.departamento_id)?.nombre || ''" disabled />
           <span v-if="errores.departamento_id" class="msg-error">{{
             errores.departamento_id
-          }}</span>
+            }}</span>
 
           <label>¿Qué problema quieres reportar?</label>
           <select name="problema" v-model="form.problema_id" :class="{ 'input-error': errores.problema_id }"
@@ -144,72 +144,39 @@
           <label>Foto</label>
           <div class="foto-wrapper">
             <div class="foto-actions">
-              <label
-                class="btn-foto"
-                :class="{
-                  'input-error': errores.foto,
-                  'btn-disabled': !form.departamento_id || procesandoAI
-                }"
-                for="inputFotoFile"
-              >
-                <Image/>
+              <label class="btn-foto" :class="{
+                'input-error': errores.foto,
+                'btn-disabled': !form.departamento_id || procesandoAI
+              }" for="inputFotoFile">
+                <Image />
 
                 <span>
                   {{ form.foto ? 'Cambiar foto' : 'Seleccionar foto' }}
                 </span>
               </label>
 
-              <label
-                class="btn-foto btn-foto-camara"
-                :class="{
-                  'btn-disabled': !form.departamento_id
-                    || procesandoAI
-                }"
-                for="inputFotoCamara"
-              >
-                <Camera/>
+              <label class="btn-foto btn-foto-camara" :class="{
+                'btn-disabled': !form.departamento_id
+                  || procesandoAI
+              }" for="inputFotoCamara">
+                <Camera />
                 <span>Tomar foto</span>
               </label>
 
             </div>
 
-            <input
-              id="inputFotoFile"
-              ref="inputFoto"
-              type="file"
-              accept="image/*"
-              class="input-foto-hidden"
-              :disabled="!form.departamento_id || enviando || procesandoAI"
-              @change="seleccionarFoto"
-            />
+            <input id="inputFotoFile" ref="inputFoto" type="file" accept="image/*" class="input-foto-hidden"
+              :disabled="!form.departamento_id || enviando || procesandoAI" @change="seleccionarFoto" />
 
-            <input
-              id="inputFotoCamara"
-              ref="inputCamara"
-              type="file"
-              accept="image/*"
-              capture="environment"
-              class="input-foto-hidden"
-              :disabled="!form.departamento_id || enviando || procesandoAI"
-              @change="seleccionarFoto"
-            />
+            <input id="inputFotoCamara" ref="inputCamara" type="file" accept="image/*" capture="environment"
+              class="input-foto-hidden" :disabled="!form.departamento_id || enviando || procesandoAI"
+              @change="seleccionarFoto" />
 
-            <div
-              v-if="previewFoto"
-              class="preview-foto-wrapper"
-            >
-              <img
-                :src="previewFoto"
-                alt="Vista previa"
-                class="preview-foto"
-              />
+            <div v-if="previewFoto" class="preview-foto-wrapper">
+              <img :src="previewFoto" alt="Vista previa" class="preview-foto" />
             </div>
 
-            <button
-              type="button"
-              class="link-evidencia"
-              @click="mostrarModalConsejos = true"
-            >
+            <button type="button" class="link-evidencia" @click="mostrarModalConsejos = true">
               Cómo tomar tu evidencia correctamente...
             </button>
 
@@ -229,11 +196,8 @@
       </template>
     </section>
   </section>
-  <div
-    v-if="mostrarModalConsejos"
-    class="modal-overlay"
-    @click.self="mostrarModalConsejos = false"
-  >
+  <div ref="turnstileContainer"></div>
+  <div v-if="mostrarModalConsejos" class="modal-overlay" @click.self="mostrarModalConsejos = false">
     <div class="modal-consejos">
 
       <h3>Consejos para tomar evidencia</h3>
@@ -254,11 +218,7 @@
         <li>Verifica la imagen antes de enviarla.</li>
       </ul>
 
-      <button
-        type="button"
-        class="btn-cerrar-consejos"
-        @click="mostrarModalConsejos = false"
-      >
+      <button type="button" class="btn-cerrar-consejos" @click="mostrarModalConsejos = false">
         Entendido
       </button>
 
@@ -304,6 +264,56 @@ const previewFoto = ref('')
 const mostrarModalConsejos = ref(false)
 
 const inputCamara = ref<HTMLInputElement | null>(null)
+
+// --- TURNSTILE ---
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string
+const turnstileContainer = ref<HTMLElement | null>(null)
+let widgetId: string | null = null
+let resolverToken: ((token: string) => void) | null = null
+let rechazarToken: ((error: Error) => void) | null = null
+
+// Espera a que cargue el script de Cloudflare
+const esperarTurnstile = (timeoutMs = 8000): Promise<any> =>
+  new Promise((resolve, reject) => {
+    const inicio = Date.now()
+    const revisar = () => {
+      const t = (window as any).turnstile
+      if (t) return resolve(t)
+      if (Date.now() - inicio > timeoutMs) {
+        return reject(new Error('No se pudo cargar la verificación de seguridad'))
+      }
+      setTimeout(revisar, 100)
+    }
+    revisar()
+  })
+
+// Genera un token nuevo bajo demanda (uno por cada envío)
+const obtenerTokenTurnstile = async (): Promise<string> => {
+  const turnstile = await esperarTurnstile()
+  if (widgetId === null) {
+    throw new Error('La verificación de seguridad no está lista. Recarga la página.')
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    const limite = setTimeout(() => {
+      resolverToken = null
+      rechazarToken = null
+      reject(new Error('La verificación de seguridad tardó demasiado. Intenta de nuevo.'))
+    }, 20000)
+
+    resolverToken = (token) => {
+      clearTimeout(limite)
+      resolve(token)
+    }
+    rechazarToken = (error) => {
+      clearTimeout(limite)
+      reject(error)
+    }
+
+    turnstile.reset(widgetId) // descarta cualquier token anterior
+    turnstile.execute(widgetId) // pide uno nuevo
+  })
+}
 
 // --- CATÁLOGOS SUPABASE ---
 const departamentos = ref<any[]>([])
@@ -369,7 +379,7 @@ const onDepartamentoSeleccionado = async () => {
 
   if (!error && data) {
     problemas.value = data
-  }else{
+  } else {
     // Manejo de error: mostrar alerta al usuario
     Swal.fire('Error', 'No se pudieron cargar los problemas para el departamento seleccionado. Intenta de nuevo más tarde.', 'error')
   }
@@ -404,6 +414,31 @@ onMounted(() => {
   }).addTo(map.value)
 
   setTimeout(() => map.value?.invalidateSize?.(), 100)
+
+  esperarTurnstile()
+    .then((turnstile) => {
+      if (!turnstileContainer.value) return
+      widgetId = turnstile.render(turnstileContainer.value, {
+        sitekey: TURNSTILE_SITE_KEY,
+        execution: 'execute', // no genera token hasta que se pida
+        callback: (token: string) => {
+          resolverToken?.(token)
+          resolverToken = null
+          rechazarToken = null
+        },
+        'error-callback': () => {
+          rechazarToken?.(new Error('Falló la verificación de seguridad. Intenta de nuevo.'))
+          resolverToken = null
+          rechazarToken = null
+        },
+        'timeout-callback': () => {
+          rechazarToken?.(new Error('La verificación de seguridad expiró. Intenta de nuevo.'))
+          resolverToken = null
+          rechazarToken = null
+        },
+      })
+    })
+    .catch((e) => console.error(e))
 })
 
 onUnmounted(() => {
@@ -412,6 +447,8 @@ onUnmounted(() => {
   document.body.style.overflow = ''
   document.body.style.height = ''
   window.removeEventListener('resize', onResize)
+
+  if (widgetId !== null) (window as any).turnstile?.remove(widgetId)
 })
 
 const obtenerDireccionCentro = async () => {
@@ -523,7 +560,7 @@ const abrirPanel = () => {
 const seleccionarFoto = async (e: Event) => {
   const submitBtn = document.getElementsByName('enviar')[0] as HTMLButtonElement
 
-  if (submitBtn){
+  if (submitBtn) {
     submitBtn.disabled = true
     submitBtn.textContent = 'Estamos validando tu evidencia, por favor espera...'
   }
@@ -538,7 +575,7 @@ const seleccionarFoto = async (e: Event) => {
     procesandoAI.value = true
     try {
       const resultado = await validarConAi(archivo)
-      if (resultado === 2){
+      if (resultado === 2) {
         submitBtn.disabled = false
         submitBtn.textContent = 'Enviar Reporte'
       }
@@ -547,7 +584,7 @@ const seleccionarFoto = async (e: Event) => {
     }
   }
 
-  if (submitBtn){
+  if (submitBtn) {
     submitBtn.disabled = false
     submitBtn.textContent = 'Enviar Reporte'
   }
@@ -589,26 +626,26 @@ const validarConAi = async (file: File) => {
   const resultadoAI = await validarAI(file, departamentoSlug)
 
   //if (spanValidacionAI) {
-    if (resultadoAI) {
-      // Guardar los datos de la IA en nuestro state del formulario
-      form.value.fotoTipoID = resultadoAI.type;
+  if (resultadoAI) {
+    // Guardar los datos de la IA en nuestro state del formulario
+    form.value.fotoTipoID = resultadoAI.type;
 
-      if (resultadoAI.type === 2){
-        form.value.mensajeAI = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta';
-      } else{
-        form.value.mensajeAI = resultadoAI.data.message;
-      }
-      //spanValidacionAI.textContent = `${resultadoAI.data.message}`
-      //spanValidacionAI.style.color = resultadoAI.type === 0 ? '#008998' : '#FF0000'
-      return resultadoAI.type
-
-    } else {
-      form.value.fotoTipoID = 2; // 2 = Error según tu interfaz
+    if (resultadoAI.type === 2) {
       form.value.mensajeAI = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta';
-      return 2
-      //spanValidacionAI.textContent = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta'
-      //spanValidacionAI.style.color = '#FF0000'
+    } else {
+      form.value.mensajeAI = resultadoAI.data.message;
     }
+    //spanValidacionAI.textContent = `${resultadoAI.data.message}`
+    //spanValidacionAI.style.color = resultadoAI.type === 0 ? '#008998' : '#FF0000'
+    return resultadoAI.type
+
+  } else {
+    form.value.fotoTipoID = 2; // 2 = Error según tu interfaz
+    form.value.mensajeAI = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta';
+    return 2
+    //spanValidacionAI.textContent = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta'
+    //spanValidacionAI.style.color = '#FF0000'
+  }
   //}
 }
 
@@ -678,12 +715,12 @@ const enviarReporte = async () => {
     esValido = false
   }
 
-  if( form.value.foto && !form.value.fotoTipoID){
+  if (form.value.foto && !form.value.fotoTipoID) {
     errores.value.foto = 'La foto no pudo ser validada, por favor intentalo de nuevo'
     esValido = false
   }
 
-  if( form.value.foto && !form.value.mensajeAI){
+  if (form.value.foto && !form.value.mensajeAI) {
     errores.value.foto = 'La foto no pudo ser validada, por favor intentalo de nuevo'
     esValido = false
   }
@@ -692,7 +729,7 @@ const enviarReporte = async () => {
 
   //Desactivar el botón de enviar mientras se procesa la solicitud
   const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
-  if (submitBtn){
+  if (submitBtn) {
     submitBtn.textContent = 'Estamos validando tu evidencia, por favor espera...'
     submitBtn.disabled = true
   }
@@ -720,6 +757,9 @@ const enviarReporte = async () => {
   enviando.value = true
 
   try {
+    // 0. Token de seguridad (se valida en el backend al crear el reporte)
+    const turnstileToken = await obtenerTokenTurnstile()
+
     let fotoUrlFinal = ''
 
     // 1. Subir la foto a Supabase Storage
@@ -756,6 +796,7 @@ const enviarReporte = async () => {
       foto_url: fotoUrlFinal,
       fotoTipoID: form.value.fotoTipoID,
       mensajeAI: form.value.mensajeAI,
+      turnstileToken,
     })
 
     // 3. Insertar los datos en la tabla 'reportesExistentes'
@@ -806,7 +847,7 @@ const enviarReporte = async () => {
   } finally {
     enviando.value = false
     const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
-    if (submitBtn){
+    if (submitBtn) {
       submitBtn.disabled = false
       submitBtn.textContent = 'Enviar Reporte'
     }
@@ -993,7 +1034,6 @@ defineExpose({
 </script>
 
 <style scoped>
-
 .foto-actions {
   display: flex;
   gap: 12px;
@@ -1065,7 +1105,7 @@ defineExpose({
   position: fixed;
   inset: 0;
 
-  background: rgba(0,0,0,.55);
+  background: rgba(0, 0, 0, .55);
 
   display: flex;
   align-items: center;
@@ -1114,5 +1154,4 @@ defineExpose({
 
   cursor: pointer;
 }
-
 </style>
