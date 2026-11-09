@@ -150,7 +150,7 @@
               <td v-if="esEnProceso">{{ truncarTexto(reporte.jefe, 25) }}</td>
               <td class="acciones-celda">
                 <button class="btn-accion btn-pdf" title="Descargar PDF" @click="descargarPDF(reporte)">
-                  <DownloadIcon/>
+                  <DownloadIcon />
                 </button>
                 <button class="btn-accion btn-ver" title="Ver detalle" @click="abrirModalVer(reporte)">
                   <InfoCircle color="var(--texto-gris)" />
@@ -175,12 +175,12 @@
                   reporte.estado === 'Devuelto'
                 " class="btn-accion btn-devolver" title="Devolver a Pendiente"
                   @click="devolverReporte(reporte.folio, 'Pendiente')">
-                  <ArrowUTurnUpLeft color="green"/>
+                  <ArrowUTurnUpLeft color="green" />
                 </button>
 
                 <button v-if="reporte.estado === 'Pendiente' || reporte.estado === 'Devuelto'"
                   class="btn-accion btn-rechazar" title="Rechazar reporte" @click="rechazarReporte(reporte.folio)">
-                  <Times color="red"/>
+                  <Times color="red" />
                 </button>
               </td>
             </tr>
@@ -228,6 +228,7 @@ import {
   obtenerTodosDepartamentosInternos,
   obtenerTodosDepartamentosExternos,
   obtenerTodosJefes,
+  agregarHistorial,
 } from '../services/supabaseController'
 import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import Swal from 'sweetalert2'
@@ -823,9 +824,20 @@ const reportesFiltrados = computed(() => {
 })
 
 // Lógica de Modales y Acciones
-const abrirModalVer = (reporte: any) => {
+const abrirModalVer = async (reporte: any) => {
   reporteActivo.value = reporte
   modalVisible.value = true
+
+  const { error: errorHistorialGeneral } = await agregarHistorial({
+    accion: 'Ver',
+    entidad: 'Reporte',
+    detalles: `Visualizó el reporte con folio ${reporte.folio}`,
+  })
+
+  if (errorHistorialGeneral) {
+    // No se hace return: la acción principal ya se completó
+    console.error('Error al guardar en el historial:', errorHistorialGeneral)
+  }
 }
 
 const cerrarModalVer = () => {
@@ -1085,12 +1097,26 @@ const irACrearReporte = () => {
   router.push('/reporte')
 }
 
-const cerrarSesion = () => {
-  // 1. Eliminamos el token de autenticación
-  localStorage.removeItem('userToken')
+const cerrarSesion = async () => {
+  try {
+    // 0. Registramos la acción en el historial
+    const { error: errorHistorialGeneral } = await agregarHistorial({
+      accion: 'Salir',
+      entidad: 'Sistema',
+      detalles: `El usuario ha salido del sistema.`,
+    })
+    if (errorHistorialGeneral) {
+      console.error('Error:', errorHistorialGeneral)
+    }
+  } catch (error) {
+    console.error('Error al registrar la acción de salir en el historial:', error)
+  } finally {
+    // 1. Eliminamos el token de autenticación
+    localStorage.removeItem('userToken')
 
-  // 2. Redirigimos al usuario a la pantalla de inicio o login
-  router.push('/')
+    // 2. Redirigimos al usuario a la pantalla de inicio o login
+    router.push('/')
+  }
 }
 
 

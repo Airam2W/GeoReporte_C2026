@@ -1,5 +1,5 @@
 
-import { Router } from 'express'
+import e, { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { responder } from '../helpers/response.js'
 import jwt from 'jsonwebtoken'
@@ -9,6 +9,8 @@ import {
     validarAutorizacion
 } from '../middleware/auth.js'
 import { registrarHistorial } from '../utils/registrarHistorial.js'
+import { obtenerUsuario } from '../utils/obtenerUsuario.js'
+import { estadoIDAAccion, estadoIDADetalle } from '../utils/convertirATexto.js'
 
 const router = Router()
 
@@ -80,6 +82,17 @@ router.put(
                 })
             }
 
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            const accion = estadoIDAAccion(estado_id)
+            const detalle = estadoIDADetalle(estado_id)
+            
+            await registrarHistorial(correoUsuarioString, {
+                accion: accion,
+                entidad: 'Reporte',
+                detalles: `Actualizó el estado del reporte con folio ${folio} a ${detalle}.`
+            })
+
             responder(res, result)
         } catch (error) {
             console.error('Error al actualizar el estado del reporte:', error)
@@ -142,6 +155,14 @@ router.put(
                 })
             }
 
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Poner en Proceso',
+                entidad: 'Reporte',
+                detalles: `Actualizó el estado del reporte con folio ${folio} a "en Proceso" y estableciendo la fecha de inicio a ${fecha_inicio}.`
+            })
+
             responder(res, result)
         } catch (error) {
             console.error('Error al actualizar el reporte con jefe y fecha de inicio:', error)
@@ -198,6 +219,18 @@ router.put(
                 })
             }
 
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            const accion = estadoIDAAccion(estado_id)
+            const detalle = estadoIDADetalle(estado_id)
+            const mensaje = estado_id === 4 ? `Actualizó el estado del reporte con folio ${folio} a ${detalle} y estableciendo la fecha de cierre a ${fecha_cierre}.` :
+                `Actualizó el estado del reporte con folio ${folio} a ${detalle}.`
+            await registrarHistorial(correoUsuarioString, {
+                accion: accion,
+                entidad: 'Reporte',
+                detalles: mensaje
+            })
+
             responder(res, result)
         } catch (error) {
             console.error('Error al actualizar la fecha de cierre del reporte:', error)
@@ -247,6 +280,16 @@ router.put(
                     error: 'No se encontró el reporte solicitado.'
                 })
             }
+
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            const accion = estadoIDAAccion(estado_id)
+            const detalle = estadoIDADetalle(estado_id)
+            await registrarHistorial(correoUsuarioString, {
+                accion: accion,
+                entidad: 'Reporte',
+                detalles: `Actualizó el estado del reporte con folio ${folio} a ${detalle} y quitando al supervisor asignado.`
+            })
 
             responder(res, result)
         } catch (error) {
@@ -298,6 +341,15 @@ router.put(
                 })
             }
 
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            const accion = estado === 'Alta' ? 'Alta' : 'Baja'
+            await registrarHistorial(correoUsuarioString, {
+                accion: accion,
+                entidad: 'Problemática',
+                detalles: `Actualizó el estado de la problemática interna a ${accion}.`
+            })
+
             responder(res, result)
         } catch (error) {
             console.error('Error al actualizar el estado del problema interno:', error)
@@ -347,6 +399,15 @@ router.put(
                     error: 'No se encontró el problema externo solicitado.'
                 })
             }
+
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            const accion = estado === 'Alta' ? 'Alta' : 'Baja'
+            await registrarHistorial(correoUsuarioString, {
+                accion: accion,
+                entidad: 'Problemática',
+                detalles: `Actualizó el estado de la problemática externa a ${accion}.`
+            })
 
             responder(res, result)
         } catch (error) {
@@ -403,6 +464,16 @@ router.put(
                     error: 'No se encontró el reporte solicitado.'
                 })
             }
+
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            const accion = estadoIDAAccion(estado_id)
+            const detalle = estadoIDADetalle(estado_id)
+            await registrarHistorial(correoUsuarioString, {
+                accion: accion,
+                entidad: 'Reporte',
+                detalles: `Actualizó el estado del reporte con folio ${folio} a ${detalle} y asignando a un supervisor.`
+            })
 
             responder(res, result)
         } catch (error) {
@@ -466,6 +537,14 @@ router.put(
                     error: 'No se encontró el reporte solicitado.'
                 })
             }
+
+            const correoUsuarioString = obtenerUsuario(req)
+
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Turnar',
+                entidad: 'Reporte',
+                detalles: `Turno el reporte con folio ${folio} a un departamento interno.`
+            })
 
             responder(res, result)
         } catch (error) {
@@ -534,6 +613,14 @@ router.put(
                 })
             }
 
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Turnar',
+                entidad: 'Reporte',
+                detalles: `Turno el reporte con folio ${folio} a un departamento externo.`
+            })
+
             responder(res, result)
         } catch (error) {
             console.error('Error al cambiar el reporte a departamento externo:', error)
@@ -586,6 +673,7 @@ router.put(
                 .select()
                 .maybeSingle()
 
+
             if (result.error) {
                 return responder(res, result)
             }
@@ -595,6 +683,14 @@ router.put(
                     error: 'No se encontró el problema interno solicitado.'
                 })
             }
+
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Editar',
+                entidad: 'Problemática',
+                detalles: `Editó una problemática interna.`
+            })
 
             responder(res, result)
         } catch (error) {
@@ -658,6 +754,14 @@ router.put(
                 })
             }
 
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Editar',
+                entidad: 'Problemática',
+                detalles: `Editó una problemática externa.`
+            })
+
             responder(res, result)
         } catch (error) {
             console.error('Error al actualizar el problema externo:', error)
@@ -714,6 +818,14 @@ router.put(
                 })
             }
 
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Editar',
+                entidad: 'Departamento',
+                detalles: `Editó un departamento interno.`
+            })
+
             responder(res, result)
         } catch (error) {
             console.error('Error al actualizar el departamento interno:', error)
@@ -763,6 +875,14 @@ router.put(
                     error: 'No se encontró el departamento externo solicitado.'
                 })
             }
+
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Editar',
+                entidad: 'Departamento Externo',
+                detalles: `Editó un departamento externo.`
+            })
 
             responder(res, result)
         } catch (error) {
@@ -814,6 +934,15 @@ router.put(
                 })
             }
 
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            const accion = estado === 'Alta' ? 'Alta' : 'Baja'
+            await registrarHistorial(correoUsuarioString, {
+                accion: accion,
+                entidad: 'Departamento',
+                detalles: `Actualizó el estado del departamento interno a ${accion}.`
+            })
+
             responder(res, result)
         } catch (error) {
             console.error('Error al actualizar el estado del departamento interno:', error)
@@ -863,6 +992,15 @@ router.put(
                     error: 'No se encontró el departamento externo solicitado.'
                 })
             }
+
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            const accion = estado === 'Alta' ? 'Alta' : 'Baja'
+            await registrarHistorial(correoUsuarioString, {
+                accion: accion,
+                entidad: 'Departamento Externo',
+                detalles: `Actualizó el estado del departamento externo a ${accion}.`
+            })
 
             responder(res, result)
         } catch (error) {
@@ -914,6 +1052,15 @@ router.put(
                 })
             }
 
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            const accion = estadoadministrativo === 'Alta' ? 'Alta' : 'Baja'
+            await registrarHistorial(correoUsuarioString, {
+                accion: accion,
+                entidad: 'Usuario',
+                detalles: `Actualizó el estado administrativo del usuario a ${accion}.`
+            })
+
             responder(res, result)
         } catch (error) {
             console.error('Error al actualizar el estado del usuario:', error)
@@ -964,6 +1111,14 @@ router.put(
                 })
             }
 
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Baja',
+                entidad: 'Usuario',
+                detalles: `Actualizó la fecha de baja del usuario a ${fechabaja}.`
+            })
+
             responder(res, result)
         } catch (error) {
             console.error('Error al actualizar la fecha de baja del usuario:', error)
@@ -1013,6 +1168,14 @@ router.put(
                     error: 'No se encontró el usuario solicitado.'
                 })
             }
+
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Alta',
+                entidad: 'Usuario',
+                detalles: `Actualizó la fecha de alta del usuario a ${fechaalta}.`
+            })
 
             responder(res, result)
         } catch (error) {
@@ -1068,6 +1231,14 @@ router.put(
                     error: 'No se encontró el reporte solicitado.'
                 })
             }
+
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Retroalimentar',
+                entidad: 'Reporte',
+                detalles: `Retroalimentó la foto del reporte con folio ${folio}.`
+            })
 
             responder(res, result)
         } catch (error) {

@@ -949,9 +949,20 @@ const departamentosFiltrados = computed(() => {
   })
 })
 
-const abrirModalVerProblematica = (prob: any) => {
+const abrirModalVerProblematica = async (prob: any) => {
   problematicaActivo.value = prob
   modalProblematicaDetalleVisible.value = true
+
+  const { error: errorHistorialGeneral } = await agregarHistorial({
+    accion: 'Ver',
+    entidad: 'Problematica',
+    detalles: `Visualizó la problemática "${prob.nombre}" del departamento "${prob.departamentoNombre}".`,
+  })
+
+  if (errorHistorialGeneral) {
+    // No se hace return: la acción principal ya se completó
+    console.error('Error al guardar en el historial:', errorHistorialGeneral)
+  }
 }
 
 const cerrarModalVerProblematica = () => {
@@ -1079,9 +1090,20 @@ const cambiarEstadoProblema = async (prob: any) => {
   })
 }
 
-const abrirModalVerDepto = (depto: any) => {
+const abrirModalVerDepto = async (depto: any) => {
   departamentoActivo.value = depto
   modalDeptoDetalleVisible.value = true
+
+  const { error: errorHistorialGeneral } = await agregarHistorial({
+    accion: 'Ver',
+    entidad: 'Departamento',
+    detalles: `Visualizó el departamento "${depto.nombre}".`,
+  })
+
+  if (errorHistorialGeneral) {
+    // No se hace return: la acción principal ya se completó
+    console.error('Error al guardar en el historial:', errorHistorialGeneral)
+  }
 }
 
 const cerrarModalVerDepto = () => {
@@ -1208,9 +1230,20 @@ const cambiarEstadoDepartamentoEnBD = async (depto: any) => {
   cerrarModalVerDepto()
 }
 
-const abrirModalVer = (user: any) => {
+const abrirModalVer = async (user: any) => {
   usuarioActivo.value = user
   modalVisible.value = true
+
+  const { error: errorHistorialGeneral } = await agregarHistorial({
+    accion: 'Ver',
+    entidad: 'Usuario',
+    detalles: `Visualizó el perfil de ${user.nombre} ${user.apellido_p} ${user.apellido_m || ''}.`,
+  })
+
+  if (errorHistorialGeneral) {
+    // No se hace return: la acción principal ya se completó
+    console.error('Error al guardar en el historial:', errorHistorialGeneral)
+  }
 }
 
 const cerrarModalVer = () => {

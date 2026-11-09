@@ -10,6 +10,7 @@ import {
     validarAutenticacion,
     validarAutorizacion
 } from '../middleware/auth.js'
+import { obtenerUsuario } from '../utils/obtenerUsuario.js'
 
 const router = Router()
 
@@ -89,6 +90,14 @@ router.delete(
                 })
             }
 
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Eliminar',
+                entidad: 'Problemática',
+                detalles: `Se eliminó la problemática interna con ID ${id}.`
+            })
+
             return responder(res, result)
 
         } catch (error) {
@@ -162,6 +171,14 @@ router.delete(
                     }
                 })
             }
+
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Eliminar',
+                entidad: 'Problemática',
+                detalles: `Se eliminó la problemática externa con ID ${id}.`
+            })
 
             return responder(res, result)
 
@@ -237,6 +254,14 @@ router.delete(
                 })
             }
 
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Eliminar',
+                entidad: 'Departamento',
+                detalles: `Se eliminó el departamento interno con ID ${id}.`
+            })            
+
             return responder(res, result)
 
         } catch (error) {
@@ -310,6 +335,14 @@ router.delete(
                     }
                 })
             }
+
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Eliminar',
+                entidad: 'Departamento',
+                detalles: `Se eliminó el departamento externo con ID ${id}.`
+            })
 
             return responder(res, result)
 

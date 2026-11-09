@@ -169,6 +169,7 @@ import {
   obtenerReportesPorDepartamentoExternoID,
   actualizarEstadoReporte,
   obtenerDepartamentosExternosPorID,
+  agregarHistorial,
 } from '../services/supabaseController'
 import { truncarTexto } from '../logic/panelAdministrador'
 import { generarPdfReporte } from '../logic/reportePdf'
@@ -446,9 +447,20 @@ const reportesFiltrados = computed(() => {
 })
 
 // Lógica de Modales y Acciones
-const abrirModalVer = (reporte: any) => {
+const abrirModalVer = async (reporte: any) => {
   reporteActivo.value = reporte
   modalVisible.value = true
+
+  const { error: errorHistorialGeneral } = await agregarHistorial({
+    accion: 'Ver',
+    entidad: 'Reporte',
+    detalles: `Visualizó el detalle del reporte con folio ${reporte.folio}.`,
+  })
+
+  if (errorHistorialGeneral) {
+    // No se hace return: la acción principal ya se completó
+    console.error('Error al guardar en el historial:', errorHistorialGeneral)
+  }
 }
 
 const cerrarModalVer = () => {
@@ -579,14 +591,14 @@ const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Turna
             confirmButtonColor: '#1a6b2f',
           })
         } else {
-          try{
-              Swal.fire({
+          try {
+            Swal.fire({
               title: '¡Actualizado!',
               text: `El reporte ahora está en "${nuevoEstado}".`,
               icon: 'success',
               confirmButtonColor: '#1a6b2f',
             })
-          } catch(e) {
+          } catch (e) {
             console.error('Error al actualizar estado del reporte:', e)
             Swal.fire({
               title: 'Error',
@@ -613,12 +625,26 @@ const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Turna
   }
 }
 
-const cerrarSesion = () => {
-  // 1. Eliminamos el token de autenticación
-  localStorage.removeItem('userToken')
+const cerrarSesion = async () => {
+  try {
+    // 0. Registramos la acción en el historial
+    const { error: errorHistorialGeneral } = await agregarHistorial({
+      accion: 'Salir',
+      entidad: 'Sistema',
+      detalles: `El usuario ha salido del sistema.`,
+    })
+    if (errorHistorialGeneral) {
+      console.error('Error:', errorHistorialGeneral)
+    }
+  } catch (error) {
+    console.error('Error al registrar la acción de salir en el historial:', error)
+  } finally {
+    // 1. Eliminamos el token de autenticación
+    localStorage.removeItem('userToken')
 
-  // 2. Redirigimos al usuario a la pantalla de inicio o login
-  router.push('/')
+    // 2. Redirigimos al usuario a la pantalla de inicio o login
+    router.push('/')
+  }
 }
 
 

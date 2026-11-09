@@ -5,6 +5,8 @@ import { responder } from '../helpers/response.js'
 import jwt from 'jsonwebtoken'
 import { verificarTurnstile } from '../middleware/verificarTurnstile.js'
 import { registrarHistorial } from '../utils/registrarHistorial.js'
+import { obtenerUsuario } from '../utils/obtenerUsuario.js'
+import { estadoIDAAccion, estadoIDADetalle, categoriaHistorialIDAAccion, categoriaHistorialIDADetalle} from '../utils/convertirATexto.js'
 
 import {
     verificarTokenJWT,
@@ -369,6 +371,14 @@ router.post(
                 p_estado
             })
 
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            await registrarHistorial(correoUsuario, {
+                accion: 'Actualizar',
+                entidad: 'Usuario',
+                detalles: `Actualizo el usuario ${p_nombre} ${p_apellido_p}.`
+            })
+
             return responder(res, result)
 
         } catch (error) {
@@ -638,6 +648,16 @@ router.post(
                     notas: data.notas.trim()
                 })
 
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            const accion = categoriaHistorialIDAAccion(data.categoria_historial_id)
+            const detalle = categoriaHistorialIDADetalle(data.categoria_historial_id)
+            await registrarHistorial(correoUsuario, {
+                accion: accion,
+                entidad: 'Reporte',
+                detalles: `Se actualizó el historial del reporte con folio ${folio} a ${detalle}.`
+            })
+
             return responder(res, result)
 
         } catch (error) {
@@ -725,6 +745,16 @@ router.post(
                     foto_url: data.foto_url.trim()
                 })
 
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            const accion = categoriaHistorialIDAAccion(data.categoria_historial_id)
+            const detalle = categoriaHistorialIDADetalle(data.categoria_historial_id)
+            await registrarHistorial(correoUsuario, {
+                accion: accion,
+                entidad: 'Reporte',
+                detalles: `Se actualizó el historial del reporte con folio ${folio} y fotografía a ${detalle}.`
+            })
+
             return responder(res, result)
 
         } catch (error) {
@@ -798,6 +828,14 @@ router.post(
                     nombreamigable: nombreamigable.trim(),
                     departamento_id,
                     estado
+                })
+
+                // Si todo es correcto, lo agregamos al historial del sistema
+                const correoUsuario = obtenerUsuario(req)
+                await registrarHistorial(correoUsuario, {
+                    accion: 'Crear',
+                    entidad: 'Problemática',
+                    detalles: `Se creó una nueva problemática interna: ${nombre}.`
                 })
 
             return responder(res, result)
@@ -875,6 +913,14 @@ router.post(
                     estado
                 })
 
+                // Si todo es correcto, lo agregamos al historial del sistema
+                const correoUsuario = obtenerUsuario(req)
+                await registrarHistorial(correoUsuario, {
+                    accion: 'Crear',
+                    entidad: 'Problemática',
+                    detalles: `Se creó una nueva problemática externa: ${nombre}.`
+                })
+
             return responder(res, result)
 
         } catch (error) {
@@ -941,6 +987,14 @@ router.post(
                     estado
                 })
 
+                // Si todo es correcto, lo agregamos al historial del sistema
+                const correoUsuario = obtenerUsuario(req)
+                await registrarHistorial(correoUsuario, {
+                    accion: 'Crear',
+                    entidad: 'Departamento',
+                    detalles: `Se creó un nuevo departamento interno: ${nombre}.`
+                })
+
             return responder(res, result)
 
         } catch (error) {
@@ -996,6 +1050,14 @@ router.post(
                 .insert({
                     departamento: departamento.trim(),
                     estado
+                })
+
+                // Si todo es correcto, lo agregamos al historial del sistema
+                const correoUsuario = obtenerUsuario(req)
+                await registrarHistorial(correoUsuario, {
+                    accion: 'Crear',
+                    entidad: 'Departamento',
+                    detalles: `Se creó un nuevo departamento externo: ${departamento}.`
                 })
 
             return responder(res, result)
