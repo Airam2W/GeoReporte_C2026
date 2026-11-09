@@ -957,8 +957,8 @@ router.get(
     verificarTokenJWT,
     validarAutenticacion,
     validarAutorizacion([1]),
-    async (req, res) => {
-        try {
+    manejarErrores(
+        async (req, res) => {
             const pagina = Math.max(1, parseInt(req.query.pagina) || 1)
             const limite = Math.min(100, Math.max(1, parseInt(req.query.limite) || 25))
             const desde = (pagina - 1) * limite
@@ -1004,10 +1004,8 @@ router.get(
                 data: { registros: data, total: count ?? 0 },
                 error: null
             })
-        } catch (error) {
-            return responderErrorInterno(res, 'Error interno al obtener el historial.', error)
         }
-    }
+    )
 )
 
 export default router

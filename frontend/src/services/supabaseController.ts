@@ -126,7 +126,18 @@ export async function obtenerHistorial(params: {
   fechaDesde?: string
   fechaHasta?: string
 }) {
-  return obtener(`/historial`, params)
+  const queryParams = new URLSearchParams()
+  if (params.pagina !== undefined) queryParams.append('pagina', String(params.pagina))
+  if (params.limite !== undefined) queryParams.append('limite', String(params.limite))
+  if (params.busqueda) queryParams.append('busqueda', params.busqueda)
+  if (params.accion) queryParams.append('accion', params.accion)
+  if (params.entidad) queryParams.append('entidad', params.entidad)
+  if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde)
+  if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta)
+
+  return request(`/historial?${queryParams.toString()}`, {
+    method: 'GET',
+  })
 }
 
 export async function obtenerUsuarioExcepto(tipousuario_id: number) {//NUEVO
