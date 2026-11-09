@@ -1,3 +1,5 @@
+import { supabase } from '../config/supabase.js'
+
 export async function registrarHistorial(origen, { accion, entidad, detalles }) {
     try {
         let responsable = 'Sistema';
