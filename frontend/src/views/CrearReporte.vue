@@ -87,7 +87,7 @@
           <input type="text" :value="departamentos.find((d) => d.id === form.departamento_id)?.nombre || ''" disabled />
           <span v-if="errores.departamento_id" class="msg-error">{{
             errores.departamento_id
-          }}</span>
+            }}</span>
 
           <label>¿Qué problema quieres reportar?</label>
           <select name="problema" v-model="form.problema_id" :class="{ 'input-error': errores.problema_id }"
@@ -296,6 +296,7 @@ import {
   crearReporte,
   crearDetalleReporte,
   getPublicUrl,
+  obtenerReportesMapa,
 } from '../services/supabaseController'
 import { validarAI } from '../services/geoAIController'
 import { enviarCorreoCreacionReporte } from '../services/gmailController'
@@ -305,6 +306,51 @@ const map = ref<L.Map | null>(null)
 const inputFoto = ref<HTMLInputElement | null>(null)
 const modoMapa = ref(false)
 const volandoAUbicacion = ref(false)
+let capaReportes: L.LayerGroup | null = null
+
+const escaparHtml = (t: string) =>
+  String(t ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+  )
+
+// Pin tinto (distinto al verde fijo del centro). Se usa divIcon para evitar los problemas de rutas de imágenes de Leaflet con Vite
+const iconoReporte = L.divIcon({
+  className: 'pin-reporte',
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 32 42" style="filter: drop-shadow(0 2px 2px rgba(0,0,0,.35));">
+    <path d="M16 0C7.163 0 0 7.163 0 16c0 10 16 26 16 26S32 26 32 16C32 7.163 24.837 0 16 0z" fill="#621132" stroke="white" stroke-width="2"/>
+    <circle cx="16" cy="16" r="6" fill="white"/>
+  </svg>`,
+  iconSize: [26, 34],
+  iconAnchor: [13, 34],
+})
+
+const cargarPinesReportes = async () => {
+  if (!map.value || !capaReportes) return
+
+  const { data, error } = await obtenerReportesMapa()
+  if (error) {
+    console.error('Error al cargar los reportes del mapa:', error)
+    return
+  }
+
+  capaReportes.clearLayers()
+
+    ; (data || []).forEach((r: any) => {
+      const lat = Number(r.latitud)
+      const lng = Number(r.longitud)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+
+      const marker = L.marker([lat, lng], { icon: iconoReporte, riseOnHover: true })
+      marker.bindTooltip(
+        `<strong>${escaparHtml(r.departamento)}</strong><br>${escaparHtml(r.problema)}`,
+        { direction: 'top', offset: [0, -30] },
+      )
+      // En celular no hay "pasar el cursor": al tocar el pin se muestra la etiqueta
+      marker.on('click', () => marker.openTooltip())
+      marker.addTo(capaReportes!)
+    })
+}
 
 const panelAbierto = ref(true)
 
@@ -401,7 +447,7 @@ const seccionesTerminos = [
   {
     titulo: '10. Derechos de acceso, rectificación, cancelación y oposición',
     parrafos: [
-      'Usted puede ejercer sus derechos de acceso, rectificación, cancelación y oposición (ARCO) ante la Unidad de Transparencia del Ayuntamiento de Culiacán, en [domicilio, correo electrónico y horario de atención], conforme a la normatividad aplicable en materia de protección de datos personales.',
+      'Usted puede ejercer sus derechos de acceso, rectificación, cancelación y oposición (ARCO) ante la Unidad de Transparencia del Ayuntamiento de Culiacán, en Avenida del Waja #404, Colonia Profe Ponga me Zien, C.P. 80000, Culiacán, Sinaloa., georeportec@gmail.com y de lunes a viernes de 8:00 a 15:00 horas, conforme a la normatividad aplicable en materia de protección de datos personales.',
     ],
   },
   {
@@ -561,6 +607,9 @@ onMounted(() => {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
   }).addTo(map.value)
+
+  capaReportes = L.layerGroup().addTo(map.value)
+  cargarPinesReportes()
 
   setTimeout(() => map.value?.invalidateSize?.(), 100)
 
@@ -908,6 +957,9 @@ const enviarReporte = async () => {
   const horaFormateada = `${horaDosDigitos}${minutosDosDigitos}${segundosDosDigitos}`
   const randomCincoAlfanumerico = Math.random().toString(36).substring(2, 7).toUpperCase()
   const folioGenerado = `${depTresLetras}-${probTresLetras}-${fechaFormateada}-${horaFormateada}-${randomCincoAlfanumerico}`
+  // Coordenadas del punto confirmado en el mapa
+  const latitud = form.value.latitud
+  const longitud = form.value.longitud
 
   enviando.value = true
 
@@ -938,7 +990,7 @@ const enviarReporte = async () => {
     }
 
     // 2. Insertar los datos en la tabla 'reportes'
-    const { data, error: insertReporteError } = await crearReporte({
+    const { error: insertReporteError } = await crearReporte({
       folio: folioGenerado,
       departamento_id: form.value.departamento_id,
       problema_id: form.value.problema_id,
@@ -952,61 +1004,87 @@ const enviarReporte = async () => {
       fotoTipoID: form.value.fotoTipoID,
       mensajeAI: form.value.mensajeAI,
       turnstileToken,
+      latitud,
+      longitud,
     })
 
-    // 3. Insertar los datos en la tabla 'reportesExistentes'
+    if (insertReporteError) {
+      // El backend puede responder texto o un objeto { message, code }
+      const mensaje =
+        typeof insertReporteError === 'string'
+          ? insertReporteError
+          : insertReporteError.message || 'Error desconocido'
+
+      if (insertReporteError.code === 'REPORTE_DUPLICADO') {
+        Swal.fire({
+          title: 'Reporte probablemente duplicado',
+          text: mensaje,
+          icon: 'info',
+          confirmButtonColor: '#621132',
+        })
+        return // el finally restablece el botón
+      }
+
+      throw new Error('Error al guardar el reporte: ' + mensaje)
+    }
+
+    // 3. Insertar los datos en la tabla 'detalle_reporte'
     const { error: insertReporteExistenteError } = await crearDetalleReporte({
       folio: folioGenerado,
       estado_id: 1,
     })
 
-    if (insertReporteError)
-      throw new Error('Error al guardar en base de datos: ' + insertReporteError.message)
-    if (insertReporteExistenteError)
-      throw new Error('Error al guardar en base de datos: ' + insertReporteExistenteError.message)
+    if (insertReporteExistenteError) {
+      const mensaje =
+        typeof insertReporteExistenteError === 'string'
+          ? insertReporteExistenteError
+          : insertReporteExistenteError.message || 'Error desconocido'
+      throw new Error('Error al guardar los detalles del reporte: ' + mensaje)
+    }
 
     // Enviar correo por Gmail de la Creacion del Reporte
     const correoData = {
-      folio: folioGenerado,
-      departamento: departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombre || '',
-      problema: problemas.value.find((p) => p.id === form.value.problema_id)?.nombre || '',
-      descripcion: form.value.descripcion.trim(),
-      nombre: form.value.nombre ? form.value.nombre.trim() : 'Ciudadano Honorable',
-      telefono: form.value.telefono,
-      correo: form.value.correo.trim(),
-      domicilio: form.value.domicilio.trim(),
-      referencias: form.value.referencias ? form.value.referencias.trim() : null,
-    }
+    folio: folioGenerado,
+    departamento: departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombre || '',
+    problema: problemas.value.find((p) => p.id === form.value.problema_id)?.nombre || '',
+    descripcion: form.value.descripcion.trim(),
+    nombre: form.value.nombre ? form.value.nombre.trim() : 'Ciudadano Honorable',
+    telefono: form.value.telefono,
+    correo: form.value.correo.trim(),
+    domicilio: form.value.domicilio.trim(),
+    referencias: form.value.referencias ? form.value.referencias.trim() : null,
+  }
 
-    if (!correoData.correo) {
-      console.warn('No se proporcionó correo electrónico para enviar la notificación del reporte.')
-    } else {
-      const resultadoGmail = await enviarCorreoCreacionReporte(correoData)
+  if (!correoData.correo) {
+    console.warn('No se proporcionó correo electrónico para enviar la notificación del reporte.')
+  } else {
+    const resultadoGmail = await enviarCorreoCreacionReporte(correoData)
 
-      if (!resultadoGmail.ok) {
-        console.error('Error al enviar:', resultadoGmail.mensaje)
-        console.error('Error detallado:', resultadoGmail.error)
-      }
-    }
-
-    mostrarModalReporteExitoso({
-      folio: folioGenerado,
-      departamento_id: form.value.departamento_id,
-      problema_id: form.value.problema_id,
-    })
-    limpiarFormulario()
-    panelAbierto.value = false
-  } catch (error: any) {
-    console.error('Error detallado:', error)
-    alert(error.message || 'Error de conexión al enviar el reporte')
-  } finally {
-    enviando.value = false
-    const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
-    if (submitBtn) {
-      submitBtn.disabled = false
-      submitBtn.textContent = 'Enviar Reporte'
+    if (!resultadoGmail.ok) {
+      console.error('Error al enviar:', resultadoGmail.mensaje)
+      console.error('Error detallado:', resultadoGmail)
     }
   }
+
+  mostrarModalReporteExitoso({
+    folio: folioGenerado,
+    departamento_id: form.value.departamento_id,
+    problema_id: form.value.problema_id,
+  })
+  cargarPinesReportes() // dibuja el pin del reporte recién creado
+  limpiarFormulario()
+  panelAbierto.value = false
+} catch (error: any) {
+  console.error('Error detallado:', error)
+  alert(error.message || 'Error de conexión al enviar el reporte')
+} finally {
+  enviando.value = false
+  const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
+  if (submitBtn) {
+    submitBtn.disabled = false
+    submitBtn.textContent = 'Enviar Reporte'
+  }
+}
 }
 
 // Mostrar modal de reporte exitoso
@@ -1321,6 +1399,7 @@ defineExpose({
   border: 1px solid #e5e0da;
   border-radius: 10px;
 }
+
 .terminos-check input[type='checkbox'] {
   flex-shrink: 0;
   width: 20px;
@@ -1329,6 +1408,7 @@ defineExpose({
   accent-color: #621132;
   cursor: pointer;
 }
+
 .terminos-check label {
   display: block;
   margin: 0;
@@ -1338,6 +1418,7 @@ defineExpose({
   color: #444;
   cursor: pointer;
 }
+
 .terminos-error {
   border-color: #e74c3c;
   background: #fdf3f2;
@@ -1355,7 +1436,10 @@ defineExpose({
   text-decoration: underline;
   cursor: pointer;
 }
-.link-terminos:hover { color: #0d3c7a; }
+
+.link-terminos:hover {
+  color: #0d3c7a;
+}
 
 /* Modal */
 .modal-terminos {
@@ -1369,6 +1453,7 @@ defineExpose({
   overflow: hidden;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
 }
+
 .terminos-header {
   display: flex;
   justify-content: space-between;
@@ -1379,8 +1464,19 @@ defineExpose({
   color: #fff;
   border-bottom: 4px solid #d5c98a;
 }
-.terminos-header h3 { margin: 0 0 4px; font-size: 1.05rem; line-height: 1.3; }
-.terminos-header p { margin: 0; font-size: 0.8rem; opacity: 0.9; }
+
+.terminos-header h3 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.terminos-header p {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
 .terminos-cerrar {
   flex-shrink: 0;
   background: none;
@@ -1390,7 +1486,10 @@ defineExpose({
   cursor: pointer;
   opacity: 0.85;
 }
-.terminos-cerrar:hover { opacity: 1; }
+
+.terminos-cerrar:hover {
+  opacity: 1;
+}
 
 .terminos-body {
   flex: 1;
@@ -1400,6 +1499,7 @@ defineExpose({
   line-height: 1.6;
   color: #333;
 }
+
 .terminos-aviso {
   margin: 0 0 16px;
   padding: 12px 14px;
@@ -1407,12 +1507,36 @@ defineExpose({
   border-left: 4px solid #621132;
   border-radius: 6px;
 }
-.terminos-seccion { margin-bottom: 16px; }
-.terminos-seccion h4 { margin: 0 0 6px; font-size: 0.95rem; color: #621132; }
-.terminos-seccion p { margin: 0 0 8px; text-align: justify; }
-.terminos-seccion ul { margin: 0 0 8px; padding-left: 20px; }
-.terminos-seccion li { margin-bottom: 4px; }
-.terminos-fecha { margin: 8px 0 0; font-size: 0.8rem; color: #888; }
+
+.terminos-seccion {
+  margin-bottom: 16px;
+}
+
+.terminos-seccion h4 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  color: #621132;
+}
+
+.terminos-seccion p {
+  margin: 0 0 8px;
+  text-align: justify;
+}
+
+.terminos-seccion ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.terminos-seccion li {
+  margin-bottom: 4px;
+}
+
+.terminos-fecha {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: #888;
+}
 
 .terminos-footer {
   display: flex;
@@ -1422,6 +1546,7 @@ defineExpose({
   background: #fafafa;
   border-top: 1px solid #eee;
 }
+
 .terminos-btn-sec,
 .terminos-btn-pri {
   padding: 10px 18px;
@@ -1430,12 +1555,28 @@ defineExpose({
   font-weight: 600;
   cursor: pointer;
 }
-.terminos-btn-sec { background: #e0e0e0; color: #333; }
-.terminos-btn-pri { background: #621132; color: #fff; }
-.terminos-btn-pri:hover { background: #4a0e2c; }
+
+.terminos-btn-sec {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.terminos-btn-pri {
+  background: #621132;
+  color: #fff;
+}
+
+.terminos-btn-pri:hover {
+  background: #4a0e2c;
+}
 
 @media (max-width: 480px) {
-  .terminos-footer { flex-direction: column-reverse; }
-  .terminos-footer button { width: 100%; }
+  .terminos-footer {
+    flex-direction: column-reverse;
+  }
+
+  .terminos-footer button {
+    width: 100%;
+  }
 }
 </style>

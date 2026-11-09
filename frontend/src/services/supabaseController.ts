@@ -117,6 +117,35 @@ export async function obtenerTodosJefes() {//NUEVO
   })
 }
 
+export async function obtenerReportesMapa() {
+  return request(`/reportes/mapa`, {
+    method: 'GET',
+  })
+}
+
+export async function obtenerHistorial(params: {
+  pagina?: number
+  limite?: number
+  busqueda?: string
+  accion?: string
+  entidad?: string
+  fechaDesde?: string
+  fechaHasta?: string
+}) {
+  const queryParams = new URLSearchParams()
+  if (params.pagina !== undefined) queryParams.append('pagina', String(params.pagina))
+  if (params.limite !== undefined) queryParams.append('limite', String(params.limite))
+  if (params.busqueda) queryParams.append('busqueda', params.busqueda)
+  if (params.accion) queryParams.append('accion', params.accion)
+  if (params.entidad) queryParams.append('entidad', params.entidad)
+  if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde)
+  if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta)
+
+  return request(`/historial?${queryParams.toString()}`, {
+    method: 'GET',
+  })
+}
+
 export async function obtenerUsuarioExcepto(tipousuario_id: number) {//NUEVO
   return request(`/usuarios/excepto?${new URLSearchParams({ valor: String(tipousuario_id) }).toString()}`, {
     method: 'GET',
@@ -359,6 +388,13 @@ export async function actualizarFotoDepartamentoReporte(folio: string, fotoDepar
 }
 
 // ================== POST ==================
+
+export async function agregarHistorial(data: any) {
+  return request(`/historial`, {
+    method: 'POST',
+    body: JSON.stringify({ data }),
+  })
+}
 
 export async function obtenerUsuarioPorCorreoYContrasena(params: {
   p_correo: string

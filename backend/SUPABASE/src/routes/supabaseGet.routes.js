@@ -7,6 +7,8 @@ import {
     validarAutenticacion,
     validarAutorizacion
 } from '../middleware/auth.js'
+import { registrarHistorial } from '../utils/registrarHistorial.js'
+import { DISTANCIA_DUPLICADO_METROS, ESTADOS_CERRADOS, LIMITES_CULIACAN, aRadianes, distanciaMetros } from '../utils/mapa.js'
 
 const router = Router()
 
@@ -29,9 +31,80 @@ function manejarErrores(handler) {
     }
 }
 
+function responderErrorInterno(res, mensaje, error) {
+    console.error(mensaje, error)
+    return res.status(500).json({
+        data: null,
+        error: { message: mensaje }
+    })
+}
+
+
+
+const esTextoValido = (valor) => {
+    return typeof valor === 'string' && valor.trim().length > 0
+}
+
+
+
+function estadoDelReporte(reporte) {
+    if (!reporte.detalle_reporte || !reporte.detalle_reporte.estado_id) {
+        return null
+    }
+    return reporte.detalle_reporte.estado_id
+}
+
 // -----------------------------------------
 // ENDPOINTS PÚBLICOS
 // -----------------------------------------
+
+
+
+// (obtenerReportesMapa)
+router.get('/reportes/mapa', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('reportes')
+            .select([
+                'latitud',
+                'longitud',
+                'departamento_id',
+                'departamento_externo_id',
+                'problema_id',
+                'problema_externo_id',
+                'departamentos (nombreamigable)',
+                'departamentos_externos (departamento)',
+                'problemas (nombreamigable)',
+                'problemas_externos (nombreamigable)',
+                'detalle_reporte (estado_id)'
+            ].join(','))
+            .not('latitud', 'is', null)
+            .not('longitud', 'is', null)
+            .limit(1000);
+
+
+
+        if (error) return responder(res, { data: null, error: 'Error al obtener los reportes del mapa.' })
+
+        const pines = (data || [])
+            .filter((r) => !ESTADOS_CERRADOS.includes(estadoDelReporte(r)))
+            .map((r) => ({
+                latitud: r.latitud,
+                longitud: r.longitud,
+                // Interno si existe; si no, el externo
+                departamento: r.departamentos?.nombreamigable
+                    ?? r.departamentos_externos?.departamento
+                    ?? 'Sin departamento',
+                problema: r.problemas?.nombreamigable
+                    ?? r.problemas_externos?.nombreamigable
+                    ?? 'Sin problemática',
+            }))
+
+        return res.status(200).json({ data: pines, error: null })
+    } catch (error) {
+        return responderErrorInterno(res, 'Error interno al obtener los reportes del mapa.', error)
+    }
+})
 
 // (obtenerDepartamentosOrdenadosPorId)
 router.get('/departamentos/ordenadosPorId', manejarErrores(async (req, res) => {
@@ -949,6 +1022,63 @@ router.get(
 
         responder(res, result)
     })
+)
+
+// (obtenerHistorial)
+router.get(
+    '/historial',
+    verificarTokenJWT,
+    validarAutenticacion,
+    validarAutorizacion([1]),
+    manejarErrores(
+        async (req, res) => {
+            const pagina = Math.max(1, parseInt(req.query.pagina) || 1)
+            const limite = Math.min(100, Math.max(1, parseInt(req.query.limite) || 25))
+            const desde = (pagina - 1) * limite
+            const hasta = desde + limite - 1
+
+            const { accion, entidad, busqueda, fechaDesde, fechaHasta } = req.query
+
+            let query = supabase
+                .from('historial')
+                .select('*', { count: 'exact' })
+                .order('fecha', { ascending: false })
+                .order('id', { ascending: false })
+                .range(desde, hasta)
+
+            if (esTextoValido(accion)) query = query.eq('accion', accion.trim())
+            if (esTextoValido(entidad)) query = query.eq('entidad', entidad.trim())
+
+            if (esTextoValido(fechaDesde)) {
+                if (Number.isNaN(Date.parse(fechaDesde))) {
+                    return res.status(400).json({ error: 'Fecha inicial inválida.' })
+                }
+                query = query.gte('fecha', fechaDesde)
+            }
+
+            if (esTextoValido(fechaHasta)) {
+                if (Number.isNaN(Date.parse(fechaHasta))) {
+                    return res.status(400).json({ error: 'Fecha final inválida.' })
+                }
+                query = query.lte('fecha', fechaHasta)
+            }
+
+            if (esTextoValido(busqueda)) {
+                // Se quitan caracteres que rompen la sintaxis del filtro .or()
+                const termino = busqueda.trim().slice(0, 100).replace(/[,()%*\\]/g, ' ')
+                query = query.or(`responsable.ilike.%${termino}%,detalles.ilike.%${termino}%`)
+            }
+
+            const { data, error, count } = await query
+
+            if (error) return responder(res, { data: null, error })
+
+            return res.status(200).json({
+                data: { registros: data, total: count ?? 0 },
+                error: null
+            })
+        }
+    )
 )
 
 export default router

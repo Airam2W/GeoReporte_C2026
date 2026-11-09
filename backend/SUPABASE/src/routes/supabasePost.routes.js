@@ -4,6 +4,11 @@ import { supabase } from '../config/supabase.js'
 import { responder } from '../helpers/response.js'
 import jwt from 'jsonwebtoken'
 import { verificarTurnstile } from '../middleware/verificarTurnstile.js'
+import { registrarHistorial } from '../utils/registrarHistorial.js'
+import { obtenerUsuario } from '../utils/obtenerUsuario.js'
+import { estadoIDAAccion, estadoIDADetalle, categoriaHistorialIDAAccion, categoriaHistorialIDADetalle } from '../utils/convertirATexto.js'
+import { DISTANCIA_DUPLICADO_METROS, ESTADOS_CERRADOS, LIMITES_CULIACAN, aRadianes, distanciaMetros } from '../utils/mapa.js'
+
 
 import {
     verificarTokenJWT,
@@ -31,6 +36,13 @@ const esIdValido = (valor) => {
         (typeof valor === 'number' && Number.isSafeInteger(valor) && valor > 0) ||
         (typeof valor === 'string' && /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+$/.test(valor) && valor.trim().length > 0)
     )
+}
+
+function estadoDelReporte(reporte) {
+    if (!reporte.detalle_reporte || !reporte.detalle_reporte.estado_id) {
+        return null
+    }
+    return reporte.detalle_reporte.estado_id
 }
 
 const correoRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -64,7 +76,6 @@ function manejarErrores(handler) {
         }
     }
 }
-
 
 // ----------------------------------------- ENDPOINTS -----------------------------------------
 
@@ -188,8 +199,8 @@ router.post('/usuarios/CorreoContrasena', manejarErrores(async (req, res) => {
             id_jefe = jefeData.id;
             // Si la estructura te trae el departamento a través de la relación de supervisor
             if (!departamento_id && jefeData.supervisores) {
-                departamento_id = Array.isArray(jefeData.supervisores) 
-                    ? jefeData.supervisores[0]?.departamento_id 
+                departamento_id = Array.isArray(jefeData.supervisores)
+                    ? jefeData.supervisores[0]?.departamento_id
                     : jefeData.supervisores?.departamento_id;
             }
         }
@@ -219,6 +230,17 @@ router.post('/usuarios/CorreoContrasena', manejarErrores(async (req, res) => {
         process.env.JWT_SECRET,
         { expiresIn: '8h' }
     )
+
+    // Si todo es correcto, lo agregamos al historial del sistema
+    const correoUsuario = correo || 'Sin correo';
+    // Convertir a String para evitar problemas si es null o undefined
+    const correoUsuarioString = String(correoUsuario);
+    await registrarHistorial(correoUsuarioString, {
+        accion: 'Entrar',
+        entidad: 'Sistema',
+        detalles: `El usuario ${usuario.nombre} ${usuario.apellido_p} ha entrado al sistema.`
+    })
+
 
     return res.status(200).json({
         data: {
@@ -316,8 +338,8 @@ router.post(
                 })
             }
 
-            const contrasenaLimpia = (typeof p_contrasena === 'string' && p_contrasena.trim().length > 0) 
-                ? p_contrasena 
+            const contrasenaLimpia = (typeof p_contrasena === 'string' && p_contrasena.trim().length > 0)
+                ? p_contrasena
                 : null;
 
             // Validación de tipo de usuario.
@@ -355,6 +377,14 @@ router.post(
                 p_tipousuario_id,
                 p_departamento_id,
                 p_estado
+            })
+
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            await registrarHistorial(correoUsuario, {
+                accion: 'Actualizar',
+                entidad: 'Usuario',
+                detalles: `Actualizo el usuario ${p_nombre} ${p_apellido_p}.`
             })
 
             return responder(res, result)
@@ -476,7 +506,7 @@ router.post('/reporte', verificarTurnstile, async (req, res) => {
         if (
             data.fotoTipoID !== undefined &&
             data.fotoTipoID !== null &&
-            !esIdValido(data.fotoTipoID)
+            !(data.fotoTipoID == 0 || data.fotoTipoID == 1 || data.fotoTipoID == 2)
         ) {
             return res.status(400).json({
                 error: 'Foto Tipo ID inválido. Debe ser un número entero positivo o null.'
@@ -491,6 +521,54 @@ router.post('/reporte', verificarTurnstile, async (req, res) => {
         ) {
             return res.status(400).json({
                 error: 'El mensaje AI debe ser un texto o null.'
+            })
+        }
+
+        // Validación de coordenadas (el frontend las valida, pero aquí se repite por seguridad).
+        if (
+            typeof data.latitud !== 'number' || !Number.isFinite(data.latitud) ||
+            typeof data.longitud !== 'number' || !Number.isFinite(data.longitud) ||
+            data.latitud < LIMITES_CULIACAN.minLat || data.latitud > LIMITES_CULIACAN.maxLat ||
+            data.longitud < LIMITES_CULIACAN.minLng || data.longitud > LIMITES_CULIACAN.maxLng
+        ) {
+            return res.status(400).json({
+                error: 'Ubicación inválida o fuera de Culiacán.'
+            })
+        }
+
+        // Detección de reportes duplicados: mismo departamento, misma problemática y a 5 m o menos.
+        // Primero se acota con un rectángulo para no traer toda la tabla; la distancia exacta se calcula después.
+        const margenMetros = DISTANCIA_DUPLICADO_METROS * 2
+        const margenLat = margenMetros / 111320
+        const margenLng = margenMetros / (111320 * Math.cos(aRadianes(data.latitud)))
+
+        const { data: cercanos, error: errorCercanos } = await supabase
+            .from('reportes')
+            .select('folio, latitud, longitud, detalle_reporte (estado_id)')
+            .eq('departamento_id', data.departamento_id)
+            .eq('problema_id', data.problema_id)
+            .gte('latitud', data.latitud - margenLat)
+            .lte('latitud', data.latitud + margenLat)
+            .gte('longitud', data.longitud - margenLng)
+            .lte('longitud', data.longitud + margenLng)
+
+        if (errorCercanos) return responder(res, { data: null, error: errorCercanos })
+
+        const hayDuplicado = (cercanos || []).some(
+            (r) =>
+                !ESTADOS_CERRADOS.includes(estadoDelReporte(r)) &&
+                distanciaMetros(data.latitud, data.longitud, r.latitud, r.longitud) <= DISTANCIA_DUPLICADO_METROS
+        )
+
+        if (hayDuplicado) {
+            return res.status(409).json({
+                data: null,
+                error: {
+                    code: 'REPORTE_DUPLICADO',
+                    message:
+                        'Parece que este problema ya fue reportado en este mismo punto y sigue en atención. ' +
+                        'Para evitar duplicados, tu reporte no fue enviado. Puedes revisar en el mapa los reportes cercanos. ¡Gracias por ayudarnos a mejorar Culiacán!'
+                }
             })
         }
 
@@ -509,7 +587,9 @@ router.post('/reporte', verificarTurnstile, async (req, res) => {
                 referencias: data.referencias?.trim() || null,
                 foto_url: data.foto_url ?? null,
                 fotoTipoID: data.fotoTipoID ?? null,
-                mensajeAI: data.mensajeAI?.trim() || null
+                mensajeAI: data.mensajeAI?.trim() || null,
+                latitud: data.latitud || null,
+                longitud: data.longitud || null,
             })
 
         return responder(res, result)
@@ -626,6 +706,16 @@ router.post(
                     notas: data.notas.trim()
                 })
 
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            const accion = categoriaHistorialIDAAccion(data.categoria_historial_id)
+            const detalle = categoriaHistorialIDADetalle(data.categoria_historial_id)
+            await registrarHistorial(correoUsuario, {
+                accion: accion,
+                entidad: 'Reporte',
+                detalles: `Se actualizó el historial del reporte con folio ${folio} a ${detalle}.`
+            })
+
             return responder(res, result)
 
         } catch (error) {
@@ -713,6 +803,16 @@ router.post(
                     foto_url: data.foto_url.trim()
                 })
 
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            const accion = categoriaHistorialIDAAccion(data.categoria_historial_id)
+            const detalle = categoriaHistorialIDADetalle(data.categoria_historial_id)
+            await registrarHistorial(correoUsuario, {
+                accion: accion,
+                entidad: 'Reporte',
+                detalles: `Se actualizó el historial del reporte con folio ${folio} y fotografía a ${detalle}.`
+            })
+
             return responder(res, result)
 
         } catch (error) {
@@ -787,6 +887,14 @@ router.post(
                     departamento_id,
                     estado
                 })
+
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            await registrarHistorial(correoUsuario, {
+                accion: 'Crear',
+                entidad: 'Problemática',
+                detalles: `Se creó una nueva problemática interna: ${nombre}.`
+            })
 
             return responder(res, result)
 
@@ -863,6 +971,14 @@ router.post(
                     estado
                 })
 
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            await registrarHistorial(correoUsuario, {
+                accion: 'Crear',
+                entidad: 'Problemática',
+                detalles: `Se creó una nueva problemática externa: ${nombre}.`
+            })
+
             return responder(res, result)
 
         } catch (error) {
@@ -929,6 +1045,14 @@ router.post(
                     estado
                 })
 
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            await registrarHistorial(correoUsuario, {
+                accion: 'Crear',
+                entidad: 'Departamento',
+                detalles: `Se creó un nuevo departamento interno: ${nombre}.`
+            })
+
             return responder(res, result)
 
         } catch (error) {
@@ -986,6 +1110,14 @@ router.post(
                     estado
                 })
 
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            await registrarHistorial(correoUsuario, {
+                accion: 'Crear',
+                entidad: 'Departamento',
+                detalles: `Se creó un nuevo departamento externo: ${departamento}.`
+            })
+
             return responder(res, result)
 
         } catch (error) {
@@ -998,5 +1130,47 @@ router.post(
     }
 )
 
+// (crearHistorial)
+router.post(
+    '/historial',
+    verificarTokenJWT,
+    validarAutenticacion,
+    validarAutorizacion([1, 2, 3, 4, 5, 6]),
+    async (req, res) => {
+        try {
+            const { data } = req.body
+
+            if (!esObjetoValido(data)) {
+                return res.status(400).json({ error: 'Datos del historial no proporcionados o inválidos.' })
+            }
+            if (!esTextoValido(data.accion) || data.accion.trim().length > 100) {
+                return res.status(400).json({ error: 'Acción no proporcionada o inválida.' })
+            }
+            if (!esTextoValido(data.entidad) || data.entidad.trim().length > 100) {
+                return res.status(400).json({ error: 'Entidad no proporcionada o inválida.' })
+            }
+            if (data.detalles != null && (typeof data.detalles !== 'string' || data.detalles.length > 2000)) {
+                return res.status(400).json({ error: 'Detalles inválidos.' })
+            }
+
+            // El responsable sale del token, nunca del frontend
+            const responsable = req.user?.correo
+            if (!esTextoValido(responsable)) {
+                return res.status(400).json({ error: 'No se pudo identificar al responsable.' })
+            }
+
+            const result = await supabase.from('historial').insert({
+                responsable,
+                accion: data.accion.trim(),
+                entidad: data.entidad.trim(),
+                detalles: data.detalles ? data.detalles.trim() : null
+            })
+
+            return responder(res, result)
+        } catch (error) {
+            return responderErrorInterno(res, 'Error interno al crear el historial.', error)
+        }
+    }
+)
 
 export default router

@@ -3,6 +3,7 @@ import multer from 'multer'
 import { supabase } from '../config/supabase.js'
 import { responder } from '../helpers/response.js'
 import jwt from 'jsonwebtoken'
+import { registrarHistorial } from '../utils/registrarHistorial.js'
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage() })

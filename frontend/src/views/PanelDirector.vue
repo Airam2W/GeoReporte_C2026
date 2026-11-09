@@ -2,8 +2,8 @@
   <div class="dashboard-layout">
     <nav class="topbar">
       <div class="topbar-logo">
-        <img src="../assets/logoAyuntamiento.svg" alt="Logo Ayuntamiento" class="logo"/>
-        <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo"/>
+        <img src="../assets/logoAyuntamiento.svg" alt="Logo Ayuntamiento" class="logo" />
+        <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo" />
         <h1>GeoReporte | Dirección General</h1>
       </div>
       <div class="topbar-user" v-if="director">
@@ -39,7 +39,9 @@
                 ? 'Gestión de Departamentos'
                 : filtros.seccion === 'problematicas'
                   ? 'Gestión de Problemáticas'
-                  : 'Gestión de Personal'
+                  : filtros.seccion === 'historial'
+                    ? 'Historial de Eventos'
+                    : 'Gestión de Personal'
             }}
           </h2>
           <p>
@@ -48,11 +50,13 @@
                 ? 'Administra los departamentos internos y externos del ayuntamiento.'
                 : filtros.seccion === 'problematicas'
                   ? 'Administra los tipos de problemáticas reportables por departamento.'
-                  : 'Administra los accesos y roles del personal del ayuntamiento.'
+                  : filtros.seccion === 'historial'
+                    ? 'Consulta el registro de eventos ocurridos en el sistema. Es solo de lectura.'
+                    : 'Administra los accesos y roles del personal del ayuntamiento.'
             }}
           </p>
         </div>
-        <button class="btn-primario" :title="filtros.seccion === 'departamentos'
+        <button v-if="filtros.seccion !== 'historial'" class="btn-primario" :title="filtros.seccion === 'departamentos'
           ? 'Agregar departamento'
           : filtros.seccion === 'problematicas'
             ? 'Agregar problemática'
@@ -85,13 +89,14 @@
             ? 'Buscar por nombre de departamento...'
             : filtros.seccion === 'problematicas'
               ? 'Buscar por nombre de problemática...'
-              : 'Buscar por nombre, apellidos o correo...'
-            " />
+              : filtros.seccion === 'historial'
+                ? 'Buscar por responsable o detalles...'
+                : 'Buscar por nombre, apellidos o correo...'" />
         </div>
 
         <!-- Filtros exclusivos de Personal Administrativo -->
         <template v-if="filtros.seccion === 'personal'">
-          <div class="filtro-grupo">
+          <div class=" filtro-grupo">
             <select name="rol" v-model="filtros.rol">
               <option value="">Todos los roles</option>
               <option v-for="rol in rolesOpciones" :key="rol.id" :value="rol.id">
@@ -148,7 +153,7 @@
           </div>
         </template>
         <!-- Filtro exclusivo de Problemáticas -->
-        <template v-else>
+        <template v-else-if="filtros.seccion === 'problematicas'">
           <div class="filtro-grupo">
             <select name="tipoProblematica" v-model="filtros.tipoProblematica">
               <option value="">Todos los tipos</option>
@@ -187,6 +192,30 @@
             </select>
           </div>
         </template>
+        <!-- Filtros exclusivos de Historial -->
+        <template v-else>
+          <div class="filtro-grupo">
+            <select v-model="filtros.accionHistorial">
+              <option value="">Todas las acciones</option>
+              <option v-for="a in accionesHistorial" :key="a" :value="a">{{ a }}</option>
+            </select>
+          </div>
+
+          <div class="filtro-grupo">
+            <select v-model="filtros.entidadHistorial">
+              <option value="">Todas las entidades</option>
+              <option v-for="e in entidadesHistorial" :key="e" :value="e">{{ e }}</option>
+            </select>
+          </div>
+
+          <div class="filtro-grupo">
+            <input v-model="filtros.fechaDesde" type="date" title="Desde" />
+          </div>
+
+          <div class="filtro-grupo">
+            <input v-model="filtros.fechaHasta" type="date" title="Hasta" />
+          </div>
+        </template>
       </section>
 
       <div class="tabla-contenedor">
@@ -212,7 +241,7 @@
             <tr v-else v-for="user in usuariosFiltrados" :key="user.id" class="fila-datos">
               <td class="font-bold">
                 {{ truncarTexto(user.nombre + ' ' + user.apellido_p + ' ' + (user.apellido_m ? user.apellido_m : ''),
-                25) }}
+                  25) }}
               </td>
               <td>{{ truncarTexto(user.correo, 25) }}</td>
               <td>
@@ -236,7 +265,7 @@
                   <InfoCircle color="var(--texto-oscuro)" />
                 </button>
                 <button class="btn-accion btn-editar" title="Editar" @click="abrirModalForm(user)">
-                  <UserEdit color="orange"/>
+                  <UserEdit color="orange" />
                 </button>
               </td>
             </tr>
@@ -279,19 +308,13 @@
                   <InfoCircle color="var(--texto-oscuro)" />
                 </button>
                 <button class="btn-accion btn-editar" title="Editar" @click="abrirModalFormDepto(depto)">
-                  <Pencil color="orange"/>
+                  <Pencil color="orange" />
                 </button>
                 <button class="btn-accion btn-eliminar"
                   :title="depto.raw.estado === 'Alta' ? 'Dar de baja' : 'Dar de alta'"
                   @click="cambiarEstadoDepartamento(depto)">
-                  <MinusCircle
-                    v-if="depto.raw.estado === 'Alta'"
-                    color="red"
-                  />
-                  <PlusCircle
-                    v-else
-                    color="green"
-                  />
+                  <MinusCircle v-if="depto.raw.estado === 'Alta'" color="red" />
+                  <PlusCircle v-else color="green" />
 
                 </button>
               </td>
@@ -299,7 +322,7 @@
           </tbody>
         </table>
 
-        <table v-else class="tabla-reportes">
+        <table v-else-if="filtros.seccion === 'problematicas'" class="tabla-reportes">
           <thead>
             <tr>
               <th>NOMBRE</th>
@@ -336,20 +359,42 @@
                   <InfoCircle color="var(--texto-oscuro)" />
                 </button>
                 <button class="btn-accion btn-editar" title="Editar" @click="abrirModalFormProblematica(prob)">
-                  <Pencil color="orange"/>
+                  <Pencil color="orange" />
                 </button>
                 <button class="btn-accion btn-eliminar" :title="prob.estado === 'Alta' ? 'Dar de baja' : 'Dar de alta'"
                   @click="cambiarEstadoProblema(prob)">
-                  <MinusCircle
-                    v-if="prob.estado === 'Alta'"
-                    color="red"
-                  />
-                  <PlusCircle
-                    v-else
-                    color="green"
-                  />
+                  <MinusCircle v-if="prob.estado === 'Alta'" color="red" />
+                  <PlusCircle v-else color="green" />
                 </button>
               </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Tabla de Historial (solo lectura) -->
+        <table v-else class="tabla-reportes">
+          <thead>
+            <tr>
+              <th>FECHA</th>
+              <th>RESPONSABLE</th>
+              <th>ACCIÓN</th>
+              <th>ENTIDAD</th>
+              <th>DETALLES</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="cargando" class="fila-vacia">
+              <td colspan="5">Cargando historial...</td>
+            </tr>
+            <tr v-else-if="historialData.length === 0" class="fila-vacia">
+              <td colspan="5">No se encontraron eventos con estos filtros.</td>
+            </tr>
+            <tr v-else v-for="h in historialData" :key="h.id" class="fila-datos">
+              <td class="font-mono">{{ formatearFechaHistorial(h.fecha) }}</td>
+              <td>{{ truncarTexto(h.responsable, 30) }}</td>
+              <td><span class="badge badge-gris">{{ h.accion }}</span></td>
+              <td><span class="badge badge-azul">{{ h.entidad }}</span></td>
+              <td :title="h.detalles">{{ truncarTexto(h.detalles || '-', 60) }}</td>
             </tr>
           </tbody>
         </table>
@@ -412,6 +457,8 @@ import {
   eliminarDepartamentoInterno,
   eliminarDepartamentoExterno,
   guardarUsuario,
+  obtenerHistorial,
+  agregarHistorial
 } from '../services/supabaseController'
 import Swal from 'sweetalert2'
 import UsuarioDetalleModal from '../components/UsuarioDetalleModal.vue'
@@ -421,6 +468,18 @@ import DepartamentoDetalleModal from '../components/DepartamentoDetalleModal.vue
 import ProblematicaFormModal from '../components/ProblematicaFormModal.vue'
 import ProblematicaDetalleModal from '../components/ProblematicaDetalleModal.vue'
 import { truncarTexto } from '../logic/panelAdministrador'
+import { accionesHistorial, entidadesHistorial } from '../logic/historial'
+
+const LIMITE_HISTORIAL = 25
+const historialData = ref<any[]>([])
+const historialTotal = ref(0)
+const paginaHistorial = ref(1)
+
+
+
+const totalPaginasHistorial = computed(() =>
+  Math.max(1, Math.ceil(historialTotal.value / LIMITE_HISTORIAL)),
+)
 
 // Iconos
 import InfoCircle from '@primeicons/vue/info-circle';
@@ -461,6 +520,7 @@ const secciones = [
   { valor: 'personal', etiqueta: 'Gestión de Personal' },
   { valor: 'departamentos', etiqueta: 'Departamentos' },
   { valor: 'problematicas', etiqueta: 'Problemáticas' },
+  { valor: 'historial', etiqueta: 'Historial' },
 ]
 
 const seleccionarSeccion = (valor: string) => {
@@ -479,6 +539,10 @@ const filtros = ref({
   tipoProblematica: '',
   departamentoProblematica: '',
   estadoProblematica: '',
+  accionHistorial: '',
+  entidadHistorial: '',
+  fechaDesde: '',
+  fechaHasta: '',
 })
 
 import { useCargando } from '../composable/useCargando'
@@ -530,6 +594,41 @@ onMounted(async () => {
     ocultarCargando() // Ocultar el indicador de carga después de cargar los datos
   }
 })
+
+const inicioDelDia = (f: string) => new Date(`${f}T00:00:00`).toISOString()
+const finDelDia = (f: string) => new Date(`${f}T23:59:59.999`).toISOString()
+
+const cargarHistorial = async () => {
+  cargando.value = true
+  const { data, error } = await obtenerHistorial({
+    pagina: paginaHistorial.value,
+    limite: LIMITE_HISTORIAL,
+    busqueda: filtros.value.busqueda.trim() || undefined,
+    accion: filtros.value.accionHistorial || undefined,
+    entidad: filtros.value.entidadHistorial || undefined,
+    fechaDesde: filtros.value.fechaDesde ? inicioDelDia(filtros.value.fechaDesde) : undefined,
+    fechaHasta: filtros.value.fechaHasta ? finDelDia(filtros.value.fechaHasta) : undefined,
+  })
+
+  if (error) {
+    console.error('Error al cargar el historial:', error)
+    Swal.fire('Error', 'Ocurrió un problema al cargar el historial.', 'error')
+  } else {
+    historialData.value = data?.registros || []
+    historialTotal.value = data?.total || 0
+  }
+  cargando.value = false
+}
+
+const cambiarPaginaHistorial = (delta: number) => {
+  const nueva = paginaHistorial.value + delta
+  if (nueva < 1 || nueva > totalPaginasHistorial.value) return
+  paginaHistorial.value = nueva
+  cargarHistorial()
+}
+
+const formatearFechaHistorial = (valor: string) =>
+  valor ? new Date(valor).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : '-'
 
 const departamentosInternos = ref<any[]>([])
 const departamentosExternos = ref<any[]>([])
@@ -632,8 +731,10 @@ const cargarDatos = async () => {
     await cargarUsuarios()
   } else if (filtros.value.seccion === 'departamentos') {
     await cargarListaDepartamentos()
-  } else {
+  } else if (filtros.value.seccion === 'problematicas') {
     await cargarListaProblematicas()
+  } else {
+    await cargarHistorial()
   }
 }
 
@@ -761,7 +862,32 @@ watch(
     filtros.value.departamentoProblematica = ''
     filtros.value.estado = 'Alta'
     filtros.value.busqueda = ''
+    filtros.value.accionHistorial = ''
+    filtros.value.entidadHistorial = ''
+    filtros.value.fechaDesde = ''
+    filtros.value.fechaHasta = ''
+    paginaHistorial.value = 1
     cargarDatos()
+  },
+)
+
+let temporizadorHistorial: ReturnType<typeof setTimeout> | null = null
+
+watch(
+  () => [
+    filtros.value.busqueda,
+    filtros.value.accionHistorial,
+    filtros.value.entidadHistorial,
+    filtros.value.fechaDesde,
+    filtros.value.fechaHasta,
+  ],
+  () => {
+    if (filtros.value.seccion !== 'historial') return
+    if (temporizadorHistorial) clearTimeout(temporizadorHistorial)
+    temporizadorHistorial = setTimeout(() => {
+      paginaHistorial.value = 1
+      cargarHistorial()
+    }, 400)
   },
 )
 
@@ -823,9 +949,20 @@ const departamentosFiltrados = computed(() => {
   })
 })
 
-const abrirModalVerProblematica = (prob: any) => {
+const abrirModalVerProblematica = async (prob: any) => {
   problematicaActivo.value = prob
   modalProblematicaDetalleVisible.value = true
+
+  const { error: errorHistorialGeneral } = await agregarHistorial({
+    accion: 'Ver',
+    entidad: 'Problematica',
+    detalles: `Visualizó la problemática "${prob.nombre}" del departamento "${prob.departamentoNombre}".`,
+  })
+
+  if (errorHistorialGeneral) {
+    // No se hace return: la acción principal ya se completó
+    console.error('Error al guardar en el historial:', errorHistorialGeneral)
+  }
 }
 
 const cerrarModalVerProblematica = () => {
@@ -953,9 +1090,20 @@ const cambiarEstadoProblema = async (prob: any) => {
   })
 }
 
-const abrirModalVerDepto = (depto: any) => {
+const abrirModalVerDepto = async (depto: any) => {
   departamentoActivo.value = depto
   modalDeptoDetalleVisible.value = true
+
+  const { error: errorHistorialGeneral } = await agregarHistorial({
+    accion: 'Ver',
+    entidad: 'Departamento',
+    detalles: `Visualizó el departamento "${depto.nombre}".`,
+  })
+
+  if (errorHistorialGeneral) {
+    // No se hace return: la acción principal ya se completó
+    console.error('Error al guardar en el historial:', errorHistorialGeneral)
+  }
 }
 
 const cerrarModalVerDepto = () => {
@@ -1082,9 +1230,20 @@ const cambiarEstadoDepartamentoEnBD = async (depto: any) => {
   cerrarModalVerDepto()
 }
 
-const abrirModalVer = (user: any) => {
+const abrirModalVer = async (user: any) => {
   usuarioActivo.value = user
   modalVisible.value = true
+
+  const { error: errorHistorialGeneral } = await agregarHistorial({
+    accion: 'Ver',
+    entidad: 'Usuario',
+    detalles: `Visualizó el perfil de ${user.nombre} ${user.apellido_p} ${user.apellido_m || ''}.`,
+  })
+
+  if (errorHistorialGeneral) {
+    // No se hace return: la acción principal ya se completó
+    console.error('Error al guardar en el historial:', errorHistorialGeneral)
+  }
 }
 
 const cerrarModalVer = () => {
@@ -1205,12 +1364,26 @@ const cambiarEstadoUsuario = async (user: any, nuevoEstado: 'Alta' | 'Baja') => 
   }
 }
 
-const cerrarSesion = () => {
-  // 1. Eliminamos el token de autenticación
-  localStorage.removeItem('userToken')
+const cerrarSesion = async () => {
+  try {
+    // 1. Registramos la acción en el historial
+    const { error: errorHistorialGeneral } = await agregarHistorial({
+      accion: 'Salir',
+      entidad: 'Sistema',
+      detalles: `El usuario ha salido del sistema.`,
+    })
+    if (errorHistorialGeneral) {
+      console.error('Error:', errorHistorialGeneral)
+    }
+  } catch (error) {
+    console.error('Error al registrar la acción de salir en el historial:', error)
+  } finally {
+    // 2. Eliminamos el token de autenticación
+    localStorage.removeItem('userToken')
 
-  // 2. Redirigimos al usuario a la pantalla de inicio o login
-  router.push('/')
+    // 3. Redirigimos al usuario a la pantalla de inicio o login
+    router.push('/')
+  }
 }
 
 </script>
@@ -1258,7 +1431,8 @@ const cerrarSesion = () => {
   outline: 3px solid #1a6b2f;
   outline-offset: 2px;
 }
-.content-header button{
+
+.content-header button {
   background-color: var(--tinto-boton);
   padding: 10px 20px;
   color: white;
@@ -1268,4 +1442,42 @@ const cerrarSesion = () => {
   cursor: pointer;
 }
 
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.paginacion button {
+  padding: 8px 16px;
+  background: #fff;
+  color: #621132;
+  border: 1px solid #621132;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.paginacion button:hover:not(:disabled) {
+  background: #f5e9ee;
+}
+
+.paginacion button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .paginacion {
+    flex-direction: column;
+  }
+
+  .paginacion button {
+    width: 100%;
+  }
+}
 </style>

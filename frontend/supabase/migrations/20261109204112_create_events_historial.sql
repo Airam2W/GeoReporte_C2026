@@ -1,0 +1,8 @@
+CREATE TABLE historial (
+    id SERIAL PRIMARY KEY,
+    responsable VARCHAR(255) NOT NULL,
+    accion VARCHAR(100) NOT NULL,
+    entidad VARCHAR(100) NOT NULL,
+    detalles TEXT,
+    fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

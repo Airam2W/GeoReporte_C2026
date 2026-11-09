@@ -1,3 +1,4 @@
+import { agregarHistorial } from '@/services/supabaseController'
 import { jsPDF } from 'jspdf'
 
 const TINTO: [number, number, number] = [98, 17, 50]
@@ -216,5 +217,16 @@ export const generarPdfReporte = async (reporte: any, opciones: OpcionesPdf = {}
     return { blob: doc.output('blob') as Blob, nombreArchivo }
   }
   doc.save(nombreArchivo)
+
+  const { error: errorHistorialGeneral } = await agregarHistorial({
+    accion: 'Descargar',
+    entidad: 'Reporte',
+    detalles: `Descargó el PDF del reporte con folio ${numero}`,
+  })
+
+  if (errorHistorialGeneral) {
+    // No se hace return: la acción principal ya se completó
+    console.error('Error al guardar en el historial:', errorHistorialGeneral)
+  }
   return null
 }
