@@ -19,7 +19,7 @@
                 <p class="destacado">
                   {{
                     reporte.departamentos?.nombre || reporte.departamentos_externos?.departamento ||
-                    reporte.departamentos?.nombreamigable || 
+                    reporte.departamentos?.nombreamigable ||
                     'No proporcionado'
                   }}
                 </p>

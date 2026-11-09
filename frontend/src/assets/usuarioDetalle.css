@@ -11,7 +11,7 @@
 .modal-card {
   background: white;
   width: 90%;
-  max-width: 600px;
+  max-width: 300px;
   border-radius: 16px;
   display: flex;
   flex-direction: column;
@@ -60,6 +60,28 @@
   flex-direction: column;
   gap: 16px;
 }
+/* Dos columnas: datos a la izquierda, jerarquía a la derecha */
+.modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+/* Sin jerarquía (otros tipos de usuario): una sola columna */
+.modal-grid--simple {
+  grid-template-columns: 1fr;
+}
+
+.columna-derecha {
+  border-left: 1px solid #eee;
+  padding-left: 32px;
+}
+
+.estado-actual-box {
+  margin-top: 24px;
+}
+
 .info-item label {
   display: block;
   font-size: 0.8rem;
@@ -137,6 +159,10 @@
   opacity: 0;
 }
 
+.jerarquia-box {
+  max-width: none;
+}
+
 .jerarquia-box label {
   display: block;
   font-size: 0.8rem;
@@ -191,4 +217,28 @@
   height: 1px;
   background: #eee;
   margin: 4px 0;
+}
+
+@media (max-width: 768px) {
+  .modal-grid {
+    grid-template-columns: 1fr;
+  }
+  .info-grupo-doble {
+    grid-template-columns: 1fr;
+    gap: 0px;
+  }
+  .columna-derecha {
+    border-left: none;
+    border-top: 1px solid #eee;
+    padding-left: 0;
+    padding-top: 20px;
+  }
+  .jerarquia-lista {
+    flex-direction: column;
+  }
+  .jerarquia-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
 }

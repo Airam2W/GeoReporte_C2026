@@ -170,6 +170,13 @@ const enviar = () => {
 <style src="../assets/usuarioForm.css" />
 
 <style scoped>
+
+input[type='radio'] {
+    appearance: none; /* Para navegadores modernos */
+    -webkit-appearance: none; /* Safari/Chrome */
+    -moz-appearance: none; /* Firefox */
+}
+
 .intro { margin: 0; font-size: 0.92rem; line-height: 1.5; color: #555; }
 
 .foto-box {

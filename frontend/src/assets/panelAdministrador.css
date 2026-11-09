@@ -25,6 +25,12 @@
   align-items: center;
   gap: 10px;
 }
+
+.topbar-logo .logo {
+  height: 40px;
+  width: auto;
+}
+
 .topbar-logo h1 {
   font-size: 1.2rem;
   font-weight: 600;
@@ -466,7 +472,7 @@
   background: #d0d0d0;
 }
 .btn-primario {
-  background: #621132;
+  background: var(--tinto-boton);
   color: white;
 }
 .btn-primario:hover {
@@ -500,7 +506,7 @@
   -webkit-backdrop-filter: blur(4px);
 }
 
-/* Tablets y celulares grandes: botones más compactos, siguen en 3 columnas */
+
 @media (max-width: 600px) {
 
 }
@@ -514,10 +520,21 @@
   .info-grupo-doble {
     grid-template-columns: 1fr;
   }
+  .topbar-logo h1 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
 }
 
 /* Celulares pequeños: 2 columnas x 3 renglones para que no se corten los nombres */
-@media (max-width: 600px) {
+@media (max-width: 620px) {
+  .topbar-logo h1 {
+    font-size: 0rem;
+    font-weight: 600;
+    margin: 0;
+  }
 
 }
 @media (max-width: 380px) {

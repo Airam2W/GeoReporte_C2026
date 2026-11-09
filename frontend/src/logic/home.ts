@@ -1,10 +1,9 @@
-import router from '@/router'
-import { Toast } from '../utils/alertas'
 import { ref } from 'vue'
 import { redireccionarUsuario } from './redirectUser'
 export const menuAbierto = ref(false)
 export const menuRef = ref<HTMLElement | null>(null)
 import { obtenerUsuarioPorCorreoYContrasena } from '../services/supabaseController'
+import LogoGR from '../assets/Logo.png'
 
 const ICONO_OJO_ABIERTO = `
   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -21,35 +20,37 @@ const ICONO_OJO_CERRADO = `
   </svg>`
 
 export const iniciarSesion = () => {
-  // menuAbierto.value = false // Descomenta si tienes acceso a esta variable aquí
-
   const modal = document.createElement('div')
   modal.className = 'modal'
 
-  // Estructura actualizada con los spans de error individuales
   modal.innerHTML = `
-    <div class="modal-contenido">
-      <h2>Iniciar sesión</h2>
-      <p>Ingresa tus credenciales</p>
+    <button id="login-cancel" class="btn-volver-flotante">Volver al inicio ✕</button>
 
-      <div style="margin-bottom: 12px; text-align: left;">
-        <input type="email" id="login-email" placeholder="Correo electrónico" style="width: 100%;" />
-        <span id="error-email" class="msg-error" style="display: none; color: #e74c3c; font-size: 0.75rem; font-weight: 600; margin-top: 4px;"></span>
+    <div class="modal-contenido">
+      <img src="${LogoGR}" alt="Logo GeoReporte" class="logo-georeporte-center" />
+
+      <h1 class="card-title texto-tinto">GeoReporte</h1>
+      <p class="card-subtitle" style="margin-bottom: 24px;">Plataforma ciudadana para la gestión e inicio de sesión de reportes públicos.</p>
+
+      <div class="input-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="login-email" placeholder="ejemplo@correo.com" />
+        <span id="error-email" class="msg-error"></span>
       </div>
 
-      <div style="margin-bottom: 12px; text-align: left;">
-        <div class="password-container" style="margin-bottom: 0;">
-          <input type="password" id="login-password" placeholder="Contraseña" />
+      <div class="input-group">
+        <label>Contraseña</label>
+        <div class="password-container">
+          <input type="password" id="login-password" placeholder="••••••••••••" />
           <button type="button" id="toggle-password" class="toggle-password"
             title="Mostrar contraseña" aria-label="Mostrar contraseña">${ICONO_OJO_CERRADO}</button>
         </div>
         <span id="error-password" class="msg-error"></span>
       </div>
 
-      <p id="login-error-global" class="msg-error" style="display: none; color: #e74c3c; font-size: 0.85rem; font-weight: 600; text-align: center;"></p>
+      <p id="login-error-global" class="msg-error" style="text-align: center; margin-bottom: 10px;"></p>
 
-      <button id="login-submit" type="submit" style="width: 100%; margin-top: 10px;">Iniciar sesión</button>
-      <button id="login-cancel" style="width: 100%; margin-top: 10px; background: #ccc; color: #000;">Cancelar</button>
+      <button id="login-submit" type="submit">Iniciar sesión</button>
     </div>
   `
 
@@ -75,18 +76,18 @@ export const iniciarSesion = () => {
     togglePassword.setAttribute('aria-label', texto)
   })
 
-  // Después de definir emailInput, passwordInput y submitBtn
+  // Enter triggers Login
   const handleEnter = (event: KeyboardEvent) => {
     if (event.key === 'Enter') {
       event.preventDefault()
-      submitBtn.click() // dispara el mismo flujo que el botón
+      submitBtn.click()
     }
   }
 
   emailInput.addEventListener('keydown', handleEnter)
   passwordInput.addEventListener('keydown', handleEnter)
 
-  // Función auxiliar para limpiar errores visuales antes de validar
+  // Limpiar visual de errores
   const limpiarErrores = () => {
     emailInput.classList.remove('input-error')
     passwordInput.classList.remove('input-error')
@@ -133,12 +134,11 @@ export const iniciarSesion = () => {
 
     if (!esValido) return
 
-    // --- Petición a Supabase ---
+    // Petición a Supabase
     submitBtn.disabled = true
     submitBtn.textContent = 'Iniciando...'
 
     try {
-
       const {data, error} = await obtenerUsuarioPorCorreoYContrasena({p_correo: email, p_contrasena: password})
       const mensajeBackend = error || 'Correo o contraseña incorrectos. Porfavor, verifica tus datos e intenta de nuevo.'
 
@@ -154,17 +154,9 @@ export const iniciarSesion = () => {
       }
 
       const tokenUsuario = data.token
-
       localStorage.setItem('userToken', tokenUsuario)
 
-      // Para éxito
-      //Toast.fire({
-      //  icon: 'success',
-      //  title: `¡Bienvenido de vuelta, ${usuario.nombre}!`,
-      //})
-
       document.body.removeChild(modal)
-
       redireccionarUsuario()
     } catch (err) {
       errorGlobal.textContent = 'Error al conectar con el servidor: ' + err

@@ -2,10 +2,8 @@
   <div class="dashboard-layout">
     <nav class="topbar">
       <div class="topbar-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-          <circle cx="12" cy="10" r="3"></circle>
-        </svg>
+        <img src="../assets/logoAyuntamiento.svg" alt="Logo Ayuntamiento" class="logo"/>
+        <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo"/>
         <h1>GeoReporte | Dirección General</h1>
       </div>
       <div class="topbar-user" v-if="director">
@@ -66,14 +64,7 @@
                 ? abrirModalFormProblematica()
                 : abrirModalForm()
             " style="
-            background-color: #1a6b2f;
-            padding: 10px 20px;
-            color: white;
-            border-radius: 8px;
-            font-weight: bold;
-            border: none;
-            cursor: pointer;
-          ">
+            ">
           {{
             filtros.seccion === 'departamentos'
               ? 'Agregar Departamento'
@@ -242,10 +233,10 @@
               </td>
               <td class="acciones-celda">
                 <button class="btn-accion btn-ver" title="Ver detalles" @click="abrirModalVer(user)">
-                  👁️
+                  <InfoCircle color="var(--texto-oscuro)" />
                 </button>
                 <button class="btn-accion btn-editar" title="Editar" @click="abrirModalForm(user)">
-                  ✏️
+                  <UserEdit color="orange"/>
                 </button>
               </td>
             </tr>
@@ -285,15 +276,23 @@
               </td>
               <td class="acciones-celda">
                 <button class="btn-accion btn-ver" title="Ver detalles" @click="abrirModalVerDepto(depto)">
-                  👁️
+                  <InfoCircle color="var(--texto-oscuro)" />
                 </button>
                 <button class="btn-accion btn-editar" title="Editar" @click="abrirModalFormDepto(depto)">
-                  ✏️
+                  <Pencil color="orange"/>
                 </button>
                 <button class="btn-accion btn-eliminar"
                   :title="depto.raw.estado === 'Alta' ? 'Dar de baja' : 'Dar de alta'"
                   @click="cambiarEstadoDepartamento(depto)">
-                  {{ depto.raw.estado === 'Alta' ? '⬇️' : '⬆️' }}
+                  <MinusCircle
+                    v-if="depto.raw.estado === 'Alta'"
+                    color="red"
+                  />
+                  <PlusCircle
+                    v-else
+                    color="green"
+                  />
+
                 </button>
               </td>
             </tr>
@@ -334,14 +333,21 @@
               </td>
               <td class="acciones-celda">
                 <button class="btn-accion btn-ver" title="Ver detalles" @click="abrirModalVerProblematica(prob)">
-                  👁️
+                  <InfoCircle color="var(--texto-oscuro)" />
                 </button>
                 <button class="btn-accion btn-editar" title="Editar" @click="abrirModalFormProblematica(prob)">
-                  ✏️
+                  <Pencil color="orange"/>
                 </button>
                 <button class="btn-accion btn-eliminar" :title="prob.estado === 'Alta' ? 'Dar de baja' : 'Dar de alta'"
                   @click="cambiarEstadoProblema(prob)">
-                  {{ prob.estado === 'Alta' ? '⬇️' : '⬆️' }}
+                  <MinusCircle
+                    v-if="prob.estado === 'Alta'"
+                    color="red"
+                  />
+                  <PlusCircle
+                    v-else
+                    color="green"
+                  />
                 </button>
               </td>
             </tr>
@@ -415,6 +421,13 @@ import DepartamentoDetalleModal from '../components/DepartamentoDetalleModal.vue
 import ProblematicaFormModal from '../components/ProblematicaFormModal.vue'
 import ProblematicaDetalleModal from '../components/ProblematicaDetalleModal.vue'
 import { truncarTexto } from '../logic/panelAdministrador'
+
+// Iconos
+import InfoCircle from '@primeicons/vue/info-circle';
+import Pencil from '@primeicons/vue/pencil';
+import UserEdit from '@primeicons/vue/user-edit';
+import MinusCircle from '@primeicons/vue/minus-circle';
+import PlusCircle from '@primeicons/vue/plus-circle';
 
 const problematicasData = ref<any[]>([])
 
@@ -1233,7 +1246,7 @@ const cerrarSesion = () => {
 }
 
 .tab-seccion.activa {
-  background-color: #1a6b2f;
+  background-color: var(--texto-gris);
   color: #fff;
 }
 
@@ -1245,4 +1258,14 @@ const cerrarSesion = () => {
   outline: 3px solid #1a6b2f;
   outline-offset: 2px;
 }
+.content-header button{
+  background-color: var(--tinto-boton);
+  padding: 10px 20px;
+  color: white;
+  border-radius: 8px;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+}
+
 </style>

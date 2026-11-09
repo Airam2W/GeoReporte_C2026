@@ -3,10 +3,8 @@
     <!-- Barra Superior -->
     <nav class="topbar">
       <div class="topbar-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-          <circle cx="12" cy="10" r="3"></circle>
-        </svg>
+        <img src="../assets/logoAyuntamiento.svg" alt="Logo Ayuntamiento" class="logo" />
+        <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo" />
         <h1>GeoReporte | Administrador Externo</h1>
       </div>
       <div class="topbar-user" v-if="admin">
@@ -116,22 +114,22 @@
 
               <td class="acciones-celda">
                 <button class="btn-accion btn-pdf" title="Descargar PDF" @click="descargarPDF(reporte)">
-                  📄
+                  <DownloadIcon />
                 </button>
                 <button class="btn-accion" title="Ver detalle" @click="abrirModalVer(reporte)">
-                  👁️
+                  <InfoCircle color="var(--texto-gris)" />
                 </button>
 
                 <button v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Turnado'" class="btn-accion"
                   title="Rechazar reporte" :disabled="foliosProcesando.has(reporte.folio)"
                   @click="rechazarReporte(reporte.folio)">
-                  ❌
+                  <Times color="red" />
                 </button>
 
                 <button v-if="reporte.detalle_reporte?.estadoreporte?.estado === 'Turnado'" class="btn-accion"
                   title="Finalizar reporte" :disabled="foliosProcesando.has(reporte.folio)"
                   @click="devolverReporte(reporte.folio, 'Finalizado')">
-                  ✅
+                  <FileCheck color="green" />
                 </button>
 
                 <button v-if="
@@ -139,7 +137,7 @@
                   reporte.detalle_reporte?.estadoreporte?.estado === 'Finalizado'
                 " class="btn-accion" title="Devolver a Turnado" :disabled="foliosProcesando.has(reporte.folio)"
                   @click="devolverReporte(reporte.folio, 'Turnado')">
-                  🔄
+                  <Refresh color="var(--texto-oscuro)" />
                 </button>
               </td>
             </tr>
@@ -177,6 +175,14 @@ import { generarPdfReporte } from '../logic/reportePdf'
 import DescargarPdfModal from '../components/DescargarPdfModal.vue'
 import { enviarCorreoRechazoReporte, enviarCorreoFinalizacionReporte, enviarCorreoReportePDF } from '../services/gmailController'
 
+// Iconos
+import DownloadIcon from '@primeicons/vue/download';
+import InfoCircle from '@primeicons/vue/info-circle';
+import UserIcon from '@primeicons/vue/user';
+import ArrowUTurnUpLeft from '@primeicons/vue/arrow-u-turn-up-left';
+import FileCheck from '@primeicons/vue/file-check';
+import Refresh from '@primeicons/vue/refresh';
+
 const modalPdfVisible = ref(false)
 const reportePdf = ref<any>(null)
 const procesandoPdf = ref(false)
@@ -213,6 +219,7 @@ const filtros = ref({
 })
 
 import { useCargando } from '../composable/useCargando'
+import { Times } from '@primeicons/vue'
 const { mostrarCargando, ocultarCargando } = useCargando()
 
 onMounted(async () => {
@@ -543,7 +550,6 @@ const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Turna
       if (!error) {
         const index = reportes.value.findIndex((r) => r.folio === folio)
         if (index !== -1) reportes.value[index].estado = nuevoEstado
-
         // Enviar correo por Gmail de finalización del reporte si es "Finalizado"
         if (nuevoEstado === 'Finalizado') {
           const correoData = {
@@ -573,19 +579,28 @@ const devolverReporte = async (folio: string, nuevoEstado: 'Finalizado' | 'Turna
             confirmButtonColor: '#1a6b2f',
           })
         } else {
-          console.error('Error al actualizar estado del reporte:', error)
-          Swal.fire({
-            title: 'Error',
-            text: 'Hubo un error al actualizar el estado en la base de datos.',
-            icon: 'error',
-            confirmButtonColor: '#1a6b2f',
-          })
+          try{
+              Swal.fire({
+              title: '¡Actualizado!',
+              text: `El reporte ahora está en "${nuevoEstado}".`,
+              icon: 'success',
+              confirmButtonColor: '#1a6b2f',
+            })
+          } catch(e) {
+            console.error('Error al actualizar estado del reporte:', e)
+            Swal.fire({
+              title: 'Error',
+              text: 'Hubo un error al actualizar el estado en la base de datos. 595',
+              icon: 'error',
+              confirmButtonColor: '#1a6b2f',
+            })
+          }
         }
       } else {
         console.error('Error al actualizar estado del reporte:', error)
         Swal.fire({
           title: 'Error',
-          text: 'Hubo un error al actualizar el estado en la base de datos.',
+          text: 'Hubo un error al actualizar el estado en la base de datos. 595',
           icon: 'error',
           confirmButtonColor: '#1a6b2f',
         })

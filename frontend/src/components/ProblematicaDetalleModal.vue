@@ -27,7 +27,8 @@
               <p>{{ problematica.departamentoNombre || 'No asignado' }}</p>
             </div>
 
-            <div class="estado-actual-box" style="margin-top: 20px">
+            <div class="info-grupo-doble" >
+              <div class="estado-actual-box">
               <label>Tipo</label>
               <span
                 :class="[
@@ -39,7 +40,7 @@
               </span>
             </div>
 
-            <div class="estado-actual-box" style="margin-top: 20px">
+            <div class="estado-actual-box">
               <label>Estado</label>
               <span
                 :class="[
@@ -50,10 +51,13 @@
                 {{ problematica.estado }}
               </span>
             </div>
+            </div>
           </div>
         </div>
 
         <div class="modal-footer">
+          <button class="btn-secundario" @click="cerrar">Cerrar</button>
+
           <button
             v-if="problematica.estado === 'Alta'"
             class="btn-rojo btn-secundario"
@@ -70,7 +74,6 @@
           >
             Dar de Alta
           </button>
-          <button class="btn-secundario" @click="cerrar">Cerrar</button>
         </div>
       </div>
     </div>

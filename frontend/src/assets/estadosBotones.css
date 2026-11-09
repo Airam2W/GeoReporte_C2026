@@ -33,14 +33,13 @@
   transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
 }
 
-.estado-btn:hover { border-color: var(--color); }
+.estado-btn:hover { border-color: var(--tinto); }
 .estado-btn:active { transform: scale(0.98); }
 .estado-btn:focus-visible { outline: 3px solid var(--color); outline-offset: 2px; }
 
 .estado-btn.activo {
-  background: var(--color);
+  background: var(--tinto);
   color: white;
-  border-color: var(--color);
 }
 
 .estado-conteo {
