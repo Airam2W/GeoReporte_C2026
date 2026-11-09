@@ -117,6 +117,18 @@ export async function obtenerTodosJefes() {//NUEVO
   })
 }
 
+export async function obtenerHistorial(params: {
+  pagina?: number
+  limite?: number
+  busqueda?: string
+  accion?: string
+  entidad?: string
+  fechaDesde?: string
+  fechaHasta?: string
+}) {
+  return obtener(`/historial`, params)
+}
+
 export async function obtenerUsuarioExcepto(tipousuario_id: number) {//NUEVO
   return request(`/usuarios/excepto?${new URLSearchParams({ valor: String(tipousuario_id) }).toString()}`, {
     method: 'GET',
@@ -359,6 +371,13 @@ export async function actualizarFotoDepartamentoReporte(folio: string, fotoDepar
 }
 
 // ================== POST ==================
+
+export async function crearHistorial(data: any) {
+  return request(`/historial`, {
+    method: 'POST',
+    body: JSON.stringify({ data }),
+  })
+}
 
 export async function obtenerUsuarioPorCorreoYContrasena(params: {
   p_correo: string

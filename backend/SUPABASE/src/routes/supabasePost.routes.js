@@ -998,5 +998,47 @@ router.post(
     }
 )
 
+// (crearHistorial)
+router.post(
+    '/historial',
+    verificarTokenJWT,
+    validarAutenticacion,
+    validarAutorizacion([1, 2, 3, 4, 5, 6]),
+    async (req, res) => {
+        try {
+            const { data } = req.body
+
+            if (!esObjetoValido(data)) {
+                return res.status(400).json({ error: 'Datos del historial no proporcionados o inválidos.' })
+            }
+            if (!esTextoValido(data.accion) || data.accion.trim().length > 100) {
+                return res.status(400).json({ error: 'Acción no proporcionada o inválida.' })
+            }
+            if (!esTextoValido(data.entidad) || data.entidad.trim().length > 100) {
+                return res.status(400).json({ error: 'Entidad no proporcionada o inválida.' })
+            }
+            if (data.detalles != null && (typeof data.detalles !== 'string' || data.detalles.length > 2000)) {
+                return res.status(400).json({ error: 'Detalles inválidos.' })
+            }
+
+            // El responsable sale del token, nunca del frontend
+            const responsable = req.user?.correo
+            if (!esTextoValido(responsable)) {
+                return res.status(400).json({ error: 'No se pudo identificar al responsable.' })
+            }
+
+            const result = await supabase.from('historial').insert({
+                responsable,
+                accion: data.accion.trim(),
+                entidad: data.entidad.trim(),
+                detalles: data.detalles ? data.detalles.trim() : null
+            })
+
+            return responder(res, result)
+        } catch (error) {
+            return responderErrorInterno(res, 'Error interno al crear el historial.', error)
+        }
+    }
+)
 
 export default router

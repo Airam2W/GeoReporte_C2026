@@ -951,4 +951,63 @@ router.get(
     })
 )
 
+// (obtenerHistorial)
+router.get(
+    '/historial',
+    verificarTokenJWT,
+    validarAutenticacion,
+    validarAutorizacion([1]),
+    async (req, res) => {
+        try {
+            const pagina = Math.max(1, parseInt(req.query.pagina) || 1)
+            const limite = Math.min(100, Math.max(1, parseInt(req.query.limite) || 25))
+            const desde = (pagina - 1) * limite
+            const hasta = desde + limite - 1
+
+            const { accion, entidad, busqueda, fechaDesde, fechaHasta } = req.query
+
+            let query = supabase
+                .from('historial')
+                .select('*', { count: 'exact' })
+                .order('fecha', { ascending: false })
+                .order('id', { ascending: false })
+                .range(desde, hasta)
+
+            if (esTextoValido(accion)) query = query.eq('accion', accion.trim())
+            if (esTextoValido(entidad)) query = query.eq('entidad', entidad.trim())
+
+            if (esTextoValido(fechaDesde)) {
+                if (Number.isNaN(Date.parse(fechaDesde))) {
+                    return res.status(400).json({ error: 'Fecha inicial inválida.' })
+                }
+                query = query.gte('fecha', fechaDesde)
+            }
+
+            if (esTextoValido(fechaHasta)) {
+                if (Number.isNaN(Date.parse(fechaHasta))) {
+                    return res.status(400).json({ error: 'Fecha final inválida.' })
+                }
+                query = query.lte('fecha', fechaHasta)
+            }
+
+            if (esTextoValido(busqueda)) {
+                // Se quitan caracteres que rompen la sintaxis del filtro .or()
+                const termino = busqueda.trim().slice(0, 100).replace(/[,()%*\\]/g, ' ')
+                query = query.or(`responsable.ilike.%${termino}%,detalles.ilike.%${termino}%`)
+            }
+
+            const { data, error, count } = await query
+
+            if (error) return responder(res, { data: null, error })
+
+            return res.status(200).json({
+                data: { registros: data, total: count ?? 0 },
+                error: null
+            })
+        } catch (error) {
+            return responderErrorInterno(res, 'Error interno al obtener el historial.', error)
+        }
+    }
+)
+
 export default router
