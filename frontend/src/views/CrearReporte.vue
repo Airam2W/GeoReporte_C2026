@@ -401,7 +401,7 @@ const seccionesTerminos = [
   {
     titulo: '10. Derechos de acceso, rectificación, cancelación y oposición',
     parrafos: [
-      'Usted puede ejercer sus derechos de acceso, rectificación, cancelación y oposición (ARCO) ante la Unidad de Transparencia del Ayuntamiento de Culiacán, en [domicilio, correo electrónico y horario de atención], conforme a la normatividad aplicable en materia de protección de datos personales.',
+      'Usted puede ejercer sus derechos de acceso, rectificación, cancelación y oposición (ARCO) ante la Unidad de Transparencia del Ayuntamiento de Culiacán, en Avenida del Waja #404, Colonia Profe Ponga me Zien, C.P. 80000, Culiacán, Sinaloa., georeportec@gmail.com y de lunes a viernes de 8:00 a 15:00 horas, conforme a la normatividad aplicable en materia de protección de datos personales.',
     ],
   },
   {
@@ -959,12 +959,18 @@ const enviarReporte = async () => {
       folio: folioGenerado,
       estado_id: 1,
     })
+    console.log('Error1', insertReporteError, 'Foto Tipo ID', form.value.fotoTipoID, 'Mensaje AI', form.value.mensajeAI)
 
-    if (insertReporteError)
-      throw new Error('Error al guardar en base de datos: ' + insertReporteError.message)
-    if (insertReporteExistenteError)
-      throw new Error('Error al guardar en base de datos: ' + insertReporteExistenteError.message)
-
+    if (insertReporteError){
+      console.log('Error2', insertReporteError)
+      throw new Error('Error al guardar en base de datos al crear reporte: ' + insertReporteError.message)
+      
+    }
+    if (insertReporteExistenteError){
+      console.log('Error3', insertReporteExistenteError)
+      throw new Error('Error al guardar en base de datos al crear detalles del reporte: ' + insertReporteExistenteError.message)
+      
+    }
     // Enviar correo por Gmail de la Creacion del Reporte
     const correoData = {
       folio: folioGenerado,
@@ -985,7 +991,7 @@ const enviarReporte = async () => {
 
       if (!resultadoGmail.ok) {
         console.error('Error al enviar:', resultadoGmail.mensaje)
-        console.error('Error detallado:', resultadoGmail.error)
+        console.error('Error detallado:', resultadoGmail)
       }
     }
 

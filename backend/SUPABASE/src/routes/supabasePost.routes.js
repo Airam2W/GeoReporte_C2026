@@ -476,7 +476,7 @@ router.post('/reporte', verificarTurnstile, async (req, res) => {
         if (
             data.fotoTipoID !== undefined &&
             data.fotoTipoID !== null &&
-            !esIdValido(data.fotoTipoID)
+            (data.fotoTipoID == 0 || data.fotoTipoID == 1 || data.fotoTipoID == 2) 
         ) {
             return res.status(400).json({
                 error: 'Foto Tipo ID inválido. Debe ser un número entero positivo o null.'
