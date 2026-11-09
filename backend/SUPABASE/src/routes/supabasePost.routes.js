@@ -222,7 +222,10 @@ router.post('/usuarios/CorreoContrasena', manejarErrores(async (req, res) => {
     )
 
     // Si todo es correcto, lo agregamos al historial del sistema
-    await registrarHistorial(usuario.correo, {
+    const correoUsuario = usuario.correo || 'Sistema';
+    // Convertir a String para evitar problemas si es null o undefined
+    const correoUsuarioString = String(correoUsuario);
+    await registrarHistorial(correoUsuarioString, {
         accion: 'Entrar',
         entidad: 'Sistema',
         detalles: `El usuario ${usuario.nombre} ${usuario.apellido_p} ha entrado al sistema.`
