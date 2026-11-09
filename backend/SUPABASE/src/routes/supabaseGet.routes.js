@@ -7,6 +7,7 @@ import {
     validarAutenticacion,
     validarAutorizacion
 } from '../middleware/auth.js'
+import { registrarHistorial } from '../utils/registrarHistorial.js'
 
 const router = Router()
 
