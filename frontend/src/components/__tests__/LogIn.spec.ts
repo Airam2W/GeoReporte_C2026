@@ -12,8 +12,6 @@ vi.mock('@/logic/redirectUser', () => ({
 import HomeView from '@/views/HomeView.vue'
 import {
 	obtenerUsuarioPorCorreoYContrasena,
-	obtenerSupervisorIDPorUsuarioID,
-	obtenerJefeIDPorUsuarioID,
 } from '@/services/supabaseController'
 import { redireccionarUsuario } from '@/logic/redirectUser'
 import router from '@/router'
@@ -102,24 +100,26 @@ describe('Pruebas Unitarias del inicio de sesión', () => {
 		wrapper.unmount()
 	})
 
-	it('PU-LG-04: guarda la sesión y redirige con credenciales correctas', async () => {
-		const usuarioMock = { id: 1, nombre: 'Administrador', estado: 'Activo', tipo_id: 2 }
-		vi.mocked(obtenerUsuarioPorCorreoYContrasena).mockResolvedValue({ data: [usuarioMock], error: null })
+	it('PU-LG-04: guarda el token y redirige con credenciales correctas', async () => {
+		vi.mocked(obtenerUsuarioPorCorreoYContrasena).mockResolvedValue({
+			data: { token: 'token-de-prueba' },
+			error: null,
+		})
 
 		const { wrapper, modal } = await abrirLogin()
 		enviarCredenciales(modal, 'admin@georeporte.mx', 'secreto123')
 
 		await vi.waitFor(() => expect(redireccionarUsuario).toHaveBeenCalled())
 
-		expect(localStorage.getItem('userSession')).toBe(JSON.stringify(usuarioMock))
+		expect(localStorage.getItem('userToken')).toBe('token-de-prueba')
 		expect(document.querySelector('.modal')).toBeNull()
 		wrapper.unmount()
 	})
 
-	it('PU-LG-05: bloquea el acceso si la cuenta está dada de baja', async () => {
+	it('PU-LG-05: muestra el mensaje del backend si la cuenta está dada de baja', async () => {
 		vi.mocked(obtenerUsuarioPorCorreoYContrasena).mockResolvedValue({
-			data: [{ id: 1, nombre: 'Administrador', estado: 'Inactivo', tipo_id: 2 }],
-			error: null,
+			data: null,
+			error: 'Esta cuenta ha sido dada de baja. Porfavor, contacta con el Director General',
 		})
 
 		const { wrapper, modal } = await abrirLogin()
@@ -130,7 +130,7 @@ describe('Pruebas Unitarias del inicio de sesión', () => {
 			'Esta cuenta ha sido dada de baja. Porfavor, contacta con el Director General',
 		)
 		expect(redireccionarUsuario).not.toHaveBeenCalled()
-		expect(localStorage.getItem('userSession')).toBeNull()
+		expect(localStorage.getItem('userToken')).toBeNull()
 		wrapper.unmount()
 	})
 
@@ -149,45 +149,4 @@ describe('Pruebas Unitarias del inicio de sesión', () => {
 		wrapper.unmount()
 	})
 
-	it('PU-LG-07: un supervisor guarda su id_supervisor y departamento en la sesión', async () => {
-		vi.mocked(obtenerUsuarioPorCorreoYContrasena).mockResolvedValue({
-			data: [{ id: 7, nombre: 'Supervisor', estado: 'Alta', tipo_id: 3 }],
-			error: null,
-		})
-		vi.mocked(obtenerSupervisorIDPorUsuarioID).mockResolvedValue({
-			data: [{ id: 20, departamento_id: 1 }],
-			error: null,
-		})
-
-		const { wrapper, modal } = await abrirLogin()
-		enviarCredenciales(modal, 'sup@georeporte.mx', 'secreto123')
-		await vi.waitFor(() => expect(redireccionarUsuario).toHaveBeenCalled())
-
-		expect(obtenerSupervisorIDPorUsuarioID).toHaveBeenCalledWith(7)
-		expect(JSON.parse(localStorage.getItem('userSession')!)).toEqual(
-			expect.objectContaining({ id: 7, tipo_id: 3, id_supervisor: 20, departamento_id: 1 }),
-		)
-		wrapper.unmount()
-	})
-
-	it('PU-LG-08: un jefe guarda su id_jefe y el departamento de su supervisor', async () => {
-		vi.mocked(obtenerUsuarioPorCorreoYContrasena).mockResolvedValue({
-			data: [{ id: 8, nombre: 'Jefe', estado: 'Alta', tipo_id: 4 }],
-			error: null,
-		})
-		vi.mocked(obtenerJefeIDPorUsuarioID).mockResolvedValue({
-			data: [{ id: 30, supervisores: { departamento_id: 1 } }],
-			error: null,
-		})
-
-		const { wrapper, modal } = await abrirLogin()
-		enviarCredenciales(modal, 'jefe@georeporte.mx', 'secreto123')
-		await vi.waitFor(() => expect(redireccionarUsuario).toHaveBeenCalled())
-
-		expect(obtenerJefeIDPorUsuarioID).toHaveBeenCalledWith(8)
-		expect(JSON.parse(localStorage.getItem('userSession')!)).toEqual(
-			expect.objectContaining({ id: 8, tipo_id: 4, id_jefe: 30, departamento_id: 1 }),
-		)
-		wrapper.unmount()
-	})
 })

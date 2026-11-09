@@ -1,7 +1,10 @@
 import { flushPromises, mount, VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import Swal from 'sweetalert2'
 import PanelAdminExterno from '@/views/PanelAdminExterno.vue'
+import ReporteDetalleModal from '@/components/ReporteDetalleModal.vue'
 import * as db from '@/services/supabaseController'
+import { redireccionarUsuario } from '@/logic/redirectUser'
 import './setup'
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
@@ -21,6 +24,34 @@ vi.mock('sweetalert2', () => ({
 	},
 }))
 
+// Evita cargar el router real, el indicador de carga, el PDF y el correo
+vi.mock('@/logic/redirectUser', () => ({ redireccionarUsuario: vi.fn() }))
+vi.mock('@/composable/useCargando', () => ({
+	useCargando: () => ({ mostrarCargando: vi.fn(), ocultarCargando: vi.fn() }),
+}))
+vi.mock('@/logic/reportePdf', () => ({ generarPdfReporte: vi.fn() }))
+vi.mock('@/services/gmailController', () => ({
+	enviarCorreoRechazoReporte: vi.fn().mockResolvedValue({ ok: true }),
+	enviarCorreoFinalizacionReporte: vi.fn().mockResolvedValue({ ok: true }),
+	enviarCorreoReportePDF: vi.fn().mockResolvedValue({ ok: true }),
+}))
+
+// JWT falso: solo importa el payload (segunda parte)
+const crearToken = (payload: object) => `cabecera.${btoa(JSON.stringify(payload))}.firma`
+
+const crearStorage = (inicial: Record<string, string>) => {
+	const storage = new Map<string, string>(Object.entries(inicial))
+	vi.stubGlobal('localStorage', {
+		getItem: (key: string) => storage.get(key) ?? null,
+		setItem: (key: string, value: string) => storage.set(key, value),
+		removeItem: (key: string) => storage.delete(key),
+	})
+	return storage
+}
+
+// 3 = Rechazado, 4 = Finalizado, 5 = Turnado
+const ESTADOS: Record<number, string> = { 2: 'En Proceso', 3: 'Rechazado', 4: 'Finalizado', 5: 'Turnado' }
+
 const reportesMock = [
 	{
 		folio: 'EXT-BAS-20260915-001-ABC123',
@@ -32,7 +63,7 @@ const reportesMock = [
 		foto_url: null,
 		created_at: '2026-09-15T12:00:00Z',
 		problemas_externos: { id: 1, nombre: 'Bache', nombreamigable: 'Bache en vialidad' },
-		detalle_reporte: { estado_id: 1, estadoreporte: { estado: 'Pendiente' }, updated_at: '2026-09-15T12:00:00Z' },
+		detalle_reporte: { estado_id: 5, estadoreporte: { estado: 'Turnado' }, updated_at: '2026-09-15T12:00:00Z' },
 	},
 	{
 		folio: 'EXT-ALU-20260914-002-XYZ789',
@@ -80,46 +111,35 @@ describe('Pruebas del panel del administrador externo', () => {
 		vi.clearAllMocks()
 		reportesEstado = structuredClone(reportesMock)
 
-		// La sesión ahora vive en "userSession" y el panel exige tipo_id === 6
-		const storage = new Map([
-			['userSession', JSON.stringify({ id: 6, nombre: 'Administrador Externo', departamento_id: 10, tipo_id: 6 })],
-		])
-		vi.stubGlobal('localStorage', {
-			getItem: (key: string) => storage.get(key) ?? null,
-			setItem: (key: string, value: string) => storage.set(key, value),
-			removeItem: (key: string) => storage.delete(key),
+		// La sesión vive en el token "userToken" y el panel exige tipo_id === 6
+		crearStorage({
+			userToken: crearToken({ id: 6, nombre: 'Administrador Externo', departamento_id: 10, tipo_id: 6 }),
 		})
 
-		vi.mocked(db.esperarUsuario).mockResolvedValue(null)
+		vi.mocked(db.esperarUsuario).mockResolvedValue('token-de-prueba')
 
-		// Los problemas del departamento ahora salen de obtenerProblematicasExternasPorID(departamento_id)
 		vi.mocked(db.obtenerProblematicasExternasPorID).mockResolvedValue({
 			data: [{ id: 1, nombre: 'Bache', nombreamigable: 'Bache en vialidad', departamento_externo_id: 10 }],
 			error: null,
 		})
 
-		// selectEq(tabla, campo, valor, columnas)
-		vi.mocked(db.selectEq).mockImplementation(async (tabla: string) => {
-			if (tabla === 'departamentos_externos') {
-				return { data: [{ id: 10, departamento: 'Servicios Externos' }], error: null }
-			}
-			return { data: [], error: null }
+		// El nombre del departamento sale de obtenerDepartamentosExternosPorID (arreglo)
+		vi.mocked(db.obtenerDepartamentosExternosPorID).mockResolvedValue({
+			data: [{ id: 10, departamento: 'Servicios Externos' }],
+			error: null,
 		})
 
-		// selectEqOrder(tabla, campo, valor, orderBy, columnas, ascending)
-		vi.mocked(db.selectEqOrder).mockImplementation(async () => ({
+		vi.mocked(db.obtenerReportesPorDepartamentoExternoID).mockImplementation(async () => ({
 			data: structuredClone(reportesEstado),
 			error: null,
 		}))
 
-		// updateEq(tabla, campo, valor, data)
-		vi.mocked(db.updateEq).mockImplementation(async (_tabla: string, column: string, value: any, payload: any) => {
-			const reporte = reportesEstado.find((item) => item[column] === value)
+		// actualizarEstadoReporte(folio, data) actualiza también el estado simulado
+		vi.mocked(db.actualizarEstadoReporte).mockImplementation(async (folio: string, payload: any) => {
+			const reporte = reportesEstado.find((item) => item.folio === folio)
 			if (reporte && 'estado_id' in payload) {
-				const estadoId = payload.estado_id
-				reporte.detalle_reporte.estado_id = estadoId
-				reporte.detalle_reporte.estadoreporte.estado =
-					estadoId === 1 ? 'Pendiente' : estadoId === 2 ? 'En Proceso' : estadoId === 3 ? 'Rechazado' : 'Finalizado'
+				reporte.detalle_reporte.estado_id = payload.estado_id
+				reporte.detalle_reporte.estadoreporte.estado = ESTADOS[payload.estado_id]
 			}
 			return { data: null, error: null }
 		})
@@ -130,18 +150,21 @@ describe('Pruebas del panel del administrador externo', () => {
 
 	afterEach(() => wrapper.unmount())
 
-	// Busca un botón dentro del modal por su texto (el primer .btn-primario es "Descargar PDF")
-	const botonDelModal = (texto: string) =>
-		wrapper.findAll('.modal-card button').find((b) => b.text().includes(texto))
-
-	it('carga el departamento, los problemas y los reportes turnados', () => {
+	it('PAE-01 carga el departamento, los problemas y los reportes turnados', () => {
 		expect(db.obtenerProblematicasExternasPorID).toHaveBeenCalledWith(10)
-		expect(db.selectEqOrder).toHaveBeenCalledWith('reportes', 'departamento_externo_id', 10, 'created_at', expect.any(Array), false)
+		expect(db.obtenerDepartamentosExternosPorID).toHaveBeenCalledWith(10)
+		expect(db.obtenerReportesPorDepartamentoExternoID).toHaveBeenCalledWith(10)
 		expect(wrapper.vm.admin.departamento).toBe('Servicios Externos')
 		expect(wrapper.vm.reportes).toHaveLength(4)
 	})
 
-	it('busca reportes por folio y otras características', async () => {
+	it('PAE-02 muestra por defecto solo los reportes Turnados', () => {
+		const filas = wrapper.findAll('tbody tr.fila-datos')
+		expect(filas).toHaveLength(1)
+		expect(filas[0].text()).toContain('ABC123')
+	})
+
+	it('PAE-03 busca reportes por folio y otras características', async () => {
 		wrapper.vm.filtros.estado = ''
 		wrapper.vm.filtros.busqueda = 'luminaria apagada'
 		await wrapper.vm.$nextTick()
@@ -154,19 +177,19 @@ describe('Pruebas del panel del administrador externo', () => {
 		expect(wrapper.find('tbody tr.fila-datos').text()).toContain('Bache en vialidad')
 	})
 
-	it('solo ofrece los estados Pendiente, Finalizado y Rechazado', () => {
+	it('PAE-04 solo ofrece los estados Turnado, Finalizado y Rechazado', () => {
 		const botones = wrapper.findAll('.estado-btn')
 		expect(botones).toHaveLength(3)
 		expect(botones.map((b) => b.text())).toEqual([
-			expect.stringContaining('Pendiente'),
+			expect.stringContaining('Turnado'),
 			expect.stringContaining('Finalizado'),
 			expect.stringContaining('Rechazado'),
 		])
 	})
 
-	it('filtra reportes por Pendiente, Finalizado y Rechazado desde los botones de estado', async () => {
+	it('PAE-05 filtra reportes por Turnado, Finalizado y Rechazado desde los botones de estado', async () => {
 		for (const [estado, folio] of [
-			['Pendiente', 'ABC123'],
+			['Turnado', 'ABC123'],
 			['Finalizado', 'LMN321'],
 			['Rechazado', 'QWE456'],
 		]) {
@@ -178,43 +201,78 @@ describe('Pruebas del panel del administrador externo', () => {
 		}
 	})
 
-	it('rechaza un reporte desde Ver detalle', async () => {
-		wrapper.vm.filtros.estado = ''
-		await wrapper.vm.$nextTick()
-		await wrapper.find('.btn-accion').trigger('click') // botón "Ver detalle"
-		await wrapper.vm.$nextTick()
-		expect(wrapper.find('.modal-card').text()).toContain('Rechazar Reporte')
-
-		await botonDelModal('Rechazar Reporte')!.trigger('click')
-		await vi.waitFor(() =>
-			expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'EXT-BAS-20260915-001-ABC123', { estado_id: 3 }),
-		)
+	it('PAE-06 abre el detalle de un reporte', async () => {
+		await wrapper.find('button[title="Ver detalle"]').trigger('click')
+		expect(wrapper.vm.modalVisible).toBe(true)
+		expect(wrapper.vm.reporteActivo.folio).toBe('EXT-BAS-20260915-001-ABC123')
 	})
 
-	it('devuelve un reporte rechazado a Pendiente', async () => {
+	it('PAE-07 rechaza un reporte turnado desde la tabla', async () => {
+		await wrapper.find('button[title="Rechazar reporte"]').trigger('click')
+		await flushPromises()
+
+		expect(Swal.fire).toHaveBeenCalledWith(expect.objectContaining({ title: '¿Rechazar reporte?' }))
+		expect(db.actualizarEstadoReporte).toHaveBeenCalledWith('EXT-BAS-20260915-001-ABC123', { estado_id: 3 })
+	})
+
+	it('PAE-08 rechaza un reporte cuando el modal de detalle emite "rechazar"', async () => {
+		wrapper.findComponent(ReporteDetalleModal).vm.$emit('rechazar', 'EXT-BAS-20260915-001-ABC123')
+		await flushPromises()
+
+		expect(db.actualizarEstadoReporte).toHaveBeenCalledWith('EXT-BAS-20260915-001-ABC123', { estado_id: 3 })
+	})
+
+	it('PAE-09 no actualiza el reporte si se cancela la confirmación', async () => {
+		vi.mocked(Swal.fire).mockResolvedValueOnce({ isConfirmed: false } as any)
+
+		await wrapper.find('button[title="Rechazar reporte"]').trigger('click')
+		await flushPromises()
+
+		expect(db.actualizarEstadoReporte).not.toHaveBeenCalled()
+	})
+
+	it('PAE-10 devuelve un reporte rechazado a Turnado', async () => {
 		wrapper.vm.filtros.estado = 'Rechazado'
 		await wrapper.vm.$nextTick()
-		await wrapper.find('.btn-accion').trigger('click') // botón "Ver detalle"
-		await wrapper.vm.$nextTick()
 
-		const botonDevolver = botonDelModal('Devolver a Pendiente')
-		expect(botonDevolver).toBeDefined()
-		await botonDevolver!.trigger('click')
+		await wrapper.find('button[title="Devolver a Turnado"]').trigger('click')
+		await flushPromises()
 
-		await vi.waitFor(() =>
-			expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'EXT-SEG-20260913-003-QWE456', { estado_id: 1 }),
-		)
+		expect(db.actualizarEstadoReporte).toHaveBeenCalledWith('EXT-SEG-20260913-003-QWE456', { estado_id: 5 })
 	})
 
-	it('finaliza un reporte pendiente desde la tabla', async () => {
+	it('PAE-11 finaliza un reporte turnado desde la tabla', async () => {
 		await wrapper.find('button[title="Finalizar reporte"]').trigger('click')
 		await flushPromises()
-		expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'EXT-BAS-20260915-001-ABC123', { estado_id: 4 })
+
+		expect(Swal.fire).toHaveBeenCalledWith(expect.objectContaining({ title: '¿Devolver a "Finalizado"?' }))
+		expect(db.actualizarEstadoReporte).toHaveBeenCalledWith('EXT-BAS-20260915-001-ABC123', { estado_id: 4 })
 	})
 
-	it('cierra sesión y redirige al inicio', async () => {
+	it('PAE-12 cierra sesión, elimina el token y redirige al inicio', async () => {
 		await wrapper.vm.cerrarSesion()
-		expect(localStorage.getItem('userSession')).toBeNull()
+		expect(localStorage.getItem('userToken')).toBeNull()
 		expect(pushMock).toHaveBeenCalledWith('/')
+	})
+
+	it('PAE-13 redirige al inicio si no hay sesión', async () => {
+		crearStorage({})
+
+		const w = mount(PanelAdminExterno)
+		await flushPromises()
+
+		expect(pushMock).toHaveBeenCalledWith('/')
+		w.unmount()
+	})
+
+	it('PAE-14 niega el acceso si el token no es de administrador externo', async () => {
+		crearStorage({ userToken: crearToken({ id: 2, nombre: 'Administrador', departamento_id: 1, tipo_id: 2 }) })
+
+		const w = mount(PanelAdminExterno)
+		await flushPromises()
+
+		expect(Swal.fire).toHaveBeenCalledWith('Acceso Denegado', expect.any(String), 'error')
+		expect(redireccionarUsuario).toHaveBeenCalled()
+		w.unmount()
 	})
 })

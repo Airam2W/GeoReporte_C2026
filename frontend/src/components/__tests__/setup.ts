@@ -1,6 +1,49 @@
 import { vi } from 'vitest';
 
-// Mock global del mapa
+// Lista de todas las funciones exportadas por supabaseController.ts
+const { funcionesBackend } = vi.hoisted(() => ({
+  funcionesBackend: [
+    // GET
+    'obtenerTodosDepartamentosInternos', 'obtenerTodosDepartamentosExternos',
+    'obtenerTodosProblemasInternos', 'obtenerTodosProblemasExternos',
+    'obtenerTodosSupervisores', 'obtenerTodosJefes',
+    'obtenerUsuarioExcepto', 'obtenerTodosUsuariosExcepto',
+    'obtenerDepartamentosinternosPorNombre', 'obtenerDepartamentosExternosPorNombre',
+    'obtenerProblematicasInternasPorNombre', 'obtenerProblematicasExternasPorNombre',
+    'obtenerCorreoUnico', 'obtenerReportePorFolio', 'obtenerEstadoIDPorNombre',
+    'obtenerProblematicasInternasPorID', 'obtenerProblematicasExternasPorID',
+    'obtenerDepartamentosExternosPorID', 'obtenerDepartamentosInternosPorID',
+    'obtenerAdministradoresInternosPorID', 'obtenerAdministradoresExternosPorID',
+    'obtenerSupervisorIDPorUsuarioID', 'obtenerSupervisoresPorDepartamentoID',
+    'obtenerJefeIDPorUsuarioID', 'obtenerTitulos', 'obtenerCategoriaHistorial',
+    'obtenerDepartamentosOrdenadosPorId', 'obtenerProblemasPorDepartamentoID',
+    'obtenerReportesPorDepartamentoExternoID', 'obtenerReportesPorDepartamentoInternoID',
+    'obtenerReportesJefe', 'obtenerReportesSupervisor', 'obtenerJefesPorSupervisor',
+    // PUT
+    'actualizarEstadoReporte', 'actualizarEstadoReporteConJefeFechaInicio',
+    'actualizarEstadoReporteConFechaCierre', 'actualizarEstadoReporteQuitarSupervisor',
+    'actualizarEstadoProblemaInterno', 'actualizarEstadoProblemaExterno',
+    'actualizarSupervisorEstadoReporte', 'actualizarProblemaInterno',
+    'actualizarProblemaExterno', 'actualizarDepartamentoInterno',
+    'actualizarDepartamentoExterno', 'actualizarEstadoDepartamentoInterno',
+    'actualizarEstadoDepartamentoExterno', 'actualizarEstadoUsuario',
+    'actualizarFechaBajaUsuario', 'actualizarFechaAltaUsuario',
+    'actualizarFotoDepartamentoReporte', 'actualizarReporteADepartamentoInterno',
+    'actualizarReporteADepartamentoExterno',
+    // POST
+    'obtenerUsuarioPorCorreoYContrasena', 'guardarUsuario', 'crearReporte',
+    'crearDetalleReporte', 'crearHistorialReporte', 'crearHistorialReporteConFoto',
+    'crearProblemaInterno', 'crearProblemaExterno',
+    'crearDepartamentoInterno', 'crearDepartamentoExterno',
+    // DELETE
+    'eliminarProblemaInterno', 'eliminarProblemaExterno',
+    'eliminarDepartamentoInterno', 'eliminarDepartamentoExterno',
+    // STORAGE
+    'uploadFoto', 'getPublicUrl',
+  ],
+}))
+
+// Mock global del mapa (déjalo igual que lo tenías)
 vi.mock('leaflet', () => ({
   default: {
     map: vi.fn(() => ({
@@ -20,46 +63,14 @@ vi.mock('leaflet', () => ({
 
 // Mock global del backend
 vi.mock('@/services/supabaseController', () => ({
-  // Genéricas
-  selectAll: vi.fn(),
-  selectNeq: vi.fn(),
-  selectNeqOrder: vi.fn(),
-  deleteEq: vi.fn(),
-  selectIlike: vi.fn(),
-  selectIlikeMaybeSingle: vi.fn(),
-  selectEqSingle: vi.fn(),
-  selectEq: vi.fn(),
-  updateEq: vi.fn(),
-  callRpc: vi.fn(),
-  insert: vi.fn(),
-  selectOrder: vi.fn(),
-  selectEqOrder: vi.fn(),
-  uploadFoto: vi.fn(),
-  getPublicUrl: vi.fn(),
-  esperarUsuario: vi.fn().mockResolvedValue(null),
-
-  obtenerDepartamentosOrdenadosPorId: vi.fn(),
-  obtenerProblemasPorDepartamentoID: vi.fn(),
-  crearReporte: vi.fn(),
-  crearDetalleReporte: vi.fn(),
-  obtenerReportePorFolio: vi.fn(),
-  obtenerDepartamentosinternosPorNombre: vi.fn(),
-  obtenerDepartamentosExternosPorNombre: vi.fn(),
-  obtenerProblematicasInternasPorNombre: vi.fn(),
-  obtenerProblematicasExternasPorNombre: vi.fn(),
-  obtenerProblematicasInternasPorID: vi.fn(),
-  obtenerProblematicasExternasPorID: vi.fn(),
-  obtenerAdministradoresInternosPorID: vi.fn(),
-  obtenerAdministradoresExternosPorID: vi.fn(),
-  obtenerCorreoUnico: vi.fn(),
-  obtenerUsuarioPorCorreoYContrasena: vi.fn(),
-  obtenerSupervisorIDPorUsuarioID: vi.fn(),
-  obtenerJefeIDPorUsuarioID: vi.fn(),
+  API_URL: 'http://localhost:3000',
+  esperarUsuario: vi.fn().mockResolvedValue('token-de-prueba'),
+  ...Object.fromEntries(funcionesBackend.map((nombre) => [nombre, vi.fn()])),
 }));
 
 // Mock de la validación con IA de la foto (CrearReporte)
 vi.mock('@/services/geoAIController', () => ({
-  validarAI: vi.fn().mockResolvedValue({ type: 0, data: { message: 'Imagen válida' } }),
+  validarAI: vi.fn().mockResolvedValue({ type: 0, success: true, error: null, data: { message: 'Imagen válida' } }),
 }));
 
 // Mock de fetch global

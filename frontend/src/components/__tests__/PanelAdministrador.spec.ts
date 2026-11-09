@@ -1,7 +1,11 @@
 import { flushPromises, mount, VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import Swal from 'sweetalert2'
 import PanelAdministrador from '@/views/PanelAdministrador.vue'
+import RechazarReporteModal from '@/components/RechazarReporteModal.vue'
+import AsignarReporteModal from '@/components/AsignarReporteModal.vue'
 import * as db from '@/services/supabaseController'
+import { redireccionarUsuario } from '@/logic/redirectUser'
 import './setup'
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
@@ -17,6 +21,35 @@ vi.mock('sweetalert2', () => ({
 		mixin: vi.fn().mockReturnValue({ fire: vi.fn().mockResolvedValue(undefined) }),
 	},
 }))
+
+// Evita cargar el router real, el indicador de carga, el PDF y el correo
+vi.mock('@/logic/redirectUser', () => ({ redireccionarUsuario: vi.fn() }))
+vi.mock('@/composable/useCargando', () => ({
+	useCargando: () => ({ mostrarCargando: vi.fn(), ocultarCargando: vi.fn() }),
+}))
+vi.mock('@/logic/reportePdf', () => ({ generarPdfReporte: vi.fn() }))
+vi.mock('@/services/gmailController', () => ({
+	enviarCorreoRechazoReporte: vi.fn().mockResolvedValue({ ok: true }),
+	enviarCorreoTurnadoReporte: vi.fn().mockResolvedValue({ ok: true }),
+	enviarCorreoReportePDF: vi.fn().mockResolvedValue({ ok: true }),
+}))
+
+// JWT falso: solo importa el payload (segunda parte)
+const crearToken = (payload: object) => `cabecera.${btoa(JSON.stringify(payload))}.firma`
+
+const crearStorage = (inicial: Record<string, string>) => {
+	const storage = new Map<string, string>(Object.entries(inicial))
+	vi.stubGlobal('localStorage', {
+		getItem: (key: string) => storage.get(key) ?? null,
+		setItem: (key: string, value: string) => storage.set(key, value),
+		removeItem: (key: string) => storage.delete(key),
+	})
+	return storage
+}
+
+const ESTADOS: Record<number, string> = {
+	1: 'Pendiente', 2: 'En Revisión', 3: 'Rechazado', 4: 'Finalizado', 5: 'Turnado', 6: 'Devuelto', 7: 'En Proceso',
+}
 
 const reportesMock = [
 	{
@@ -55,6 +88,18 @@ const reportesMock = [
 		created_at: '2026-09-09T12:00:00Z', problemas: { id: 1, nombre: 'Bache' },
 		detalle_reporte: { estado_id: 3, estadoreporte: { estado: 'Rechazado' } }, historial_reporte: [],
 	},
+	{
+		// Estados 7 y 8 se muestran como "En Proceso"
+		folio: 'ALU-PRO-20260908-009-PRO123', descripcion: 'Reporte en proceso', nombre: 'Pedro',
+		telefono: '6678888888', domicilio: 'Calle Allende 30', referencias: '', foto_url: null,
+		created_at: '2026-09-08T12:00:00Z', problemas: { id: 3, nombre: 'Drenaje' },
+		detalle_reporte: {
+			estado_id: 7, supervisor_id: 20, jefe_id: 30, estadoreporte: { estado: 'En Proceso' },
+			supervisores: { usuarios: { nombre: 'Ana', apellido_p: 'García', apellido_m: 'López' } },
+			jefes: { usuarios: { nombre: 'Luis', apellido_p: 'Soto', apellido_m: '' } },
+		},
+		historial_reporte: [],
+	},
 ]
 
 describe('Pruebas del panel del administrador', () => {
@@ -65,37 +110,63 @@ describe('Pruebas del panel del administrador', () => {
 		vi.clearAllMocks()
 		reportesEstado = structuredClone(reportesMock)
 
-		// La sesión ahora vive en "userSession" y el panel exige tipo_id === 2
-		const storage = new Map([['userSession', JSON.stringify({ id: 1, nombre: 'Administrador', departamento_id: 1, tipo_id: 2 })]])
-		vi.stubGlobal('localStorage', {
-			getItem: (key: string) => storage.get(key) ?? null,
-			setItem: (key: string, value: string) => storage.set(key, value),
-			removeItem: (key: string) => storage.delete(key),
+		// La sesión vive en el token "userToken" y el panel exige tipo_id === 2
+		crearStorage({
+			userToken: crearToken({ id: 1, nombre: 'Administrador', departamento_id: 1, tipo_id: 2 }),
 		})
 
-		vi.mocked(db.esperarUsuario).mockResolvedValue(null)
-		vi.mocked(db.selectEq).mockImplementation(async (tabla: string) => {
-			if (tabla === 'problemas') return { data: [{ id: 1, nombre: 'Bache', departamento_id: 1 }, { id: 2, nombre: 'Falla de iluminacion', departamento_id: 1 }], error: null }
-			if (tabla === 'departamentos') return { data: [{ id: 1, nombre: 'Servicios Publicos' }], error: null }
-			if (tabla === 'supervisores') return { data: [], error: null }
-			if (tabla === 'titulo') return { data: [{ id: 7, nombre: 'No procedente' }], error: null }
+		vi.mocked(db.esperarUsuario).mockResolvedValue('token-de-prueba')
+
+		// Catálogos
+		vi.mocked(db.obtenerProblemasPorDepartamentoID).mockResolvedValue({
+			data: [{ id: 1, nombre: 'Bache', departamento_id: 1 }, { id: 2, nombre: 'Falla de iluminacion', departamento_id: 1 }],
+			error: null,
+		})
+		vi.mocked(db.obtenerDepartamentosInternosPorID).mockResolvedValue({
+			data: [{ id: 1, nombre: 'Servicios Publicos' }],
+			error: null,
+		})
+		vi.mocked(db.obtenerTodosDepartamentosInternos).mockResolvedValue({
+			data: [{ id: 1, nombre: 'Servicios Publicos' }, { id: 2, nombre: 'Obras Publicas', estado: 'Alta' }],
+			error: null,
+		})
+		vi.mocked(db.obtenerTodosDepartamentosExternos).mockResolvedValue({
+			data: [{ id: 10, departamento: 'Proveedor Externo', estado: 'Alta' }],
+			error: null,
+		})
+		vi.mocked(db.obtenerSupervisoresPorDepartamentoID).mockResolvedValue({
+			data: [{
+				id: 20,
+				usuarios: { nombre: 'Ana', apellido_p: 'García', apellido_m: 'López', estadoadministrativo: 'Alta' },
+			}],
+			error: null,
+		})
+		vi.mocked(db.obtenerTodosJefes).mockResolvedValue({
+			data: [{ id: 30, supervisor_id: 20, usuarios: { nombre: 'Luis', apellido_p: 'Soto', apellido_m: '' } }],
+			error: null,
+		})
+		vi.mocked(db.obtenerTitulos).mockImplementation(async (categoria: any) => {
+			if (categoria === 2) return { data: [{ id: 7, nombre: 'No procedente' }], error: null }
+			if (categoria === 7) return { data: [{ id: 11, nombre: 'Interno' }, { id: 12, nombre: 'Externo' }], error: null }
 			return { data: [], error: null }
 		})
-		vi.mocked(db.selectAll).mockImplementation(async (tabla: string) => {
-			if (tabla === 'departamentos') return { data: [{ id: 2, nombre: 'Obras Publicas', estado: 'Alta' }], error: null }
-			if (tabla === 'departamentos_externos') return { data: [{ id: 10, departamento: 'Proveedor Externo', estado: 'Alta' }], error: null }
-			return { data: [], error: null } // jefes, etc.
-		})
-		vi.mocked(db.selectEqOrder).mockImplementation(async () => ({ data: structuredClone(reportesEstado), error: null }))
-		vi.mocked(db.selectEqSingle).mockImplementation(async (_tabla, _campo, estado: string) => ({
-			data: { id: { Pendiente: 1, 'En Revisión': 2, Rechazado: 3, Finalizado: 4, Turnado: 5, Devuelto: 6 }[estado] }, error: null,
+
+		// Reportes
+		vi.mocked(db.obtenerReportesPorDepartamentoInternoID).mockImplementation(async () => ({
+			data: structuredClone(reportesEstado),
+			error: null,
 		}))
-		vi.mocked(db.insert).mockResolvedValue({ data: null, error: null })
-		vi.mocked(db.updateEq).mockImplementation(async (_tabla, columna, valor, payload) => {
-			const reporte = reportesEstado.find((item) => item[columna] === valor)
+		vi.mocked(db.obtenerEstadoIDPorNombre).mockImplementation(async (estado: string) => ({
+			data: { id: Object.entries(ESTADOS).find(([, nombre]) => nombre === estado)?.[0] ? Number(Object.entries(ESTADOS).find(([, nombre]) => nombre === estado)![0]) : null },
+			error: null,
+		}))
+		vi.mocked(db.crearHistorialReporte).mockResolvedValue({ data: null, error: null })
+		vi.mocked(db.actualizarSupervisorEstadoReporte).mockResolvedValue({ data: null, error: null })
+		vi.mocked(db.actualizarEstadoReporte).mockImplementation(async (folio: string, payload: any) => {
+			const reporte = reportesEstado.find((item) => item.folio === folio)
 			if (reporte && 'estado_id' in payload) {
 				reporte.detalle_reporte.estado_id = payload.estado_id
-				reporte.detalle_reporte.estadoreporte.estado = { 1: 'Pendiente', 2: 'En Revisión', 3: 'Rechazado', 4: 'Finalizado', 5: 'Turnado', 6: 'Devuelto' }[payload.estado_id]
+				reporte.detalle_reporte.estadoreporte.estado = ESTADOS[payload.estado_id]
 			}
 			return { data: null, error: null }
 		})
@@ -108,9 +179,11 @@ describe('Pruebas del panel del administrador', () => {
 
 	it('carga catálogos y reportes del departamento', () => {
 		expect(wrapper.vm.cargando).toBe(false)
-		expect(wrapper.vm.reportes).toHaveLength(6)
+		expect(wrapper.vm.reportes).toHaveLength(7)
 		expect(wrapper.find('.content-header p').text()).toBe('Servicios Publicos')
-		expect(db.selectEqOrder).toHaveBeenCalledWith('reportes', 'departamento_id', 1, 'created_at', expect.any(Array), false)
+		expect(db.obtenerReportesPorDepartamentoInternoID).toHaveBeenCalledWith(1)
+		expect(db.obtenerProblemasPorDepartamentoID).toHaveBeenCalledWith(1)
+		expect(db.obtenerSupervisoresPorDepartamentoID).toHaveBeenCalledWith(1)
 	})
 
 	it('filtra por folio, ciudadano, teléfono, domicilio, fecha y problema', async () => {
@@ -129,6 +202,7 @@ describe('Pruebas del panel del administrador', () => {
 		const estadosEsperados = [
 			['Pendiente', 'ABC123'],
 			['En Revisión', 'XYZ789'],
+			['En Proceso', 'PRO123'],
 			['Devuelto', 'DEV123'],
 			['Turnado', 'TUR123'],
 			['Finalizado', 'QWE456'],
@@ -146,6 +220,17 @@ describe('Pruebas del panel del administrador', () => {
 		}
 	})
 
+	it('en "En Proceso" muestra las columnas de supervisor y jefe asignados', async () => {
+		wrapper.vm.filtros.estado = 'En Proceso'
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.text()).toContain('SUPERVISOR ASIGNADO')
+		expect(wrapper.text()).toContain('JEFE ASIGNADO')
+		const fila = wrapper.find('tbody tr.fila-datos')
+		expect(fila.text()).toContain('Ana García López')
+		expect(fila.text()).toContain('Luis Soto')
+	})
+
 	it('abre el detalle y navega a Crear Reporte', async () => {
 		await wrapper.find('.btn-ver').trigger('click')
 		expect(wrapper.vm.reporteActivo.folio).toBe('ALU-BAC-20260915-001-ABC123')
@@ -154,14 +239,42 @@ describe('Pruebas del panel del administrador', () => {
 	})
 
 	it('rechaza un reporte mediante el modal de motivo y notas', async () => {
-		await wrapper.find('.btn-ver').trigger('click')
-		await wrapper.find('.modal-card .btn-peligroso').trigger('click')
-		await wrapper.find('#formRechazo select').setValue('7')
-		await wrapper.find('#formRechazo textarea').setValue('No procede')
-		await wrapper.find('#formRechazo').trigger('submit.prevent')
+		// Paso 1: abre el modal de rechazo
+		wrapper.vm.rechazarReporte('ALU-BAC-20260915-001-ABC123')
+		await wrapper.vm.$nextTick()
+
+		// Paso 2: el modal emite "confirm" con el motivo y las notas
+		wrapper.findComponent(RechazarReporteModal).vm.$emit('confirm', {
+			titulo_id: 7,
+			notas: 'No procede',
+			tituloNombre: 'No procedente',
+		})
 		await flushPromises()
-		expect(db.insert).toHaveBeenCalledWith('historial_reporte', expect.objectContaining({ folio: 'ALU-BAC-20260915-001-ABC123', categoria_historial_id: 2, titulo_id: 7, notas: 'No procede' }))
-		expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'ALU-BAC-20260915-001-ABC123', { estado_id: 3 })
+
+		expect(Swal.fire).toHaveBeenCalledWith(expect.objectContaining({ title: '¿Rechazar reporte?' }))
+		expect(db.crearHistorialReporte).toHaveBeenCalledWith('ALU-BAC-20260915-001-ABC123', {
+			categoria_historial_id: 2,
+			titulo_id: 7,
+			notas: 'No procede',
+		})
+		expect(db.actualizarEstadoReporte).toHaveBeenCalledWith('ALU-BAC-20260915-001-ABC123', { estado_id: 3 })
+	})
+
+	it('asigna un reporte a un supervisor', async () => {
+		wrapper.vm.asignarReporte('ALU-BAC-20260915-001-ABC123')
+		await wrapper.vm.$nextTick()
+
+		wrapper.findComponent(AsignarReporteModal).vm.$emit('confirm', {
+			supervisor_id: 20,
+			supervisorNombre: 'Ana García López',
+		})
+		await flushPromises()
+
+		expect(Swal.fire).toHaveBeenCalledWith(expect.objectContaining({ title: '¿Asignar reporte?' }))
+		expect(db.actualizarSupervisorEstadoReporte).toHaveBeenCalledWith('ALU-BAC-20260915-001-ABC123', {
+			supervisor_id: 20,
+			estado_id: 2,
+		})
 	})
 
 	it('devuelve un reporte finalizado a Pendiente', async () => {
@@ -169,14 +282,35 @@ describe('Pruebas del panel del administrador', () => {
 		await wrapper.vm.$nextTick()
 		await wrapper.find('.btn-devolver').trigger('click')
 		await flushPromises()
-		expect(db.selectEqSingle).toHaveBeenCalledWith('estadoreporte', 'estado', 'Pendiente', ['id'])
-		expect(db.updateEq).toHaveBeenCalledWith('detalle_reporte', 'folio', 'ALU-DRE-20260913-003-QWE456', { estado_id: 1 })
+
+		expect(db.obtenerEstadoIDPorNombre).toHaveBeenCalledWith('Pendiente')
+		expect(db.actualizarEstadoReporte).toHaveBeenCalledWith('ALU-DRE-20260913-003-QWE456', { estado_id: 1 })
 	})
 
-	it('cierra sesión y redirige al inicio', async () => {
+	it('cierra sesión, elimina el token y redirige al inicio', async () => {
 		await wrapper.vm.cerrarSesion()
-		expect(localStorage.getItem('userSession')).toBeNull()
+		expect(localStorage.getItem('userToken')).toBeNull()
 		expect(pushMock).toHaveBeenCalledWith('/')
 	})
 
+	it('redirige al inicio si no hay sesión', async () => {
+		crearStorage({})
+
+		const w = mount(PanelAdministrador)
+		await flushPromises()
+
+		expect(pushMock).toHaveBeenCalledWith('/')
+		w.unmount()
+	})
+
+	it('niega el acceso si el token no es de administrador', async () => {
+		crearStorage({ userToken: crearToken({ id: 3, nombre: 'Supervisor', departamento_id: 1, tipo_id: 3 }) })
+
+		const w = mount(PanelAdministrador)
+		await flushPromises()
+
+		expect(Swal.fire).toHaveBeenCalledWith('Acceso Denegado', expect.any(String), 'error')
+		expect(redireccionarUsuario).toHaveBeenCalled()
+		w.unmount()
+	})
 })
