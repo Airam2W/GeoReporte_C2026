@@ -30,6 +30,10 @@ function manejarErrores(handler) {
     }
 }
 
+const esTextoValido = (valor) => {
+    return typeof valor === 'string' && valor.trim().length > 0
+}
+
 // -----------------------------------------
 // ENDPOINTS PÚBLICOS
 // -----------------------------------------
