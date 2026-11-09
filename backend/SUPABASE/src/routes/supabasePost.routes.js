@@ -220,6 +220,10 @@ router.post('/usuarios/CorreoContrasena', manejarErrores(async (req, res) => {
         { expiresIn: '8h' }
     )
 
+    // Si todo es correcto, lo agregamos al historial del sistema
+    await registrarHistorial(req, { accion: 'Entrar', entidad: 'Sistema', detalles: `El usuario ${usuario.nombre} ${usuario.apellido_p} ha entrado al sistema.` })
+
+
     return res.status(200).json({
         data: {
             usuario: usuarioRespuesta,

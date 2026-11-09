@@ -383,7 +383,7 @@ export async function actualizarFotoDepartamentoReporte(folio: string, fotoDepar
 
 // ================== POST ==================
 
-export async function crearHistorial(data: any) {
+export async function agregarHistorial(data: any) {
   return request(`/historial`, {
     method: 'POST',
     body: JSON.stringify({ data }),

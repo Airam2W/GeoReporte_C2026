@@ -250,7 +250,7 @@
               <td>
                 <span class="badge badge-gris">{{
                   truncarTexto(user.departamentoNombre || '-', 25)
-                  }}</span>
+                }}</span>
               </td>
               <td>
                 <span :class="[
@@ -457,7 +457,8 @@ import {
   eliminarDepartamentoInterno,
   eliminarDepartamentoExterno,
   guardarUsuario,
-  obtenerHistorial
+  obtenerHistorial,
+  agregarHistorial
 } from '../services/supabaseController'
 import Swal from 'sweetalert2'
 import UsuarioDetalleModal from '../components/UsuarioDetalleModal.vue'
@@ -474,7 +475,17 @@ const historialTotal = ref(0)
 const paginaHistorial = ref(1)
 
 // Ajusta estas listas a los valores que realmente envíes en "accion" y "entidad"
-const accionesHistorial = ['Crear', 'Editar', 'Alta', 'Baja', 'Eliminar', 'Asignar', 'Turnar', 'Rechazar', 'Devolver', 'Finalizar']
+const accionesHistorial = ['Crear', // Usuario, Departamento, Problematica
+  'Editar',// Usuario, Departamento, Problematica
+  'Alta',// Usuario, Departamento, Problematica
+  'Baja',// Usuario, Departamento, Problematica
+  'Eliminar',// Usuario, Departamento, Problematica
+  'Asignar',// Reporte
+  'Turnar',// Reporte
+  'Rechazar',// Reporte
+  'Devolver',// Reporte
+  'Finalizar',// Reporte
+  'Entrar', 'Salir'] // Usuario
 const entidadesHistorial = ['Usuario', 'Departamento', 'Problemática', 'Reporte']
 
 const totalPaginasHistorial = computed(() =>
@@ -1331,12 +1342,22 @@ const cambiarEstadoUsuario = async (user: any, nuevoEstado: 'Alta' | 'Baja') => 
   }
 }
 
-const cerrarSesion = () => {
+const cerrarSesion = async () => {
   // 1. Eliminamos el token de autenticación
   localStorage.removeItem('userToken')
 
   // 2. Redirigimos al usuario a la pantalla de inicio o login
   router.push('/')
+
+  // 3. Registramos la acción en el historial
+  const { error: errorHistorialGeneral } = await agregarHistorial({
+    accion: 'Salir',
+    entidad: 'Sistema',
+    detalles: `El usuario ha salido del sistema.`,
+  })
+  if (errorHistorialGeneral) {
+    console.error('Error:', errorHistorialGeneral)
+  }
 }
 
 </script>
@@ -1404,6 +1425,7 @@ const cerrarSesion = () => {
   font-size: 0.9rem;
   color: #555;
 }
+
 .paginacion button {
   padding: 8px 16px;
   background: #fff;
@@ -1413,11 +1435,23 @@ const cerrarSesion = () => {
   font-weight: 600;
   cursor: pointer;
 }
-.paginacion button:hover:not(:disabled) { background: #f5e9ee; }
-.paginacion button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.paginacion button:hover:not(:disabled) {
+  background: #f5e9ee;
+}
+
+.paginacion button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 @media (max-width: 600px) {
-  .paginacion { flex-direction: column; }
-  .paginacion button { width: 100%; }
+  .paginacion {
+    flex-direction: column;
+  }
+
+  .paginacion button {
+    width: 100%;
+  }
 }
 </style>
