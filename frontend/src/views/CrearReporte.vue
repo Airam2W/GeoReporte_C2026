@@ -286,6 +286,7 @@ import 'leaflet/dist/leaflet.css'
 import Image from '@primeicons/vue/image';
 import Camera from '@primeicons/vue/camera';
 import Map from '@primeicons/vue/map';
+
 import Swal from 'sweetalert2';
 
 import {

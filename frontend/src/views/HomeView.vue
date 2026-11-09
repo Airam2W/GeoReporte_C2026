@@ -6,7 +6,9 @@ import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
 import { obtenerReportePorFolio } from '../services/supabaseController'
 import { onMounted, onUnmounted } from 'vue'
 
-
+// Iconos de PrimeVue
+import UserIcon from '@primeicons/vue/user'
+import TimesIcon from '@primeicons/vue/times'
 
 const router = useRouter()
 const route = useRoute()
@@ -19,7 +21,6 @@ const irAReporte = () => {
   router.push('/reporte')
 }
 
-// Nuevas variables para el modal de búsqueda
 const modalBusquedaVisible = ref(false)
 const folioInput = ref('')
 const errorBusqueda = ref('')
@@ -30,7 +31,6 @@ const abrirModalBusqueda = () => {
   modalBusquedaVisible.value = true
 }
 
-// Funcion para cerrar el menu al hacer clic fuera de él
 const handleClickOutsideMenu = (event: MouseEvent) => {
   if (menuAbierto.value && menuRef.value && !menuRef.value.contains(event.target as Node)) {
     menuAbierto.value = false
@@ -40,11 +40,9 @@ const handleClickOutsideMenu = (event: MouseEvent) => {
 onMounted(() => {
   document.addEventListener('click', handleClickOutsideMenu)
 
-  // NUEVO: Detectar si la URL trae un folio por parámetro (ej. ?folio=XYZ)
   const folioUrl = route.query.folio
   if (folioUrl && typeof folioUrl === 'string') {
     folioInput.value = folioUrl.trim()
-    // Disparamos la búsqueda de forma automática al cargar la página
     ejecutarBusqueda()
   }
 })
@@ -53,7 +51,6 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutsideMenu)
 })
 
-// Reemplaza buscarReporteCiudadano con esta versión:
 const ejecutarBusqueda = async () => {
   if (!folioInput.value || !folioInput.value.trim()) {
     errorBusqueda.value = 'Por favor, ingresa el folio de tu reporte.'
@@ -65,12 +62,10 @@ const ejecutarBusqueda = async () => {
   const { data, error } = await obtenerReportePorFolio(folioInput.value.trim())
 
   if (error || !data) {
-    errorBusqueda.value = error || 'No se encontró ningún reporte con ese folio.'
-    console.log(!error, 'Error al buscar reporte:', error, 'Data:', data)
+    errorBusqueda.value = error.message || 'No se encontró ningún reporte con ese folio.'
     return
   }
 
-  // Si tiene éxito, cerramos este modal y abrimos el de los detalles
   modalBusquedaVisible.value = false
   reporteEncontrado.value = {
     ...data,
@@ -108,116 +103,79 @@ defineExpose({
 })
 </script>
 
-
 <template>
-  <div class="home">
-    <!-- ===== ENCABEZADO INSTITUCIONAL ===== -->
-    <header class="home-header">
-      <div class="header-top">
-        <div class="header-logos">
-          <img src="../assets/logoAyuntamiento.svg" alt="Logo Ayuntamiento de Culiacán" class="logo-ayuntamiento" />
-          <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo" />
+  <div class="home-layout">
+    <!-- Formas de fondo estilo Prototipo (Círculos cortados y rutas) -->
+    <div class="bg-path path-main"></div>
+    <div class="bg-path path-sub"></div>
+
+    <div class="bg-circle circle-tl"></div>
+    <div class="bg-circle circle-tr"></div>
+    <div class="bg-circle circle-bl"></div>
+    <div class="bg-circle circle-br"></div>
+
+    <!-- Logo Superior Izquierdo con contenedor de resalte -->
+    <div class="top-left-bar">
+      <div class="logo-ayuntamiento-container">
+        <img src="../assets/logoAyuntamiento.svg" alt="Ayuntamiento de Culiacán" class="logo-ayuntamiento-top" />
+      </div>
+    </div>
+
+    <!-- Botón superior derecho -->
+    <div class="top-right-bar" ref="menuRef">
+      <button class="btn-outline" @click="iniciarSesion">
+        <UserIcon class="icono-btn" />
+        Iniciar sesión
+      </button>
+    </div>
+
+    <!-- Etiqueta inferior Ayuntamiento -->
+    <div class="bottom-pill">
+      Ayuntamiento de Culiacán | GeoReporte
+    </div>
+
+    <!-- Tarjeta Central Principal -->
+    <main class="center-container">
+      <div class="prototype-card">
+        <div class="card-header">
+          <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo-georeporte-center" />
+          <h1 class="card-title texto-tinto">GeoReporte</h1>
+          <p class="card-subtitle">Plataforma ciudadana del Ayuntamiento de Culiacán para gestionar reportes de servicios públicos.</p>
         </div>
 
-        <!-- Menú desplegable -->
-        <nav class="menu" ref="menuRef">
-          <button class="menu-btn" @click="menuAbierto = !menuAbierto" aria-haspopup="true" :aria-expanded="menuAbierto"
-            aria-label="Abrir menú">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round">
-              <line x1="4" y1="7" x2="20" y2="7"></line>
-              <line x1="4" y1="12" x2="20" y2="12"></line>
-              <line x1="4" y1="17" x2="20" y2="17"></line>
-            </svg>
-          </button>
-          <transition name="fade">
-            <ul v-if="menuAbierto" class="menu-list" name="modal-IniciarSesion">
-              <li @click="iniciarSesion">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                  <polyline points="10 17 15 12 10 7"></polyline>
-                  <line x1="15" y1="12" x2="3" y2="12"></line>
-                </svg>
-                Iniciar sesión
-              </li>
-            </ul>
-          </transition>
-        </nav>
-      </div>
+        <div class="card-section">
+          <h3 class="section-label">¿Quieres hacer un reporte?</h3>
+          <button class="btn-solid block-btn" @click="irAReporte">Crear reporte</button>
+        </div>
 
-      <!-- Banner del ayuntamiento -->
-      <!-- <div class="header-banner">
-        <img src="../assets/bannerAyuntamientoTinto.png" alt="Banner Ayuntamiento de Culiacán" class="banner-ayuntamiento banner-tinto" />
-        <img src="../assets/bannerAyuntamientoDorado.png" alt="Banner Ayuntamiento de Culiacán" class="banner-ayuntamiento banner-dorado" />
-      </div> -->
-
-      <div class="header-titulo">
-        <h1 class="titulo">GeoReporte</h1>
-        <p class="descripcion">
-          Plataforma ciudadana del Ayuntamiento de Culiacán para gestionar reportes de servicios
-          públicos.
-        </p>
-      </div>
-    </header>
-
-    <!-- ===== CONTENIDO PRINCIPAL ===== -->
-    <main class="home-main">
-      <section class="acciones-grid">
-        <article class="accion-card">
-          <div class="accion-icono accion-icono-verde">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2v20M2 12h20"></path>
-            </svg>
+        <div class="card-section">
+          <h3 class="section-label">Ver estado de mi reporte</h3>
+          <div class="inline-search">
+            <input type="text" v-model="folioInput" placeholder="Escribe tu folio" @keyup.enter="ejecutarBusqueda" />
+            <button class="btn-soft" @click="ejecutarBusqueda">Consultar</button>
           </div>
-          <h2>¿Quieres hacer un reporte?</h2>
-          <p>Levanta un reporte de un servicio público y da seguimiento a su solución.</p>
-          <button class="btn btn-verde" @click="irAReporte">Crear reporte</button>
-        </article>
-
-        <article class="accion-card">
-          <div class="accion-icono accion-icono-cafe">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </div>
-          <h2>Ver estado de mi reporte</h2>
-          <p>Consulta el avance de un reporte que ya enviaste usando tu número de folio.</p>
-          <button class="btn btn-cafe" @click="abrirModalBusqueda">Ver reporte</button>
-        </article>
-      </section>
+          <p v-if="errorBusqueda" class="msg-error-inline">{{ errorBusqueda }}</p>
+        </div>
+      </div>
     </main>
 
-    <footer class="home-footer">
-      <p>Ayuntamiento de Culiacán · Plataforma GeoReporte</p>
-    </footer>
-
-    <!-- ===== MODALES ===== -->
+    <!-- Modal Detalles -->
     <ReporteDetalleModal :visible="modalVisible" :reporte="reporteEncontrado" :esAdmin="false"
       @close="modalVisible = false" @buscar="abrirModalBusqueda" />
 
+    <!-- Modal Búsqueda (Oculto/Fallback) -->
     <transition name="fade">
       <div v-if="modalBusquedaVisible" class="modal-overlay">
-        <div class="modal-busqueda">
-          <div class="modal-busqueda-header">
-            <h3>Consultar Reporte</h3>
-            <button class="btn-cerrar-delgado" @click="modalBusquedaVisible = false" aria-label="Cerrar">
-              <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="1.5" fill="none"
-                stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <div class="modal-busqueda-body">
-
-            <label class="label-folio">Folio del reporte</label>
-            <div class="input-grupo">
-              <input type="text" v-model="folioInput" placeholder="Ej. DEP-PRO-2026-..."
-                @keyup.enter="ejecutarBusqueda" />
-              <button class="btn-buscar-verde" @click="ejecutarBusqueda">Buscar</button>
+        <div class="prototype-card">
+          <button class="btn-close-abs" @click="modalBusquedaVisible = false" aria-label="Cerrar"><TimesIcon class="icono-btn" /></button>
+          <div class="card-section" >
+            <h2 class="section-label" style="font-size: 1.2rem;">Consultar Reporte</h2>
+            <p class="card-subtitle" style="margin-bottom: 15px;">Ingresa el folio para verificar el estado.</p>
+            <div class="inline-search">
+              <input type="text" v-model="folioInput" placeholder="Ej. DEP-PRO-2026-..." @keyup.enter="ejecutarBusqueda" />
+              <button class="btn-solid" @click="ejecutarBusqueda" style="padding: 10px 16px; border: none; border-radius: 8px;">Buscar</button>
             </div>
-            <p v-if="errorBusqueda" class="msg-error-modal">{{ errorBusqueda }}</p>
+            <p v-if="errorBusqueda" class="msg-error-inline">{{ errorBusqueda }}</p>
           </div>
         </div>
       </div>
