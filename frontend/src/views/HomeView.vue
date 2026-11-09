@@ -115,7 +115,7 @@ defineExpose({
     <header class="home-header">
       <div class="header-top">
         <div class="header-logos">
-          <img src="../assets/logoAyuntamiento.svg" alt="Logo Ayuntamiento de Culiacán" class="logo-ayuntamiento" />
+          <img src="../assets/LogoAyuntamiento.svg" alt="Logo Ayuntamiento de Culiacán" class="logo-ayuntamiento" />
           <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo" />
         </div>
 
