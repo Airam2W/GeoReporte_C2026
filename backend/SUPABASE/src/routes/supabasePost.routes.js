@@ -189,8 +189,8 @@ router.post('/usuarios/CorreoContrasena', manejarErrores(async (req, res) => {
             id_jefe = jefeData.id;
             // Si la estructura te trae el departamento a través de la relación de supervisor
             if (!departamento_id && jefeData.supervisores) {
-                departamento_id = Array.isArray(jefeData.supervisores) 
-                    ? jefeData.supervisores[0]?.departamento_id 
+                departamento_id = Array.isArray(jefeData.supervisores)
+                    ? jefeData.supervisores[0]?.departamento_id
                     : jefeData.supervisores?.departamento_id;
             }
         }
@@ -222,7 +222,11 @@ router.post('/usuarios/CorreoContrasena', manejarErrores(async (req, res) => {
     )
 
     // Si todo es correcto, lo agregamos al historial del sistema
-    await registrarHistorial(req, { accion: 'Entrar', entidad: 'Sistema', detalles: `El usuario ${usuario.nombre} ${usuario.apellido_p} ha entrado al sistema.` })
+    await registrarHistorial(usuario.correo, {
+        accion: 'Entrar',
+        entidad: 'Sistema',
+        detalles: `El usuario ${usuario.nombre} ${usuario.apellido_p} ha entrado al sistema.`
+    })
 
 
     return res.status(200).json({
@@ -321,8 +325,8 @@ router.post(
                 })
             }
 
-            const contrasenaLimpia = (typeof p_contrasena === 'string' && p_contrasena.trim().length > 0) 
-                ? p_contrasena 
+            const contrasenaLimpia = (typeof p_contrasena === 'string' && p_contrasena.trim().length > 0)
+                ? p_contrasena
                 : null;
 
             // Validación de tipo de usuario.
@@ -481,7 +485,7 @@ router.post('/reporte', verificarTurnstile, async (req, res) => {
         if (
             data.fotoTipoID !== undefined &&
             data.fotoTipoID !== null &&
-            !(data.fotoTipoID == 0 || data.fotoTipoID == 1 || data.fotoTipoID == 2) 
+            !(data.fotoTipoID == 0 || data.fotoTipoID == 1 || data.fotoTipoID == 2)
         ) {
             return res.status(400).json({
                 error: 'Foto Tipo ID inválido. Debe ser un número entero positivo o null.'

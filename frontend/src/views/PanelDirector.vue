@@ -250,7 +250,7 @@
               <td>
                 <span class="badge badge-gris">{{
                   truncarTexto(user.departamentoNombre || '-', 25)
-                }}</span>
+                  }}</span>
               </td>
               <td>
                 <span :class="[
@@ -468,25 +468,14 @@ import DepartamentoDetalleModal from '../components/DepartamentoDetalleModal.vue
 import ProblematicaFormModal from '../components/ProblematicaFormModal.vue'
 import ProblematicaDetalleModal from '../components/ProblematicaDetalleModal.vue'
 import { truncarTexto } from '../logic/panelAdministrador'
+import { accionesHistorial, entidadesHistorial } from '../logic/historial'
 
 const LIMITE_HISTORIAL = 25
 const historialData = ref<any[]>([])
 const historialTotal = ref(0)
 const paginaHistorial = ref(1)
 
-// Ajusta estas listas a los valores que realmente envíes en "accion" y "entidad"
-const accionesHistorial = ['Crear', // Usuario, Departamento, Problematica
-  'Editar',// Usuario, Departamento, Problematica
-  'Alta',// Usuario, Departamento, Problematica
-  'Baja',// Usuario, Departamento, Problematica
-  'Eliminar',// Usuario, Departamento, Problematica
-  'Asignar',// Reporte
-  'Turnar',// Reporte
-  'Rechazar',// Reporte
-  'Devolver',// Reporte
-  'Finalizar',// Reporte
-  'Entrar', 'Salir'] // Usuario
-const entidadesHistorial = ['Usuario', 'Departamento', 'Problemática', 'Reporte']
+
 
 const totalPaginasHistorial = computed(() =>
   Math.max(1, Math.ceil(historialTotal.value / LIMITE_HISTORIAL)),
@@ -1343,20 +1332,24 @@ const cambiarEstadoUsuario = async (user: any, nuevoEstado: 'Alta' | 'Baja') => 
 }
 
 const cerrarSesion = async () => {
-  // 1. Eliminamos el token de autenticación
-  localStorage.removeItem('userToken')
+  try {
+    // 1. Registramos la acción en el historial
+    const { error: errorHistorialGeneral } = await agregarHistorial({
+      accion: 'Salir',
+      entidad: 'Sistema',
+      detalles: `El usuario ha salido del sistema.`,
+    })
+    if (errorHistorialGeneral) {
+      console.error('Error:', errorHistorialGeneral)
+    }
+  } catch (error) {
+    console.error('Error al registrar la acción de salir en el historial:', error)
+  } finally {
+    // 2. Eliminamos el token de autenticación
+    localStorage.removeItem('userToken')
 
-  // 2. Redirigimos al usuario a la pantalla de inicio o login
-  router.push('/')
-
-  // 3. Registramos la acción en el historial
-  const { error: errorHistorialGeneral } = await agregarHistorial({
-    accion: 'Salir',
-    entidad: 'Sistema',
-    detalles: `El usuario ha salido del sistema.`,
-  })
-  if (errorHistorialGeneral) {
-    console.error('Error:', errorHistorialGeneral)
+    // 3. Redirigimos al usuario a la pantalla de inicio o login
+    router.push('/')
   }
 }
 
