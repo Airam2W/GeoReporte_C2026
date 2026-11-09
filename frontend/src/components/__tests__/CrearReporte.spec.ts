@@ -12,8 +12,13 @@ import {
 import { validarAI } from '@/services/geoAIController'
 import './setup'
 
+vi.mock('@/services/gmailController', () => ({
+    enviarCorreoCreacionReporte: vi.fn().mockResolvedValue({ ok: true }),
+}))
+
 describe('Pruebas Unitarias del Módulo CrearReporte', () => {
     let wrapper: VueWrapper<any>;
+    let turnstileCallback: ((token: string) => void) | undefined;
 
     const mockDepartamentos = [
         { id: 1, nombre: 'Alumbrado Público', nombreamigable: 'Alumbrado Público', estado: 'Alta' },
@@ -24,7 +29,7 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
         { id: 1, nombre: 'Falla de iluminación', nombreamigable: 'Falla de iluminación', departamento_id: 1, estado: 'Alta' },
     ]
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.clearAllMocks();
 
         vi.mocked(obtenerDepartamentosOrdenadosPorId).mockResolvedValue({ data: mockDepartamentos, error: null });
@@ -36,18 +41,50 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
         });
         vi.mocked(crearReporte).mockResolvedValue({ data: {}, error: null });
         vi.mocked(crearDetalleReporte).mockResolvedValue({ data: {}, error: null });
-        vi.mocked(validarAI).mockResolvedValue({ type: 0, data: { message: 'Imagen válida' } });
+        vi.mocked(validarAI).mockResolvedValue({ type: 0, success: true, error: null, data: { message: 'Imagen válida' } });
 
         vi.stubGlobal('alert', vi.fn());
-        // attachTo: seleccionarFoto usa document.getElementsByName('enviar') y document.querySelector('.validacion-AI'),
+
+        // Simulación de Cloudflare Turnstile (en jsdom no existe)
+        vi.stubGlobal('turnstile', {
+            render: vi.fn((_el: HTMLElement, opts: any) => {
+                turnstileCallback = opts.callback
+                return 'widget-id'
+            }),
+            reset: vi.fn(),
+            execute: vi.fn(() => turnstileCallback?.('token-prueba')),
+            remove: vi.fn(),
+        });
+
+        // attachTo: seleccionarFoto usa document.getElementsByName('enviar'),
         // así que el componente tiene que estar dentro del document.
         wrapper = mount(CrearReporteComponent, { attachTo: document.body });
+        await flushPromises(); // deja que onMounted termine de renderizar el widget
     });
 
     afterEach(() => {
         wrapper.unmount();
         document.querySelector('.modal-reporte-exitoso')?.remove();
     });
+
+    // Llena el formulario con datos válidos para poder enviar el reporte
+    const llenarFormularioValido = (nombre: string, correo: string) => {
+        wrapper.vm.form.departamento_id = 1;
+        wrapper.vm.form.problema_id = 1;
+        wrapper.vm.form.descripcion = 'Prueba de reporte';
+        wrapper.vm.form.nombre = nombre;
+        wrapper.vm.form.telefono = '6671234567';
+        wrapper.vm.form.domicilio = 'Av. Álvaro Obregón 450';
+        wrapper.vm.form.referencias = 'Frente al parque';
+        wrapper.vm.form.correo = correo;
+        wrapper.vm.form.latitud = 24.8091;
+        wrapper.vm.form.longitud = -107.3940;
+        wrapper.vm.form.foto = new File(['foto-prueba'], 'evidencia.jpg', { type: 'image/jpeg' });
+        // Resultado de la validación con IA (0 = la imagen pasa)
+        wrapper.vm.form.fotoTipoID = 0;
+        wrapper.vm.form.mensajeAI = 'Imagen válida';
+        wrapper.vm.aceptaTerminos = true;
+    };
 
     it('PU-01: Cargar el cátalogo de departamentos', async () => {
         expect(obtenerDepartamentosOrdenadosPorId).toHaveBeenCalled();
@@ -77,6 +114,7 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
         expect(wrapper.vm.errores.telefono).toBe('El teléfono es obligatorio');
         expect(wrapper.vm.errores.domicilio).toBe('Por favor selecciona una ubicación en el mapa');
         expect(wrapper.vm.errores.foto).toBe('Debes adjuntar una foto de evidencia');
+        expect(wrapper.vm.errores.terminos).toBe('Debes aceptar los Términos y Condiciones para enviar tu reporte');
         expect(wrapper.vm.enviando).toBe(false);
         expect(crearReporte).not.toHaveBeenCalled();
     });
@@ -131,29 +169,21 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
         const file = new File(['foto-prueba'], 'evidencia.jpg', { type: 'image/jpeg' });
         const event = { target: { files: [file] } } as unknown as Event;
 
+        // El departamento 3 corresponde al slug 'alumbrado'
+        wrapper.vm.form.departamento_id = 3;
         wrapper.vm.errores.foto = 'Debes adjuntar una foto de evidencia';
         wrapper.vm.seleccionarFoto(event);
         await flushPromises();
 
         expect(wrapper.vm.form.foto).toBe(file);
         expect(wrapper.vm.errores.foto).toBe('');
-        expect(validarAI).toHaveBeenCalledWith(file);
-        expect(document.querySelector('.validacion-AI')?.textContent).toBe('Imagen válida');
+        expect(validarAI).toHaveBeenCalledWith(file, 'alumbrado');
+        expect(wrapper.vm.form.fotoTipoID).toBe(0);
+        expect(wrapper.vm.form.mensajeAI).toBe('Imagen válida');
     });
 
     it('PU-11: Enviar reporte exitosamente', async () => {
-        wrapper.vm.form.departamento_id = 1;
-        wrapper.vm.form.problema_id = 1;
-        wrapper.vm.form.descripcion = 'Prueba de reporte';
-        wrapper.vm.form.nombre = 'Angel';
-        wrapper.vm.form.telefono = '6671234567';
-        wrapper.vm.form.domicilio = 'Av. Álvaro Obregón 450';
-        wrapper.vm.form.referencias = 'Frente al parque'
-        wrapper.vm.form.correo = 'angel@correo.com';
-        wrapper.vm.form.latitud = 24.8091;
-        wrapper.vm.form.longitud = -107.3940;
-        const file = new File(['foto-prueba'], 'evidencia.jpg', { type: 'image/jpeg' });
-        wrapper.vm.form.foto = file;
+        llenarFormularioValido('Angel', 'angel@correo.com');
 
         await wrapper.vm.enviarReporte();
 
@@ -173,19 +203,10 @@ describe('Pruebas Unitarias del Módulo CrearReporte', () => {
     });
 
     it('PU-12: Asignar nombre como "Ciudadano Honorable"', async () => {
-        wrapper.vm.form.departamento_id = 1;
-        wrapper.vm.form.problema_id = 1;
-        wrapper.vm.form.descripcion = 'Prueba de reporte';
-        wrapper.vm.form.nombre = '';
-        wrapper.vm.form.telefono = '6671234567';
-        wrapper.vm.form.domicilio = 'Av. Álvaro Obregón 450';
-        wrapper.vm.form.referencias = 'Frente al parque'
-        wrapper.vm.form.correo = '';
-        wrapper.vm.form.latitud = 24.8091;
-        wrapper.vm.form.longitud = -107.3940;
-        const file = new File(['foto-prueba'], 'evidencia.jpg', { type: 'image/jpeg' });
-        wrapper.vm.form.foto = file;
+        llenarFormularioValido('', '');
+
         await wrapper.vm.enviarReporte();
+
         expect(crearReporte).toHaveBeenCalledWith(expect.objectContaining({
             nombre: 'Ciudadano Honorable'
         }))

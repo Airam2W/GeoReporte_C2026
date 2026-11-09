@@ -1,18 +1,19 @@
-import { mount, VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, VueWrapper } from '@vue/test-utils'
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import HomeComponent from '@/views/HomeView.vue'
 import ReporteDetalleModal from '@/components/ReporteDetalleModal.vue'
 import { obtenerReportePorFolio } from '@/services/supabaseController'
 import './setup'
 
-const {pushMock} = vi.hoisted(()=>{
-    return { pushMock: vi.fn()};
-})
+const { pushMock, routeMock } = vi.hoisted(() => ({
+    pushMock: vi.fn(),
+    routeMock: { query: {} as Record<string, any> },
+}))
+
 vi.mock('vue-router', () => ({
-    useRouter: () => ({
-        push: pushMock,
-    }),
-}));
+    useRouter: () => ({ push: pushMock }),
+    useRoute: () => routeMock,
+}))
 
 vi.mock('@/logic/home', async () => {
     const { ref } = await import('vue');
@@ -23,13 +24,29 @@ vi.mock('@/logic/home', async () => {
     };
 });
 
+const crearReporteMock = (detalle_reporte: any, extra: object = {}) => ({
+    folio: 'ALU-BAC-20260315-153000-AB3F9',
+    descripcion: 'Prueba de consulta de folio',
+    nombre: 'Angel',
+    telefono: '6671234567',
+    domicilio: 'Av. Álvaro Obregón 450',
+    referencias: null,
+    foto_url: 'https://example.com/foto.jpg',
+    created_at: '2026-03-15T00:00:00Z',
+    problemas: { nombreamigable: 'Bache' },
+    detalle_reporte,
+    ...extra,
+})
+
 describe('Pruebas Unitarias del Módulo Home', () => {
     let wrapper: VueWrapper<any>;
 
     beforeEach(() => {
         vi.clearAllMocks();
+        routeMock.query = {};
 
         vi.stubGlobal('alert', vi.fn());
+        vi.spyOn(console, 'log').mockImplementation(() => {});
         wrapper = mount(HomeComponent, {
             global: {
                 stubs: {
@@ -44,20 +61,10 @@ describe('Pruebas Unitarias del Módulo Home', () => {
     });
 
     it('PU-1: Mostrar la información de un folio existente', async () => {
-        const mockReporte = {
-            folio: 'ALU-BAC-20260315-153000-AB3F9',
-            descripcion: 'Prueba de consulta de folio',
-            nombre: 'Angel',
-            telefono: '6671234567',
-            domicilio: 'Av. Álvaro Obregón 450',
-            referencias: null,
-            foto_url: 'https://example.com/foto.jpg',
-            created_at: '2026-03-15T00:00:00Z',
-            problemas: { nombreamigable: 'Bache' },
-            detalle_reporte: {
-                estado_id: 2,
-                estadoreporte: { estado: 'En Proceso' }},
-        };
+        const mockReporte = crearReporteMock({
+            estado_id: 7,
+            estadoreporte: { estado: 'En Proceso' },
+        });
         vi.mocked(obtenerReportePorFolio).mockResolvedValueOnce({ data: mockReporte, error: null });
 
         wrapper.vm.folioInput = mockReporte.folio;
@@ -73,7 +80,6 @@ describe('Pruebas Unitarias del Módulo Home', () => {
         expect(wrapper.vm.modalVisible).toBe(true);
         expect(wrapper.vm.modalBusquedaVisible).toBe(false);
     });
-
 
     it('PU-2: Mostrar mensaje si el folio no existe', async () => {
         vi.mocked(obtenerReportePorFolio).mockResolvedValueOnce({ data: null, error: null });
@@ -94,18 +100,7 @@ describe('Pruebas Unitarias del Módulo Home', () => {
     });
 
     it('PU-4: Si no hay detalle_reporte, usa "Pendiente" por defecto', async () => {
-        const mockReporte = {
-            folio: 'ALU-BAC-20260315-153000-AB3F9',
-            descripcion: 'Prueba de consulta de folio',
-            nombre: 'Angel',
-            telefono: '6671234567',
-            domicilio: 'Av. Álvaro Obregón 450',
-            referencias: null,
-            foto_url: 'https://example.com/foto.jpg',
-            created_at: '2026-03-15T00:00:00Z',
-            problemas: { nombreamigable: 'Bache' },
-            detalle_reporte: null,
-        };
+        const mockReporte = crearReporteMock(null);
         vi.mocked(obtenerReportePorFolio).mockResolvedValueOnce({ data: mockReporte, error: null });
 
         wrapper.vm.folioInput = mockReporte.folio;
@@ -170,5 +165,58 @@ describe('Pruebas Unitarias del Módulo Home', () => {
         await opcionLogin.trigger('click');
 
         expect(iniciarSesion).toHaveBeenCalled();
+    });
+
+    it('PU-10: Si la URL trae ?folio=, busca el reporte automáticamente al cargar', async () => {
+        const mockReporte = crearReporteMock({ estado_id: 1, estadoreporte: { estado: 'Pendiente' } });
+        vi.mocked(obtenerReportePorFolio).mockResolvedValueOnce({ data: mockReporte, error: null });
+        routeMock.query = { folio: '  ALU-BAC-20260315-153000-AB3F9  ' };
+
+        const w = mount(HomeComponent, {
+            global: { stubs: { ReporteDetalleModal: true } },
+        });
+        await flushPromises();
+
+        expect(obtenerReportePorFolio).toHaveBeenCalledWith('ALU-BAC-20260315-153000-AB3F9');
+        expect(w.vm.modalVisible).toBe(true);
+        w.unmount();
+    });
+
+    it('PU-11: Sin ?folio= en la URL no se hace ninguna búsqueda al cargar', () => {
+        expect(obtenerReportePorFolio).not.toHaveBeenCalled();
+        expect(wrapper.vm.modalVisible).toBe(false);
+    });
+
+    it('PU-12: Las notas de rechazo del historial llegan ordenadas y solo las que tienen notas', async () => {
+        const mockReporte = crearReporteMock(
+            { estado_id: 3, estadoreporte: { estado: 'Rechazado' } },
+            {
+                historial_reporte: [
+                    { categoria_historial_id: 2, fecha: '2026-03-16T10:00:00Z', notas: 'Primera', titulo: { nombre: 'No procedente' } },
+                    { categoria_historial_id: 2, fecha: '2026-03-17T10:00:00Z', notas: 'Segunda', titulo: { nombre: 'Duplicado' } },
+                    { categoria_historial_id: 2, fecha: '2026-03-18T10:00:00Z', notas: '', titulo: { nombre: 'Sin notas' } },
+                    { categoria_historial_id: 4, fecha: '2026-03-19T10:00:00Z', notas: 'Es un avance', titulo: { nombre: 'Avance' } },
+                ],
+            },
+        );
+        vi.mocked(obtenerReportePorFolio).mockResolvedValueOnce({ data: mockReporte, error: null });
+
+        wrapper.vm.folioInput = mockReporte.folio;
+        await wrapper.vm.ejecutarBusqueda();
+
+        const notas = wrapper.vm.reporteEncontrado.notas_rechazo;
+        expect(notas.map((n: any) => n.notas)).toEqual(['Segunda', 'Primera']);
+    });
+
+    it('PU-13: Muestra el mensaje cuando el servicio devuelve el error como objeto', async () => {
+        vi.mocked(obtenerReportePorFolio).mockResolvedValueOnce({
+            data: null,
+            error: { message: 'Error de red' },
+        });
+
+        wrapper.vm.folioInput = 'ALU-BAC-20260315-153000-AB3F9';
+        await wrapper.vm.ejecutarBusqueda();
+
+        expect(wrapper.vm.errorBusqueda).toBe('Error de red');
     });
 });

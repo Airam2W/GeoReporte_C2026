@@ -65,7 +65,7 @@ const ejecutarBusqueda = async () => {
   const { data, error } = await obtenerReportePorFolio(folioInput.value.trim())
 
   if (error || !data) {
-    errorBusqueda.value = error || 'No se encontró ningún reporte con ese folio.'
+    errorBusqueda.value = error?.message || error || 'No se encontró ningún reporte con ese folio.'
     console.log(!error, 'Error al buscar reporte:', error, 'Data:', data)
     return
   }

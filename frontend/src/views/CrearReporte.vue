@@ -864,7 +864,7 @@ const enviarReporte = async () => {
     esValido = false
   }
 
-  if (form.value.foto && !form.value.fotoTipoID) {
+  if (form.value.foto && form.value.fotoTipoID == null) {
     errores.value.foto = 'La foto no pudo ser validada, por favor intentalo de nuevo.'
     esValido = false
   }
@@ -1184,6 +1184,7 @@ defineExpose({
   confirmarDireccion,
   seleccionarFoto,
   onDepartamentoSeleccionado,
+  aceptaTerminos,
 })
 </script>
 
