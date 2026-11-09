@@ -1,6 +1,7 @@
 :root {
   --tinto: #621132;
   --tinto-oscuro: #4a0e2c;
+  --dorado: #d5c98a;
 
   --tinto-fondo-forma: #f3dee6;
   --tinto-linea: #eedae3;
@@ -465,9 +466,6 @@ body {
   box-shadow: 0 0 0 3px rgba(98, 17, 50, 0.1);
 }
 
-/* ==========================================
-   INPUT PASSWORD Y OJO VISUALIZADOR
-========================================== */
 .password-container {
   position: relative;
   display: flex;
@@ -480,7 +478,6 @@ body {
   padding-right: 44px;
 }
 
-/* Ocultar ojo nativo en navegadores WebKit/Edge */
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear,
 input[type="password"]::-webkit-contacts-auto-fill-button,
@@ -562,7 +559,7 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
 /* ==========================================
    RESPONSIVIDAD (Móviles)
 ========================================== */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .inline-search {
     flex-direction: column;
   }

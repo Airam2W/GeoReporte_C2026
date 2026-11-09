@@ -22,34 +22,38 @@
               <label>Nombre Amigable</label>
               <p>{{ departamento.nombreamigable || 'No asignado' }}</p>
             </div>
+            <div class="info-grupo-doble" style="margin-top: 10px">
 
-            <div class="estado-actual-box" style="margin-top: 20px">
-              <label>Tipo</label>
-              <span
-                :class="[
-                  'badge badge-grande',
-                  departamento.tipo === 'Interno' ? 'badge-azul' : 'badge-gris',
-                ]"
-              >
-                {{ departamento.tipo }}
-              </span>
-            </div>
+              <div class="estado-actual-box">
+                <label>Tipo</label>
+                <span
+                  :class="[
+                    'badge badge-grande',
+                    departamento.tipo === 'Interno' ? 'badge-azul' : 'badge-gris',
+                  ]"
+                >
+                  {{ departamento.tipo }}
+                </span>
+              </div>
 
-            <div class="estado-actual-box" style="margin-top: 10px">
-              <label>Estado</label>
-              <span
-                :class="[
-                  'badge badge-grande',
-                  departamento.estado === 'Alta' ? 'badge-verde' : 'badge-rojo',
-                ]"
-              >
-                {{ departamento.estado }}
-              </span>
+              <div class="estado-actual-box">
+                <label>Estado</label>
+                <span
+                  :class="[
+                    'badge badge-grande',
+                    departamento.estado === 'Alta' ? 'badge-verde' : 'badge-rojo',
+                  ]"
+                >
+                  {{ departamento.estado }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="modal-footer">
+          <button class="btn-secundario" @click="cerrar">Cerrar</button>
+
           <button
             v-if="departamento.estado === 'Alta'"
             class="btn-rojo btn-secundario"
@@ -66,7 +70,6 @@
           >
             Dar de Alta
           </button>
-          <button class="btn-secundario" @click="cerrar">Cerrar</button>
         </div>
       </div>
     </div>

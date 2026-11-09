@@ -3,10 +3,8 @@
     <!-- Barra Superior -->
     <nav class="topbar">
       <div class="topbar-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-          <circle cx="12" cy="10" r="3"></circle>
-        </svg>
+        <img src="../assets/logoAyuntamiento.svg" alt="Logo Ayuntamiento" class="logo" />
+        <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo" />
         <h1>GeoReporte | Panel de Control</h1>
       </div>
       <div class="topbar-user" v-if="jefe">
@@ -95,23 +93,23 @@
               </td>
               <td class="acciones-celda">
                 <button class="btn-accion btn-pdf" title="Descargar PDF" @click="descargarPDF(reporte)">
-                  📄
+                  <DownloadIcon />
                 </button>
                 <button class="btn-accion btn-ver" title="Ver detalle" @click="abrirModalVer(reporte)">
-                  👁️
+                  <InfoCircle color="var(--texto-gris)" />
                 </button>
                 <button v-if="reporte.detalle_reporte?.estado_id === 7" class="btn-accion btn-avance"
                   title="Actualizar avance" @click="actualizarAvance(reporte)">
-                  ⬆️
+                  <Refresh color="var(--texto-oscuro)" />
                 </button>
                 <button v-if="reporte.detalle_reporte?.estado_id === 7" class="btn-accion btn-finalizar"
                   title="Enviar petición de finalización" @click="finalizarReporte(reporte)">
-                  ✅
+                  <FileCheck color="green" />
                 </button>
 
                 <button v-if="reporte.detalle_reporte?.estado_id === 8" class="btn-accion btn-espera"
                   title="Esperando la confirmación del supervisor" disabled>
-                  ⏳
+                  <Hourglass color="var(--texto-oscuro)" />
                 </button>
               </td>
             </tr>
@@ -156,6 +154,14 @@ import {
 import { truncarTexto } from '../logic/panelAdministrador'
 import DescargarPdfModal from '../components/DescargarPdfModal.vue'
 import { enviarCorreoReportePDF } from '../services/gmailController'
+
+// Iconos
+import DownloadIcon from '@primeicons/vue/download';
+import InfoCircle from '@primeicons/vue/info-circle';
+import Refresh from '@primeicons/vue/refresh';
+import FileCheck from '@primeicons/vue/file-check';
+import Hourglass from '@primeicons/vue/hourglass';
+
 
 const modalPdfVisible = ref(false)
 const reportePdf = ref<any>(null)

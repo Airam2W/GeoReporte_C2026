@@ -11,52 +11,60 @@
         </div>
 
         <div class="modal-body" v-if="usuario">
-          <div class="info-columna">
-            <div class="info-item">
-              <label>Nombre Completo</label>
-              <p class="destacado">
-                {{ usuario.nombre }} {{ usuario.apellido_p }} {{ usuario.apellido_m }}
-              </p>
-            </div>
-
-            <div class="info-grupo-doble">
+          <div
+            :class="[
+              'modal-grid',
+              { 'modal-grid--simple': ![3, 4, 5].includes(usuario.tipousuario_id) },
+            ]"
+          >
+            <!-- Columna izquierda: datos del personal -->
+            <div class="info-columna">
               <div class="info-item">
-                <label>Correo Electrónico</label>
-                <p>{{ usuario.correo }}</p>
-              </div>
-              <div class="info-item">
-                <label>Tipo de Usuario</label>
-                <p :class="['badge badge-verde']" style="font-weight: lighter">
-                  {{ usuario.tipousuario?.nombre || 'No asignado' }}
+                <label>Nombre Completo</label>
+                <p class="destacado">
+                  {{ usuario.nombre }} {{ usuario.apellido_p }} {{ usuario.apellido_m }}
                 </p>
               </div>
-            </div>
 
-            <div class="info-grupo-doble" style="margin-top: 16px">
-              <div class="info-item">
-                <label>Departamento</label>
-                <p>{{ usuario.departamentoNombre || 'No asignado / Externo' }}</p>
+              <div class="info-grupo-doble">
+                <div class="info-item">
+                  <label>Correo Electrónico</label>
+                  <p>{{ usuario.correo }}</p>
+                </div>
+                <div class="info-item">
+                  <label>Tipo de Usuario</label>
+                  <p :class="['badge badge-verde']" style="font-weight: lighter">
+                    {{ usuario.tipousuario?.nombre || 'No asignado' }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="info-grupo-doble" style="margin-top: 16px">
+                <div class="info-item">
+                  <label>Departamento</label>
+                  <p>{{ usuario.departamentoNombre || 'No asignado / Externo' }}</p>
+                </div>
+              </div>
+
+              <div class="info-grupo-doble" style="margin-top: 16px">
+                <!-- Mostrar solo si está de Alta -->
+                <div class="info-item" v-if="usuario.estadoadministrativo === 'Alta'">
+                  <label>Fecha de Alta</label>
+                  <p>{{ formatearFechaLocal(usuario.fechaalta) }}</p>
+                </div>
+
+                <!-- Mostrar solo si está de Baja -->
+                <div class="info-item" v-else-if="usuario.estadoadministrativo === 'Baja'">
+                  <label>Fecha de Baja</label>
+                  <p>{{ formatearFechaLocal(usuario.fechabaja) }}</p>
+                </div>
               </div>
             </div>
 
-            <div class="info-grupo-doble" style="margin-top: 16px">
-              <!-- Mostrar solo si está de Alta -->
-              <div class="info-item" v-if="usuario.estadoadministrativo === 'Alta'">
-                <label>Fecha de Alta</label>
-                <p>{{ formatearFechaLocal(usuario.fechaalta) }}</p>
-              </div>
-
-              <!-- Mostrar solo si está de Baja -->
-              <div class="info-item" v-else-if="usuario.estadoadministrativo === 'Baja'">
-                <label>Fecha de Baja</label>
-                <p>{{ formatearFechaLocal(usuario.fechabaja) }}</p>
-              </div>
-            </div>
-
+            <!-- Columna derecha: jerarquía administrativa -->
             <div
               v-if="[3, 4, 5].includes(usuario.tipousuario_id)"
-              class="jerarquia-box"
-              style="margin-top: 20px"
+              class="jerarquia-box columna-derecha"
             >
               <label>Jerarquía Administrativa</label>
 
@@ -122,18 +130,18 @@
                 </div>
               </div>
             </div>
+          </div>
 
-            <div class="estado-actual-box" style="margin-top: 20px">
-              <label>Estado Actual</label>
-              <span
-                :class="[
-                  'badge badge-grande',
-                  usuario.estadoadministrativo === 'Alta' ? 'badge-verde' : 'badge-rojo',
-                ]"
-              >
-                {{ usuario.estadoadministrativo }}
-              </span>
-            </div>
+          <div class="estado-actual-box">
+            <label>Estado Actual</label>
+            <span
+              :class="[
+                'badge badge-grande',
+                usuario.estadoadministrativo === 'Alta' ? 'badge-verde' : 'badge-rojo',
+              ]"
+            >
+              {{ usuario.estadoadministrativo }}
+            </span>
           </div>
         </div>
 
@@ -179,4 +187,4 @@ const cerrar = () => {
 }
 </script>
 
-<style src="../assets/usuarioDetalle.css" />
+<style scoped src="../assets/usuarioDetalle.css" />

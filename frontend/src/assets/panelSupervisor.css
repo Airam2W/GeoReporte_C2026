@@ -511,7 +511,7 @@
 }
 
 .btn-primario {
-  background: #621132;
+  background: var(--tinto-boton);
   color: white;
 }
 
@@ -555,6 +555,21 @@
 
   .info-grupo-doble {
     grid-template-columns: 1fr;
+  }
+
+    .topbar-logo h1 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+}
+
+@media (max-width: 620px) {
+  .topbar-logo h1 {
+    font-size: 0rem;
+    font-weight: 600;
+    margin: 0;
   }
 
 }

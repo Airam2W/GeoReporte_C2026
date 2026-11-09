@@ -3,10 +3,8 @@
     <!-- Barra Superior -->
     <nav class="topbar">
       <div class="topbar-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-          <circle cx="12" cy="10" r="3"></circle>
-        </svg>
+        <img src="../assets/logoAyuntamiento.svg" alt="Logo Ayuntamiento" class="logo" />
+        <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo" />
         <h1>GeoReporte | Panel de Control</h1>
       </div>
       <div class="topbar-user" v-if="supervisor">
@@ -116,26 +114,26 @@
               <td>{{ truncarTexto(reporte.jefe, 25) }}</td>
               <td class="acciones-celda">
                 <button class="btn-accion btn-pdf" title="Descargar PDF" @click="descargarPDF(reporte)">
-                  📄
+                  <DownloadIcon />
                 </button>
 
                 <button class="btn-accion btn-ver" title="Ver detalle" @click="abrirModalVer(reporte)">
-                  👁️
+                  <InfoCircle color="var(--texto-gris)" />
                 </button>
 
                 <button v-if="reporte.estado === 'Pendiente de Asignación'" class="btn-accion btn-asignar"
                   title="Asignar jefe" @click="asignarReporte(reporte.folio)">
-                  👤
+                  <UserIcon color="var(--texto-oscuro)" />
                 </button>
 
                 <button v-if="reporte.estado === 'Pendiente de Asignación'" class="btn-accion btn-devolver"
                   title="Devolver Reporte" @click="abrirModalDevolucion(reporte.folio)">
-                  ↩️
+                  <ArrowUTurnUpLeft color="green" />
                 </button>
 
                 <button v-if="reporte.estado === 'Pendiente de Finalización'" class="btn-accion btn-finalizar"
                   title="Finalizar Reporte" @click="abrirModalFinalizar(reporte)">
-                  ✅
+                  <FileCheck color="green" />
                 </button>
               </td>
             </tr>
@@ -202,6 +200,13 @@ import DescargarPdfModal from '../components/DescargarPdfModal.vue'
 import { enviarCorreoFinalizacionReporte, enviarCorreoReportePDF } from '../services/gmailController'
 import { obtenerTodosDepartamentosInternos, actualizarFotoDepartamentoReporte } from '../services/supabaseController'
 import RetroalimentacionFotoAIModal from '../components/RetroalimentacionFotoAIModal.vue'
+
+// Iconos
+import DownloadIcon from '@primeicons/vue/download';
+import InfoCircle from '@primeicons/vue/info-circle';
+import UserIcon from '@primeicons/vue/user';
+import ArrowUTurnUpLeft from '@primeicons/vue/arrow-u-turn-up-left';
+import FileCheck from '@primeicons/vue/file-check';
 
 const modalFotoAIVisible = ref(false)
 const reporteFotoAI = ref<any>(null)
