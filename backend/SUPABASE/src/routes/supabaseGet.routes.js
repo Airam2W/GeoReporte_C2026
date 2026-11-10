@@ -58,28 +58,28 @@ const distanciaMetros = (lat1, lng1, lat2, lng2) => {
 
 
 // (obtenerReportesMapa)
-router.get('/reportes/mapa', async (req, res) => {
+router.get('/reportes/mapa', manejarErrores(async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('reportes')
-            .select(`
-                latitud,
-                longitud,
-                departamento_id,
-                departamento_externo_id,
-                problema_id,
-                problema_externo_id,
-                departamentos (nombreamigable),
-                departamentos_externos (departamento),
-                problemas (nombreamigable),
-                problemas_externos (nombreamigable),
-                detalle_reporte (estado_id)
-            `)
+            .select([
+                'latitud',
+                'longitud',
+                'departamento_id',
+                'departamento_externo_id',
+                'problema_id',
+                'problema_externo_id',
+                'departamentos (nombreamigable)',
+                'departamentos_externos (departamento)',
+                'problemas (nombreamigable)',
+                'problemas_externos (nombreamigable)',
+                'detalle_reporte (estado_id)'
+            ]).join(',')
             .not('latitud', 'is', null)
             .not('longitud', 'is', null)
             .limit(1000)
 
-        if (error) return responder(res, { data: null, error })
+        if (error) return responder(res, { data: null, error: error })
 
         const pines = (data || [])
             .filter((r) => !ESTADOS_CERRADOS.includes(estadoDelReporte(r)))
@@ -99,7 +99,7 @@ router.get('/reportes/mapa', async (req, res) => {
     } catch (error) {
         return responderErrorInterno(res, 'Error interno al obtener los reportes del mapa.', error)
     }
-})
+}))
 
 // (obtenerDepartamentosOrdenadosPorId)
 router.get('/departamentos/ordenadosPorId', manejarErrores(async (req, res) => {
