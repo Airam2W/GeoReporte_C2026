@@ -77,11 +77,6 @@ function manejarErrores(handler) {
     }
 }
 
-const estadoDelReporte = (r) => {
-    const detalle = Array.isArray(r.detalle_reporte) ? r.detalle_reporte[0] : r.detalle_reporte
-    return detalle?.estado_id
-}
-
 // ----------------------------------------- ENDPOINTS -----------------------------------------
 
 // (obtenerUsuarioPorCorreoYContrasena)
