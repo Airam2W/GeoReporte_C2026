@@ -7,6 +7,8 @@ import { verificarTurnstile } from '../middleware/verificarTurnstile.js'
 import { registrarHistorial } from '../utils/registrarHistorial.js'
 import { obtenerUsuario } from '../utils/obtenerUsuario.js'
 import { estadoIDAAccion, estadoIDADetalle, categoriaHistorialIDAAccion, categoriaHistorialIDADetalle } from '../utils/convertirATexto.js'
+import { DISTANCIA_DUPLICADO_METROS, ESTADOS_CERRADOS, LIMITES_CULIACAN, aRadianes, distanciaMetros } from '../utils/mapa.js'
+
 
 import {
     verificarTokenJWT,
@@ -34,6 +36,13 @@ const esIdValido = (valor) => {
         (typeof valor === 'number' && Number.isSafeInteger(valor) && valor > 0) ||
         (typeof valor === 'string' && /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+$/.test(valor) && valor.trim().length > 0)
     )
+}
+
+function estadoDelReporte(reporte) {
+    if (!reporte.detalle_reporte || !reporte.detalle_reporte.estado_id) {
+        return null
+    }
+    return reporte.detalle_reporte.estado_id
 }
 
 const correoRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
