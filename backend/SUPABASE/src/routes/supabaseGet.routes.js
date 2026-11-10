@@ -61,7 +61,6 @@ const distanciaMetros = (lat1, lng1, lat2, lng2) => {
 router.get('/reportes/mapa', async (req, res) => {
     try {
         const { data, error } = await supabase
-        const { data, error } = await supabase
             .from('reportes')
             .select(`
                 latitud,
