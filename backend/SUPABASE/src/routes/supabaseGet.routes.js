@@ -38,6 +38,8 @@ function responderErrorInterno(res, mensaje, error) {
     })
 }
 
+
+
 const esTextoValido = (valor) => {
     return typeof valor === 'string' && valor.trim().length > 0
 }
@@ -57,6 +59,13 @@ const distanciaMetros = (lat1, lng1, lat2, lng2) => {
         Math.sin(dLat / 2) ** 2 +
         Math.cos(aRadianes(lat1)) * Math.cos(aRadianes(lat2)) * Math.sin(dLng / 2) ** 2
     return 2 * R * Math.asin(Math.sqrt(a))
+}
+
+function estadoDelReporte(reporte) {
+    if (!reporte.detalle_reporte || !reporte.detalle_reporte.estado_id) {
+        return null
+    }
+    return reporte.detalle_reporte.estado_id
 }
 
 // -----------------------------------------
