@@ -70,25 +70,26 @@ router.get('/reportes/mapa', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('reportes')
-            .select(`
-                latitud,
-                longitud,
-                departamento_id,
-                departamento_externo_id,
-                problema_id,
-                problema_externo_id,
-                departamentos (nombreamigable),
-                departamentos_externos (departamento),
-                problemas (nombreamigable),
-                problemas_externos (nombreamigable),
-                detalle_reporte!folio (estado_id)
-            `)
+            .select([
+                'latitud',
+                'longitud',
+                'departamento_id',
+                'departamento_externo_id',
+                'problema_id',
+                'problema_externo_id',
+                'departamentos (nombreamigable)',
+                'departamentos_externos (departamento)',
+                'problemas (nombreamigable)',
+                'problemas_externos (nombreamigable)',
+                'detalle_reporte (estado_id)'
+            ].join(','))
             .not('latitud', 'is', null)
             .not('longitud', 'is', null)
             .limit(1000);
 
 
-        if (error) return responder(res, { data: null, error: error })
+
+        if (error) return responder(res, { data: null, error: 'Error al obtener los reportes del mapa.' })
 
         const pines = (data || [])
             .filter((r) => !ESTADOS_CERRADOS.includes(estadoDelReporte(r)))
