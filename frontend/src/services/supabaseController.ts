@@ -117,6 +117,12 @@ export async function obtenerTodosJefes() {//NUEVO
   })
 }
 
+export async function obtenerReportesMapa() {
+  return request(`/reportes/mapa`, {
+    method: 'GET',
+  })
+}
+
 export async function obtenerHistorial(params: {
   pagina?: number
   limite?: number

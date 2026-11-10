@@ -34,9 +34,72 @@ const esTextoValido = (valor) => {
     return typeof valor === 'string' && valor.trim().length > 0
 }
 
+const DISTANCIA_DUPLICADO_METROS = 5
+const ESTADOS_CERRADOS = [3, 4] // 3 = Rechazado, 4 = Finalizado: no cuentan como duplicado ni salen en el mapa
+const LIMITES_CULIACAN = { minLat: 24.58, maxLat: 25.02, minLng: -107.6, maxLng: -107.1 }
+
+const aRadianes = (g) => (g * Math.PI) / 180
+
+// Distancia en metros entre dos coordenadas (fórmula de Haversine)
+const distanciaMetros = (lat1, lng1, lat2, lng2) => {
+    const R = 6371000
+    const dLat = aRadianes(lat2 - lat1)
+    const dLng = aRadianes(lng2 - lng1)
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(aRadianes(lat1)) * Math.cos(aRadianes(lat2)) * Math.sin(dLng / 2) ** 2
+    return 2 * R * Math.asin(Math.sqrt(a))
+}
+
 // -----------------------------------------
 // ENDPOINTS PÚBLICOS
 // -----------------------------------------
+
+
+
+// (obtenerReportesMapa)
+router.get('/reportes/mapa', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('reportes')
+            .select(`
+                latitud,
+                longitud,
+                departamento_id,
+                departamento_externo_id,
+                problema_id,
+                problema_externo_id,
+                departamentos (nombreamigable),
+                departamentos_externos (departamento),
+                problemas (nombreamigable),
+                problemas_externos (nombreamigable),
+                detalle_reporte (estado_id)
+            `)
+            .not('latitud', 'is', null)
+            .not('longitud', 'is', null)
+            .limit(1000)
+
+        if (error) return responder(res, { data: null, error })
+
+        const pines = (data || [])
+            .filter((r) => !ESTADOS_CERRADOS.includes(estadoDelReporte(r)))
+            .map((r) => ({
+                latitud: r.latitud,
+                longitud: r.longitud,
+                // Interno si existe; si no, el externo
+                departamento: r.departamentos?.nombreamigable
+                    ?? r.departamentos_externos?.departamento
+                    ?? 'Sin departamento',
+                problema: r.problemas?.nombreamigable
+                    ?? r.problemas_externos?.nombreamigable
+                    ?? 'Sin problemática',
+            }))
+
+        return res.status(200).json({ data: pines, error: null })
+    } catch (error) {
+        return responderErrorInterno(res, 'Error interno al obtener los reportes del mapa.', error)
+    }
+})
 
 // (obtenerDepartamentosOrdenadosPorId)
 router.get('/departamentos/ordenadosPorId', manejarErrores(async (req, res) => {

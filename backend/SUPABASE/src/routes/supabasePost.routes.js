@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken'
 import { verificarTurnstile } from '../middleware/verificarTurnstile.js'
 import { registrarHistorial } from '../utils/registrarHistorial.js'
 import { obtenerUsuario } from '../utils/obtenerUsuario.js'
-import { estadoIDAAccion, estadoIDADetalle, categoriaHistorialIDAAccion, categoriaHistorialIDADetalle} from '../utils/convertirATexto.js'
+import { estadoIDAAccion, estadoIDADetalle, categoriaHistorialIDAAccion, categoriaHistorialIDADetalle } from '../utils/convertirATexto.js'
 
 import {
     verificarTokenJWT,
@@ -68,6 +68,10 @@ function manejarErrores(handler) {
     }
 }
 
+const estadoDelReporte = (r) => {
+    const detalle = Array.isArray(r.detalle_reporte) ? r.detalle_reporte[0] : r.detalle_reporte
+    return detalle?.estado_id
+}
 
 // ----------------------------------------- ENDPOINTS -----------------------------------------
 
@@ -516,6 +520,54 @@ router.post('/reporte', verificarTurnstile, async (req, res) => {
             })
         }
 
+        // Validación de coordenadas (el frontend las valida, pero aquí se repite por seguridad).
+        if (
+            typeof data.latitud !== 'number' || !Number.isFinite(data.latitud) ||
+            typeof data.longitud !== 'number' || !Number.isFinite(data.longitud) ||
+            data.latitud < LIMITES_CULIACAN.minLat || data.latitud > LIMITES_CULIACAN.maxLat ||
+            data.longitud < LIMITES_CULIACAN.minLng || data.longitud > LIMITES_CULIACAN.maxLng
+        ) {
+            return res.status(400).json({
+                error: 'Ubicación inválida o fuera de Culiacán.'
+            })
+        }
+
+        // Detección de reportes duplicados: mismo departamento, misma problemática y a 5 m o menos.
+        // Primero se acota con un rectángulo para no traer toda la tabla; la distancia exacta se calcula después.
+        const margenMetros = DISTANCIA_DUPLICADO_METROS * 2
+        const margenLat = margenMetros / 111320
+        const margenLng = margenMetros / (111320 * Math.cos(aRadianes(data.latitud)))
+
+        const { data: cercanos, error: errorCercanos } = await supabase
+            .from('reportes')
+            .select('folio, latitud, longitud, detalle_reporte (estado_id)')
+            .eq('departamento_id', data.departamento_id)
+            .eq('problema_id', data.problema_id)
+            .gte('latitud', data.latitud - margenLat)
+            .lte('latitud', data.latitud + margenLat)
+            .gte('longitud', data.longitud - margenLng)
+            .lte('longitud', data.longitud + margenLng)
+
+        if (errorCercanos) return responder(res, { data: null, error: errorCercanos })
+
+        const hayDuplicado = (cercanos || []).some(
+            (r) =>
+                !ESTADOS_CERRADOS.includes(estadoDelReporte(r)) &&
+                distanciaMetros(data.latitud, data.longitud, r.latitud, r.longitud) <= DISTANCIA_DUPLICADO_METROS
+        )
+
+        if (hayDuplicado) {
+            return res.status(409).json({
+                data: null,
+                error: {
+                    code: 'REPORTE_DUPLICADO',
+                    message:
+                        'Parece que este problema ya fue reportado en este mismo punto y sigue en atención. ' +
+                        'Para evitar duplicados, tu reporte no fue enviado. Puedes revisar en el mapa los reportes cercanos. ¡Gracias por ayudarnos a mejorar Culiacán!'
+                }
+            })
+        }
+
         // Construcción y ejecución de la inserción.
         const result = await supabase
             .from('reportes')
@@ -531,7 +583,9 @@ router.post('/reporte', verificarTurnstile, async (req, res) => {
                 referencias: data.referencias?.trim() || null,
                 foto_url: data.foto_url ?? null,
                 fotoTipoID: data.fotoTipoID ?? null,
-                mensajeAI: data.mensajeAI?.trim() || null
+                mensajeAI: data.mensajeAI?.trim() || null,
+                latitud: data.latitud || null,
+                longitud: data.longitud || null,
             })
 
         return responder(res, result)
@@ -830,13 +884,13 @@ router.post(
                     estado
                 })
 
-                // Si todo es correcto, lo agregamos al historial del sistema
-                const correoUsuario = obtenerUsuario(req)
-                await registrarHistorial(correoUsuario, {
-                    accion: 'Crear',
-                    entidad: 'Problemática',
-                    detalles: `Se creó una nueva problemática interna: ${nombre}.`
-                })
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            await registrarHistorial(correoUsuario, {
+                accion: 'Crear',
+                entidad: 'Problemática',
+                detalles: `Se creó una nueva problemática interna: ${nombre}.`
+            })
 
             return responder(res, result)
 
@@ -913,13 +967,13 @@ router.post(
                     estado
                 })
 
-                // Si todo es correcto, lo agregamos al historial del sistema
-                const correoUsuario = obtenerUsuario(req)
-                await registrarHistorial(correoUsuario, {
-                    accion: 'Crear',
-                    entidad: 'Problemática',
-                    detalles: `Se creó una nueva problemática externa: ${nombre}.`
-                })
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            await registrarHistorial(correoUsuario, {
+                accion: 'Crear',
+                entidad: 'Problemática',
+                detalles: `Se creó una nueva problemática externa: ${nombre}.`
+            })
 
             return responder(res, result)
 
@@ -987,13 +1041,13 @@ router.post(
                     estado
                 })
 
-                // Si todo es correcto, lo agregamos al historial del sistema
-                const correoUsuario = obtenerUsuario(req)
-                await registrarHistorial(correoUsuario, {
-                    accion: 'Crear',
-                    entidad: 'Departamento',
-                    detalles: `Se creó un nuevo departamento interno: ${nombre}.`
-                })
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            await registrarHistorial(correoUsuario, {
+                accion: 'Crear',
+                entidad: 'Departamento',
+                detalles: `Se creó un nuevo departamento interno: ${nombre}.`
+            })
 
             return responder(res, result)
 
@@ -1052,13 +1106,13 @@ router.post(
                     estado
                 })
 
-                // Si todo es correcto, lo agregamos al historial del sistema
-                const correoUsuario = obtenerUsuario(req)
-                await registrarHistorial(correoUsuario, {
-                    accion: 'Crear',
-                    entidad: 'Departamento',
-                    detalles: `Se creó un nuevo departamento externo: ${departamento}.`
-                })
+            // Si todo es correcto, lo agregamos al historial del sistema
+            const correoUsuario = obtenerUsuario(req)
+            await registrarHistorial(correoUsuario, {
+                accion: 'Crear',
+                entidad: 'Departamento',
+                detalles: `Se creó un nuevo departamento externo: ${departamento}.`
+            })
 
             return responder(res, result)
 
