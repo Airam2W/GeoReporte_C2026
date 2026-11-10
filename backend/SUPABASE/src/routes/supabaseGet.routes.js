@@ -30,6 +30,14 @@ function manejarErrores(handler) {
     }
 }
 
+function responderErrorInterno(res, mensaje, error) {
+    console.error(mensaje, error)
+    return res.status(500).json({
+        data: null,
+        error: { message: mensaje }
+    })
+}
+
 const esTextoValido = (valor) => {
     return typeof valor === 'string' && valor.trim().length > 0
 }
