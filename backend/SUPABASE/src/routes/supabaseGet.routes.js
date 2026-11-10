@@ -58,7 +58,7 @@ const distanciaMetros = (lat1, lng1, lat2, lng2) => {
 
 
 // (obtenerReportesMapa)
-router.get('/reportes/mapa', manejarErrores(async (req, res) => {
+router.get('/reportes/mapa', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('reportes')
@@ -99,7 +99,7 @@ router.get('/reportes/mapa', manejarErrores(async (req, res) => {
     } catch (error) {
         return responderErrorInterno(res, 'Error interno al obtener los reportes del mapa.', error)
     }
-}))
+})
 
 // (obtenerDepartamentosOrdenadosPorId)
 router.get('/departamentos/ordenadosPorId', manejarErrores(async (req, res) => {
