@@ -563,7 +563,7 @@ export async function uploadFoto(filePath: string, file: File, bucket = 'fotos')
   const formData = new FormData()
   formData.append('filePath', filePath)
   formData.append('file', file)
-
+  
   try {
     const token = localStorage.getItem('userToken')
 
@@ -594,4 +594,31 @@ export async function getPublicUrl(filePath: string, bucket = 'fotos') {// NO BO
     method: 'POST',
     body: JSON.stringify({ filePath }),
   })
+}
+
+export async function eliminarFotoBucket(filePath: string, bucket = 'fotos') {
+  try {
+    const token = localStorage.getItem('userToken')
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    }
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const res = await fetch(`${API_URL}/storage/${bucket}/file`, {
+      method: 'DELETE',
+      headers,
+      body: JSON.stringify({ filePath }),
+    })
+
+    const result = await res.json()
+    return result
+  } catch (err: any) {
+    return {
+      data: null,
+      error: { message: err?.message || 'Error de red al eliminar archivo' },
+    }
+  }
 }

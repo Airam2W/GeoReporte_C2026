@@ -59,7 +59,6 @@ function estadoDelReporte(reporte) {
 // -----------------------------------------
 
 
-
 // (obtenerReportesMapa)
 router.get('/reportes/mapa', async (req, res) => {
     try {
@@ -68,6 +67,7 @@ router.get('/reportes/mapa', async (req, res) => {
             .select([
                 'latitud',
                 'longitud',
+                'foto_url',
                 'departamento_id',
                 'departamento_externo_id',
                 'problema_id',
@@ -82,29 +82,48 @@ router.get('/reportes/mapa', async (req, res) => {
             .not('longitud', 'is', null)
             .limit(1000);
 
-
-
-        if (error) return responder(res, { data: null, error: 'Error al obtener los reportes del mapa.' })
+        if (error) {
+            return responder(res, {
+                data: null,
+                error: 'Error al obtener los reportes del mapa.'
+            });
+        }
 
         const pines = (data || [])
             .filter((r) => !ESTADOS_CERRADOS.includes(estadoDelReporte(r)))
             .map((r) => ({
                 latitud: r.latitud,
                 longitud: r.longitud,
-                // Interno si existe; si no, el externo
+                foto_url: r.foto_url ?? null,
+
+                // IDs normalizados: internos o externos
+                departamento_id: r.departamento_id ?? r.departamento_externo_id,
+                problema_id: r.problema_id ?? r.problema_externo_id,
+
+                // Nombres para mostrar
                 departamento: r.departamentos?.nombreamigable
                     ?? r.departamentos_externos?.departamento
                     ?? 'Sin departamento',
+
                 problema: r.problemas?.nombreamigable
                     ?? r.problemas_externos?.nombreamigable
                     ?? 'Sin problemática',
-            }))
+            }));
 
-        return res.status(200).json({ data: pines, error: null })
+        return res.status(200).json({
+            data: pines,
+            error: null
+        });
+
     } catch (error) {
-        return responderErrorInterno(res, 'Error interno al obtener los reportes del mapa.', error)
+        return responderErrorInterno(
+            res,
+            'Error interno al obtener los reportes del mapa.',
+            error
+        );
     }
-})
+});
+
 
 // (obtenerDepartamentosOrdenadosPorId)
 router.get('/departamentos/ordenadosPorId', manejarErrores(async (req, res) => {
@@ -399,11 +418,17 @@ router.get(
                 'tipousuario_id',
                 'fechaalta',
                 'fechabaja',
+
                 'tipousuario:tipousuario_id (nombre)',
+
                 'administradores (created_at, departamentos(id, nombre))',
+
                 'supervisores (created_at, departamentos(id, nombre), usuarios(id, nombre, apellido_p, apellido_m), jefes(id, usuarios(id, nombre, apellido_p, apellido_m)))',
-                'jefes (created_at, supervisores(id, usuarios(id, nombre, apellido_p, apellido_m)), trabajadores(id, usuarios(id, nombre, apellido_p, apellido_m)))',
-                'trabajadores (created_at, jefes(id, usuarios(id, nombre, apellido_p, apellido_m), supervisores(id, usuarios(id, nombre, apellido_p, apellido_m))) )',
+
+                'jefes (created_at, supervisores(id, departamentos(id, nombre), usuarios(id, nombre, apellido_p, apellido_m)), trabajadores(id, usuarios(id, nombre, apellido_p, apellido_m)))',
+
+                'trabajadores (created_at, jefes(id, usuarios(id, nombre, apellido_p, apellido_m), supervisores(id, departamentos(id, nombre), usuarios(id, nombre, apellido_p, apellido_m))))',
+
                 'personal_externo (created_at, departamentos_externos(id, departamento))'
             ].join(','))
             .neq('tipousuario_id', valor)

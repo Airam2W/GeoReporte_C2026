@@ -109,19 +109,17 @@
             <select name="departamento" v-model="filtros.departamento">
               <option value="">Todos los departamentos</option>
 
-              <template v-if="String(filtros.rol) === '2' || String(filtros.rol) === '3'">
-                <option v-for="dep in departamentosInternos" :key="dep.id" :value="dep.id">
+              <optgroup label="Departamentos internos">
+                <option v-for="dep in departamentosInternos" :key="`Interno-${dep.id}`" :value="`Interno:${dep.id}`">
                   {{ dep.nombre }}
                 </option>
-              </template>
+              </optgroup>
 
-              <template v-else-if="String(filtros.rol) === '6'">
-                <option v-for="de in departamentosExternos" :key="de.id" :value="de.id">
-                  {{ de.departamento }}
+              <optgroup label="Departamentos externos">
+                <option v-for="dep in departamentosExternos" :key="`Externo-${dep.id}`" :value="`Externo:${dep.id}`">
+                  {{ dep.departamento }}
                 </option>
-              </template>
-
-              <template v-else></template>
+              </optgroup>
             </select>
           </div>
 
@@ -208,11 +206,13 @@
             </select>
           </div>
 
-          <div class="filtro-grupo">
+          <div class="filtro-grupo filtro-flotante">
+            <label for="fecha-desde">Desde:</label>
             <input v-model="filtros.fechaDesde" type="date" title="Desde" />
           </div>
 
-          <div class="filtro-grupo">
+          <div class="filtro-grupo filtro-flotante">
+            <label for="fecha-hasta">Hasta:</label>
             <input v-model="filtros.fechaHasta" type="date" title="Hasta" />
           </div>
         </template>
@@ -785,9 +785,11 @@ const cargarCatalogos = async () => {
 
   if (jData) jefesOpciones.value = jData
 }
+
 const cargarUsuarios = async () => {
   cargando.value = true
-  const { data, error } = await obtenerTodosUsuariosExcepto(1) // Excluir al Director General (tipousuario_id = 1)
+
+  const { data, error } = await obtenerTodosUsuariosExcepto(1)
 
   if (!error && data) {
     usuarios.value = data.map((u) => {
@@ -800,7 +802,8 @@ const cargarUsuarios = async () => {
         {}
 
       // --- Jerarquía Administrativa según el rol ---
-      let jerarquia = {}
+      let jerarquia: any = {}
+
       if (u.tipousuario_id === 3) {
         // Supervisor: jefes bajo su mando
         jerarquia.jefes = rolData.jefes || []
@@ -809,43 +812,114 @@ const cargarUsuarios = async () => {
         jerarquia.supervisor = rolData.supervisores || null
         jerarquia.trabajadores = rolData.trabajadores || []
       } else if (u.tipousuario_id === 5) {
-        // Trabajador: su jefe, y el supervisor de ese jefe
+        // Trabajador: su jefe y el supervisor de ese jefe
         const jefeData = rolData.jefes || null
+
         jerarquia.jefe = jefeData
-          ? { ...jefeData, supervisor: jefeData.supervisores || null }
+          ? {
+            ...jefeData,
+            supervisor: jefeData.supervisores || null,
+          }
           : null
       }
-      // Para cualquier otro tipousuario_id, jerarquia queda vacío
-      // y el template no muestra ese apartado (no hay v-if que lo cubra)
+
+      // --- Departamento correspondiente para el filtrado ---
+      let departamento = null
+      let departamento_tipo = null
+
+      switch (u.tipousuario_id) {
+        case 2:
+        case 3:
+          // Administrador Interno y Supervisor:
+          // utilizan su propio departamento.
+          departamento = rolData.departamentos || null
+          departamento_tipo = 'Interno'
+          break
+
+        case 6:
+          // Administrador Externo:
+          // utiliza su propio departamento externo.
+          departamento = rolData.departamentos_externos || null
+          departamento_tipo = 'Externo'
+          break
+
+        case 4: {
+          // Jefe:
+          // hereda el departamento de su Supervisor.
+          const supervisor = rolData.supervisores || null
+
+          departamento = supervisor?.departamentos || null
+          departamento_tipo = departamento ? 'Interno' : null
+          break
+        }
+
+        case 5: {
+          // Trabajador:
+          // obtiene el Jefe al que pertenece.
+          const jefe = rolData.jefes || null
+
+          // Después obtiene el Supervisor de ese Jefe.
+          const supervisor = jefe?.supervisores || null
+
+          // Finalmente hereda el departamento de ese Supervisor.
+          departamento = supervisor?.departamentos || null
+          departamento_tipo = departamento ? 'Interno' : null
+          break
+        }
+      }
+
+      // --- Nombre del Departamento/Superior para mostrar en la tabla ---
+      let departamentoNombre = ''
+
+      if (u.tipousuario_id === 4) {
+        // Para el Jefe se muestra el nombre de su Supervisor
+        const supervisor = rolData.supervisores?.usuarios
+
+        departamentoNombre = supervisor
+          ? `${supervisor.nombre} ${supervisor.apellido_p} ${supervisor.apellido_m || ''}`.trim()
+          : ''
+      } else if (u.tipousuario_id === 5) {
+        // Para el Trabajador se muestra el nombre de su Jefe
+        const jefe = rolData.jefes?.usuarios
+
+        departamentoNombre = jefe
+          ? `${jefe.nombre} ${jefe.apellido_p} ${jefe.apellido_m || ''}`.trim()
+          : ''
+      } else if (departamento_tipo === 'Interno') {
+        departamentoNombre = departamento?.nombre || ''
+      } else if (departamento_tipo === 'Externo') {
+        departamentoNombre = departamento?.departamento || ''
+      }
 
       return {
         ...u,
+
+        // Se conserva la jerarquía para que el template
+        // pueda mostrar Supervisor, Jefe y Trabajadores.
         ...jerarquia,
+
         created_at: rolData.created_at || null,
-        departamento_id:
-          rolData.departamentos?.id ||
-          rolData.supervisores?.id ||
-          rolData.jefes?.id ||
-          rolData.departamentos_externos?.id ||
-          null,
-        departamentoNombre:
-          rolData.departamentos?.nombre ||
-          (rolData.supervisores?.usuarios
-            ? `${rolData.supervisores.usuarios.nombre} ${rolData.supervisores.usuarios.apellido_p} ${rolData.supervisores.usuarios.apellido_m || ''}`.trim()
-            : null) ||
-          (rolData.jefes?.usuarios
-            ? `${rolData.jefes.usuarios.nombre} ${rolData.jefes.usuarios.apellido_p} ${rolData.jefes.usuarios.apellido_m || ''}`.trim()
-            : null) ||
-          rolData.departamentos_externos?.departamento ||
-          '',
+
+        // Datos utilizados por el filtro de departamento
+        departamento_id: departamento?.id || null,
+        departamento_tipo,
+
+        // Dato utilizado por la columna Departamento/Superior
+        departamentoNombre,
       }
     })
   } else if (error) {
     console.error('Error al cargar usuarios:', error)
-    Swal.fire('Error', 'Ocurrió un problema al cargar los usuarios.', 'error')
+    Swal.fire(
+      'Error',
+      'Ocurrió un problema al cargar los usuarios.',
+      'error'
+    )
   }
+
   cargando.value = false
 }
+
 
 import { watch } from 'vue'
 import { redireccionarUsuario } from '../logic/redirectUser'
@@ -901,16 +975,35 @@ watch(
 const usuariosFiltrados = computed(() => {
   return usuarios.value.filter((u) => {
     const q = filtros.value.busqueda.toLowerCase()
-    const nombreCompleto = `${u.nombre} ${u.apellido_p} ${u.apellido_m}`.toLowerCase()
-    const coincideBusqueda = nombreCompleto.includes(q) || u.correo.toLowerCase().includes(q)
-    const coincideRol = filtros.value.rol === '' || u.tipousuario_id == filtros.value.rol
+
+    const nombreCompleto =
+      `${u.nombre} ${u.apellido_p} ${u.apellido_m || ''}`.toLowerCase()
+
+    const coincideBusqueda =
+      nombreCompleto.includes(q) ||
+      (u.correo || '').toLowerCase().includes(q)
+
+    // El filtro de roles funciona independientemente
+    const coincideRol =
+      filtros.value.rol === '' ||
+      String(u.tipousuario_id) === String(filtros.value.rol)
+
+    // Comparar tipo e ID del departamento
     const coincideDepto =
       filtros.value.departamento === '' ||
-      String(u.departamento_id) === String(filtros.value.departamento)
-    const coincideEstado =
-      filtros.value.estado === '' || u.estadoadministrativo === filtros.value.estado
+      `${u.departamento_tipo}:${u.departamento_id}` ===
+      filtros.value.departamento
 
-    return coincideBusqueda && coincideRol && coincideDepto && coincideEstado
+    const coincideEstado =
+      filtros.value.estado === '' ||
+      u.estadoadministrativo === filtros.value.estado
+
+    return (
+      coincideBusqueda &&
+      coincideRol &&
+      coincideDepto &&
+      coincideEstado
+    )
   })
 })
 

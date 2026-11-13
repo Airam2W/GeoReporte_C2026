@@ -118,6 +118,29 @@
 .filtro-grupo select:focus {
   border-color: #621132;
 }
+.filtro-flotante {
+  position: relative;
+  display: inline-block;
+}
+
+.filtro-flotante label {
+  position: absolute;
+  top: -8px;
+  left: 12px;
+  background-color: #ffffff; /* Debe ser el mismo color del fondo */
+  padding: 0 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.filtro-flotante input[type="date"] {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #374151;
+}
+
 
 .input-icono svg {
   position: absolute;
