@@ -59,7 +59,6 @@ function estadoDelReporte(reporte) {
 // -----------------------------------------
 
 
-
 // (obtenerReportesMapa)
 router.get('/reportes/mapa', async (req, res) => {
     try {
@@ -83,9 +82,12 @@ router.get('/reportes/mapa', async (req, res) => {
             .not('longitud', 'is', null)
             .limit(1000);
 
-
-
-        if (error) return responder(res, { data: null, error: 'Error al obtener los reportes del mapa.' })
+        if (error) {
+            return responder(res, {
+                data: null,
+                error: 'Error al obtener los reportes del mapa.'
+            });
+        }
 
         const pines = (data || [])
             .filter((r) => !ESTADOS_CERRADOS.includes(estadoDelReporte(r)))
@@ -93,20 +95,35 @@ router.get('/reportes/mapa', async (req, res) => {
                 latitud: r.latitud,
                 longitud: r.longitud,
                 foto_url: r.foto_url ?? null,
-                // Interno si existe; si no, el externo
+
+                // IDs normalizados: internos o externos
+                departamento_id: r.departamento_id ?? r.departamento_externo_id,
+                problema_id: r.problema_id ?? r.problema_externo_id,
+
+                // Nombres para mostrar
                 departamento: r.departamentos?.nombreamigable
                     ?? r.departamentos_externos?.departamento
                     ?? 'Sin departamento',
+
                 problema: r.problemas?.nombreamigable
                     ?? r.problemas_externos?.nombreamigable
                     ?? 'Sin problemática',
-            }))
+            }));
 
-        return res.status(200).json({ data: pines, error: null })
+        return res.status(200).json({
+            data: pines,
+            error: null
+        });
+
     } catch (error) {
-        return responderErrorInterno(res, 'Error interno al obtener los reportes del mapa.', error)
+        return responderErrorInterno(
+            res,
+            'Error interno al obtener los reportes del mapa.',
+            error
+        );
     }
-})
+});
+
 
 // (obtenerDepartamentosOrdenadosPorId)
 router.get('/departamentos/ordenadosPorId', manejarErrores(async (req, res) => {
