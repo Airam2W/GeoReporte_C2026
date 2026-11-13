@@ -68,6 +68,7 @@ router.get('/reportes/mapa', async (req, res) => {
             .select([
                 'latitud',
                 'longitud',
+                'foto_url',
                 'departamento_id',
                 'departamento_externo_id',
                 'problema_id',
@@ -91,6 +92,7 @@ router.get('/reportes/mapa', async (req, res) => {
             .map((r) => ({
                 latitud: r.latitud,
                 longitud: r.longitud,
+                foto_url: r.foto_url ?? null,
                 // Interno si existe; si no, el externo
                 departamento: r.departamentos?.nombreamigable
                     ?? r.departamentos_externos?.departamento
@@ -399,11 +401,17 @@ router.get(
                 'tipousuario_id',
                 'fechaalta',
                 'fechabaja',
+
                 'tipousuario:tipousuario_id (nombre)',
+
                 'administradores (created_at, departamentos(id, nombre))',
+
                 'supervisores (created_at, departamentos(id, nombre), usuarios(id, nombre, apellido_p, apellido_m), jefes(id, usuarios(id, nombre, apellido_p, apellido_m)))',
-                'jefes (created_at, supervisores(id, usuarios(id, nombre, apellido_p, apellido_m)), trabajadores(id, usuarios(id, nombre, apellido_p, apellido_m)))',
-                'trabajadores (created_at, jefes(id, usuarios(id, nombre, apellido_p, apellido_m), supervisores(id, usuarios(id, nombre, apellido_p, apellido_m))) )',
+
+                'jefes (created_at, supervisores(id, departamentos(id, nombre), usuarios(id, nombre, apellido_p, apellido_m)), trabajadores(id, usuarios(id, nombre, apellido_p, apellido_m)))',
+
+                'trabajadores (created_at, jefes(id, usuarios(id, nombre, apellido_p, apellido_m), supervisores(id, departamentos(id, nombre), usuarios(id, nombre, apellido_p, apellido_m))))',
+
                 'personal_externo (created_at, departamentos_externos(id, departamento))'
             ].join(','))
             .neq('tipousuario_id', valor)

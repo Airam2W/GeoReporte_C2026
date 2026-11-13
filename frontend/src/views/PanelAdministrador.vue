@@ -56,7 +56,8 @@
             placeholder="Buscar por folio, nombre, teléfono o dirección..." />
         </div>
 
-        <div class="filtro-grupo">
+        <div class="filtro-grupo filtro-flotante">
+          <label for="fecha">Filtrar por fecha</label>
           <input v-model="filtros.fecha" type="date" title="Filtrar por fecha" />
         </div>
 

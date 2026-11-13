@@ -30,6 +30,20 @@
           {{ s.display_name }}
         </li>
       </ul>
+      <div class="filtros-mapa">
+        <select v-model="filtroDepartamento" aria-label="Filtrar reportes por departamento">
+          <option value="">Todos los departamentos</option>
+          <option v-for="d in departamentos" :key="d.id" :value="d.id">{{ d.nombreamigable }}</option>
+        </select>
+
+        <select v-model="filtroProblema" :disabled="filtroDepartamento === ''"
+          aria-label="Filtrar reportes por problemática">
+          <option value="">
+            {{ filtroDepartamento === '' ? 'Selecciona un departamento' : 'Todas las problemáticas' }}
+          </option>
+          <option v-for="p in problemasFiltro" :key="p.id" :value="p.id">{{ p.nombreamigable }}</option>
+        </select>
+      </div>
     </div>
 
     <aside class="zoom-controls">
@@ -87,7 +101,7 @@
           <input type="text" :value="departamentos.find((d) => d.id === form.departamento_id)?.nombre || ''" disabled />
           <span v-if="errores.departamento_id" class="msg-error">{{
             errores.departamento_id
-            }}</span>
+          }}</span>
 
           <label>¿Qué problema quieres reportar?</label>
           <select name="problema" v-model="form.problema_id" :class="{ 'input-error': errores.problema_id }"
@@ -278,7 +292,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -308,13 +322,20 @@ const modoMapa = ref(false)
 const volandoAUbicacion = ref(false)
 let capaReportes: L.LayerGroup | null = null
 
+const pinesData = ref<any[]>([])
+const filtroDepartamento = ref<string | number>('')
+const filtroProblema = ref<string | number>('')
+const problemasFiltro = ref<any[]>([])
+
 const escaparHtml = (t: string) =>
   String(t ?? '').replace(
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
   )
 
-// Pin tinto (distinto al verde fijo del centro). Se usa divIcon para evitar los problemas de rutas de imágenes de Leaflet con Vite
+// Solo se aceptan URLs http(s) en el src de la imagen
+const urlSegura = (url: string) => (/^https?:\/\//i.test(url || '') ? url : '')
+
 const iconoReporte = L.divIcon({
   className: 'pin-reporte',
   html: `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 32 42" style="filter: drop-shadow(0 2px 2px rgba(0,0,0,.35));">
@@ -325,6 +346,76 @@ const iconoReporte = L.divIcon({
   iconAnchor: [13, 34],
 })
 
+// Contenido de la etiqueta: foto, departamento y problemática
+const htmlPopupReporte = (r: any) => {
+  const foto = urlSegura(r.foto_url)
+  return `
+    <article class="popup-reporte">
+      <div class="popup-foto${foto ? '' : ' popup-foto--vacia'}">
+        ${foto
+      ? `<img src="${escaparHtml(foto)}" alt="Evidencia del reporte" loading="lazy"
+                 onerror="this.parentElement.classList.add('popup-foto--vacia');this.remove()">`
+      : ''
+    }
+        <span class="popup-foto-texto">Sin imagen</span>
+      </div>
+      <div class="popup-info">
+        <span class="popup-depto">${escaparHtml(r.departamento)}</span>
+        <strong class="popup-problema">${escaparHtml(r.problema)}</strong>
+      </div>
+    </article>`
+}
+
+// Dibuja solo los pines que cumplen los filtros y devuelve sus coordenadas
+const dibujarPines = (): L.LatLngTuple[] => {
+  if (!map.value || !capaReportes) return []
+  capaReportes.clearLayers()
+
+  const hayHover = window.matchMedia('(hover: hover)').matches
+  const visibles: L.LatLngTuple[] = []
+
+  pinesData.value
+    .filter((r) => {
+      const coincideDep =
+        filtroDepartamento.value === '' ||
+        Number(r.departamento_id) === Number(filtroDepartamento.value)
+      const coincideProb =
+        filtroProblema.value === '' || Number(r.problema_id) === Number(filtroProblema.value)
+      return coincideDep && coincideProb
+    })
+    .forEach((r) => {
+      const lat = Number(r.latitud)
+      const lng = Number(r.longitud)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+
+      const marker = L.marker([lat, lng], { icon: iconoReporte, riseOnHover: true })
+
+      const abrir = () =>
+        L.popup({
+          className: 'popup-reporte-wrap',
+          closeButton: false,
+          minWidth: 220,
+          maxWidth: 220,
+          offset: [0, -34],
+          autoPanPadding: [24, 24],
+        })
+          .setLatLng([lat, lng])
+          .setContent(htmlPopupReporte(r))
+          .openOn(map.value!)
+
+      marker.on('click', abrir) // celular: al tocar
+      if (hayHover) {
+        marker.on('mouseover', abrir) // computadora: al pasar el cursor
+        marker.on('mouseout', () => map.value?.closePopup())
+      }
+
+      marker.addTo(capaReportes!)
+      visibles.push([lat, lng])
+    })
+
+  return visibles
+}
+
 const cargarPinesReportes = async () => {
   if (!map.value || !capaReportes) return
 
@@ -334,23 +425,33 @@ const cargarPinesReportes = async () => {
     return
   }
 
-  capaReportes.clearLayers()
-
-    ; (data || []).forEach((r: any) => {
-      const lat = Number(r.latitud)
-      const lng = Number(r.longitud)
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
-
-      const marker = L.marker([lat, lng], { icon: iconoReporte, riseOnHover: true })
-      marker.bindTooltip(
-        `<strong>${escaparHtml(r.departamento)}</strong><br>${escaparHtml(r.problema)}`,
-        { direction: 'top', offset: [0, -30] },
-      )
-      // En celular no hay "pasar el cursor": al tocar el pin se muestra la etiqueta
-      marker.on('click', () => marker.openTooltip())
-      marker.addTo(capaReportes!)
-    })
+  pinesData.value = data || []
+  dibujarPines()
 }
+
+// Al filtrar, el mapa se acerca a los pines que quedaron
+const aplicarFiltros = () => {
+  const visibles = dibujarPines()
+  if (visibles.length && (filtroDepartamento.value !== '' || filtroProblema.value !== '')) {
+    volandoAUbicacion.value = true // evita que moveend limpie el buscador
+    map.value?.fitBounds(L.latLngBounds(visibles), { padding: [60, 60], maxZoom: 16 })
+  }
+}
+
+watch(filtroDepartamento, async (id) => {
+  filtroProblema.value = ''
+  problemasFiltro.value = []
+
+  if (id !== '') {
+    const { data, error } = await obtenerProblemasPorDepartamentoID(id)
+    if (filtroDepartamento.value !== id) return // el usuario ya cambió de departamento
+    if (!error && data) problemasFiltro.value = data
+  }
+
+  aplicarFiltros()
+})
+
+watch(filtroProblema, aplicarFiltros)
 
 const panelAbierto = ref(true)
 
@@ -1044,47 +1145,47 @@ const enviarReporte = async () => {
 
     // Enviar correo por Gmail de la Creacion del Reporte
     const correoData = {
-    folio: folioGenerado,
-    departamento: departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombre || '',
-    problema: problemas.value.find((p) => p.id === form.value.problema_id)?.nombre || '',
-    descripcion: form.value.descripcion.trim(),
-    nombre: form.value.nombre ? form.value.nombre.trim() : 'Ciudadano Honorable',
-    telefono: form.value.telefono,
-    correo: form.value.correo.trim(),
-    domicilio: form.value.domicilio.trim(),
-    referencias: form.value.referencias ? form.value.referencias.trim() : null,
-  }
+      folio: folioGenerado,
+      departamento: departamentos.value.find((d) => d.id === form.value.departamento_id)?.nombre || '',
+      problema: problemas.value.find((p) => p.id === form.value.problema_id)?.nombre || '',
+      descripcion: form.value.descripcion.trim(),
+      nombre: form.value.nombre ? form.value.nombre.trim() : 'Ciudadano Honorable',
+      telefono: form.value.telefono,
+      correo: form.value.correo.trim(),
+      domicilio: form.value.domicilio.trim(),
+      referencias: form.value.referencias ? form.value.referencias.trim() : null,
+    }
 
-  if (!correoData.correo) {
-    console.warn('No se proporcionó correo electrónico para enviar la notificación del reporte.')
-  } else {
-    const resultadoGmail = await enviarCorreoCreacionReporte(correoData)
+    if (!correoData.correo) {
+      console.warn('No se proporcionó correo electrónico para enviar la notificación del reporte.')
+    } else {
+      const resultadoGmail = await enviarCorreoCreacionReporte(correoData)
 
-    if (!resultadoGmail.ok) {
-      console.error('Error al enviar:', resultadoGmail.mensaje)
-      console.error('Error detallado:', resultadoGmail)
+      if (!resultadoGmail.ok) {
+        console.error('Error al enviar:', resultadoGmail.mensaje)
+        console.error('Error detallado:', resultadoGmail)
+      }
+    }
+
+    mostrarModalReporteExitoso({
+      folio: folioGenerado,
+      departamento_id: form.value.departamento_id,
+      problema_id: form.value.problema_id,
+    })
+    cargarPinesReportes() // dibuja el pin del reporte recién creado
+    limpiarFormulario()
+    panelAbierto.value = false
+  } catch (error: any) {
+    console.error('Error detallado:', error)
+    alert(error.message || 'Error de conexión al enviar el reporte')
+  } finally {
+    enviando.value = false
+    const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
+    if (submitBtn) {
+      submitBtn.disabled = false
+      submitBtn.textContent = 'Enviar Reporte'
     }
   }
-
-  mostrarModalReporteExitoso({
-    folio: folioGenerado,
-    departamento_id: form.value.departamento_id,
-    problema_id: form.value.problema_id,
-  })
-  cargarPinesReportes() // dibuja el pin del reporte recién creado
-  limpiarFormulario()
-  panelAbierto.value = false
-} catch (error: any) {
-  console.error('Error detallado:', error)
-  alert(error.message || 'Error de conexión al enviar el reporte')
-} finally {
-  enviando.value = false
-  const submitBtn = document.querySelector('.btn-enviar') as HTMLButtonElement
-  if (submitBtn) {
-    submitBtn.disabled = false
-    submitBtn.textContent = 'Enviar Reporte'
-  }
-}
 }
 
 // Mostrar modal de reporte exitoso
@@ -1570,6 +1671,31 @@ defineExpose({
   background: #4a0e2c;
 }
 
+.filtros-mapa {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.filtros-mapa select {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  background: #fff;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  outline: none;
+}
+.filtros-mapa select:focus { border-color: #621132; }
+.filtros-mapa select:disabled { opacity: 0.6; cursor: not-allowed; }
+
+@media (max-width: 380px) {
+  .filtros-mapa { flex-direction: column; }
+}
+
 @media (max-width: 480px) {
   .terminos-footer {
     flex-direction: column-reverse;
@@ -1579,4 +1705,41 @@ defineExpose({
     width: 100%;
   }
 }
+</style>
+
+<style>
+.popup-reporte-wrap .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+.popup-reporte-wrap .leaflet-popup-content { margin: 0; }
+
+.popup-reporte { font-family: 'Segoe UI', system-ui, sans-serif; }
+
+.popup-foto {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #ece8e2;
+  border-bottom: 3px solid #d5c98a;
+  overflow: hidden;
+}
+.popup-foto img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.popup-foto-texto { display: none; }
+.popup-foto--vacia { display: flex; align-items: center; justify-content: center; }
+.popup-foto--vacia .popup-foto-texto { display: block; color: #999; font-size: 0.8rem; font-style: italic; }
+
+.popup-info { padding: 10px 12px 12px; }
+.popup-depto {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #621132;
+}
+.popup-problema { display: block; font-size: 0.92rem; line-height: 1.3; color: #222; }
 </style>
