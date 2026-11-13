@@ -2,8 +2,8 @@ import { Router } from 'express'
 import multer from 'multer'
 import { supabase } from '../config/supabase.js'
 import { responder } from '../helpers/response.js'
-import { verificarTurnstile } from '../middlewares/verificarTurnstile.js' // Tu middleware de Turnstile
-import { verificarTokenJWT, validarAutorizacion } from '../middlewares/auth.js' // Tus middlewares de JWT y roles
+import { verificarTurnstile } from '../middleware/verificarTurnstile.js' // Tu middleware de Turnstile
+import { verificarTokenJWT, validarAutorizacion } from '../middleware/auth.js' // Tus middlewares de JWT y roles
 import { registrarHistorial } from '../utils/registrarHistorial.js'
 
 const router = Router()
