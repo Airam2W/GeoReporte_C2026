@@ -431,11 +431,7 @@ const cargarPinesReportes = async () => {
 
 // Al filtrar, el mapa se acerca a los pines que quedaron
 const aplicarFiltros = () => {
-  const visibles = dibujarPines()
-  if (visibles.length && (filtroDepartamento.value !== '' || filtroProblema.value !== '')) {
-    volandoAUbicacion.value = true // evita que moveend limpie el buscador
-    map.value?.fitBounds(L.latLngBounds(visibles), { padding: [60, 60], maxZoom: 16 })
-  }
+  dibujarPines()
 }
 
 watch(filtroDepartamento, async (id) => {
@@ -1133,6 +1129,7 @@ const enviarReporte = async () => {
     const { error: insertReporteExistenteError } = await crearDetalleReporte({
       folio: folioGenerado,
       estado_id: 1,
+      turnstileToken
     })
 
     if (insertReporteExistenteError) {
