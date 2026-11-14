@@ -330,6 +330,14 @@ const cargarReportes = async () => {
     }
     mapeados.sort((a: any, b: any) => prioridad(a) - prioridad(b))
 
+    // volvemos a ordenar por prioridad dada por prioridad: 1 = Muy Alta, 2 = Alta, 3 = Media, 4 = Baja, 5 = Muy Baja
+    const prioridadMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4 }
+    mapeados.sort((a: any, b: any) => {
+      const pA = prioridadMap[a.prioridad] ?? 5
+      const pB = prioridadMap[b.prioridad] ?? 5
+      return pA - pB
+    })
+
     reportes.value = mapeados
   } else if (error) {
     console.error('Error al cargar reportes:', error.message)

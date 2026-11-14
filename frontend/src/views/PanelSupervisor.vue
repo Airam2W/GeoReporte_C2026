@@ -937,13 +937,13 @@ const cerrarModalAsignarJefe = () => {
 }
 
 // Paso 2: confirmación + guardado
-const confirmarAsignacionJefe = async (datos: { jefe_id: number | string; jefeNombre: string }) => {
+const confirmarAsignacionJefe = async (datos: { jefe_id: number | string; jefeNombre: string; prioridad: number | string; }) => {
   const folio = folioAAsignar.value
   if (foliosProcesando.value.has(folio)) return
 
   const result = await Swal.fire({
     title: '¿Asignar reporte?',
-    html: `El reporte <b>${folio}</b> se asignará al jefe <b>${datos.jefeNombre}</b>.`,
+    html: `El reporte <b>${folio}</b> se asignará al jefe <b>${datos.jefeNombre}</b> con prioridad <b>${datos.prioridad}</b>.`,
     icon: 'question',
     showCancelButton: true,
     confirmButtonColor: '#1a6b2f',
@@ -965,6 +965,7 @@ const confirmarAsignacionJefe = async (datos: { jefe_id: number | string; jefeNo
       jefe_id: datos.jefe_id,
       estado_id: 7,
       fecha_inicio: new Date().toISOString(),
+      prioridad: Number(datos.prioridad),
     })
 
     if (error) {

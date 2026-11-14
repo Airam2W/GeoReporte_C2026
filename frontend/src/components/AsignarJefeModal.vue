@@ -30,6 +30,18 @@
               No tienes jefes disponibles (en Alta) a tu cargo.
             </span>
           </div>
+
+          <div class="input-grupo">
+            <label>Prioridad</label>
+            <select v-model="prioridad" :class="{ 'input-error': error }">
+              <option value="">Seleccione una prioridad...</option>
+              <option value=1>Muy Alta</option>
+              <option value=2>Alta</option>
+              <option value=3>Media</option>
+              <option value=4>Baja</option>
+              <option value=5>Muy Baja</option>
+            </select>
+          </div>
         </form>
 
         <div class="modal-footer">
@@ -58,6 +70,7 @@ const emit = defineEmits(['close', 'confirm'])
 
 const jefeId = ref<string | number>('')
 const error = ref('')
+const prioridad = ref<string | number>('')
 
 watch(
   () => props.visible,
@@ -65,6 +78,7 @@ watch(
     if (v) {
       jefeId.value = ''
       error.value = ''
+      prioridad.value = ''
     }
   },
 )
@@ -77,9 +91,14 @@ const enviar = () => {
     error.value = 'Selecciona un jefe'
     return
   }
+  if (!prioridad.value) {
+    error.value = 'Selecciona una prioridad'
+    return
+  }
   emit('confirm', {
     jefe_id: jefeId.value,
     jefeNombre: props.jefes.find((j) => j.id == jefeId.value)?.nombre,
+    prioridad: prioridad.value,
   })
 }
 </script>

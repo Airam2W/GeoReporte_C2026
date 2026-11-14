@@ -49,6 +49,11 @@
                 </p>
               </div>
 
+              <div class="info-item" v-if="esAdmin || esSupervisor || esJefe">
+                <label>Prioridad</label>
+                <p>{{ reporte.prioridad }}</p>
+              </div>
+
               <div class="info-grupo-doble">
                 <div class="info-item" v-if="esAdmin || esAdminEx">
                   <label>Ciudadano</label>

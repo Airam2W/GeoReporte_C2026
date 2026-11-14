@@ -112,7 +112,7 @@ router.put(
     async (req, res) => {
         try {
             const { folio, data } = req.body
-            const { jefe_id, estado_id, fecha_inicio } = data || {}
+            const { jefe_id, estado_id, fecha_inicio, prioridad } = data || {}
 
             if (typeof folio !== 'string' || !folio.trim()) {
                 return res.status(400).json({
@@ -138,9 +138,15 @@ router.put(
                 })
             }
 
+            if (!Number.isSafeInteger(prioridad) || prioridad < 1 || prioridad > 5) {
+                return res.status(400).json({
+                    error: 'Prioridad no proporcionada o tipo inválido. Por favor, ingresa una prioridad válida.'
+                })
+            }
+
             const result = await supabase
                 .from('detalle_reporte')
-                .update({ jefe_id, estado_id, fecha_inicio })
+                .update({ jefe_id, estado_id, fecha_inicio, prioridad })
                 .eq('folio', folio)
                 .select()
                 .maybeSingle()
@@ -160,7 +166,7 @@ router.put(
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Poner en Proceso',
                 entidad: 'Reporte',
-                detalles: `Actualizó el estado del reporte con folio ${folio} a "en Proceso" y estableciendo la fecha de inicio a ${fecha_inicio}.`
+                detalles: `Actualizó el estado del reporte con folio ${folio} a "en Proceso", con prioridad ${prioridad} y estableciendo la fecha de inicio a ${fecha_inicio}.`
             })
 
             responder(res, result)
