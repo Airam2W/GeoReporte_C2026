@@ -51,7 +51,7 @@
 
               <div class="info-item" v-if="esAdmin || esSupervisor || esJefe">
                 <label>Prioridad</label>
-                <p>{{ reporte.prioridad }}</p>
+                <p>{{ reporte.prioridad === 1 ? 'Muy Alta' : reporte.prioridad === 2 ? 'Alta' : reporte.prioridad === 3 ? 'Media' : reporte.prioridad === 4 ? 'Baja' : reporte.prioridad === 5 ? 'Muy Baja' : 'No proporcionada' }}</p>
               </div>
 
               <div class="info-grupo-doble">

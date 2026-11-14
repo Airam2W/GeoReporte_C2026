@@ -281,12 +281,14 @@ router.put(
                 })
             }
 
+            const prioridadTexto = prioridad === 1 ? 'Muy Alta' : prioridad === 2 ? 'Alta' : prioridad === 3 ? 'Media' : prioridad === 4 ? 'Baja' : prioridad === 5 ? 'Muy Baja' : 'Desconocida'
+
             // Registrar en el historial del sistema
             const correoUsuarioString = obtenerUsuario(req)
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Actualizar',
                 entidad: 'Reporte',
-                detalles: `Actualizó la prioridad del reporte con folio ${folio} a ${prioridad}.`
+                detalles: `Actualizó la prioridad del reporte con folio ${folio} a ${prioridadTexto}.`
             })
 
             responder(res, result)

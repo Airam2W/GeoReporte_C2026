@@ -942,9 +942,11 @@ const confirmarAsignacionJefe = async (datos: { jefe_id: number | string; jefeNo
   const folio = folioAAsignar.value
   if (foliosProcesando.value.has(folio)) return
 
+  const prioridadTexto = datos.prioridad === 1 ? 'Muy Alta' : datos.prioridad === 2 ? 'Alta' : datos.prioridad === 3 ? 'Media' : datos.prioridad === 4 ? 'Baja' : datos.prioridad === 5 ? 'Muy Baja' : 'Desconocida'
+
   const result = await Swal.fire({
     title: '¿Asignar reporte?',
-    html: `El reporte <b>${folio}</b> se asignará al jefe <b>${datos.jefeNombre}</b> con prioridad <b>${datos.prioridad}</b>.`,
+    html: `El reporte <b>${folio}</b> se asignará al jefe <b>${datos.jefeNombre}</b> con prioridad <b>${prioridadTexto}</b>.`,
     icon: 'question',
     showCancelButton: true,
     confirmButtonColor: '#1a6b2f',
