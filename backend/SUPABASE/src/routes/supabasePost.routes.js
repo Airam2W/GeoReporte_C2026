@@ -571,6 +571,15 @@ router.post('/reporte', verificarTurnstile, async (req, res) => {
             })
         }
 
+        // Validacion de la prioridad del reporte
+        if (data.prioridad !== undefined && data.prioridad !== null) {
+            if (!Number.isInteger(data.prioridad) || data.prioridad < 1 || data.prioridad > 5) {
+                return res.status(400).json({
+                    error: 'Prioridad inválida. Debe ser un número entero entre 1 y 5.'
+                })
+            }
+        }
+
         // Construcción y ejecución de la inserción.
         const result = await supabase
             .from('reportes')
@@ -589,6 +598,7 @@ router.post('/reporte', verificarTurnstile, async (req, res) => {
                 mensajeAI: data.mensajeAI?.trim() || null,
                 latitud: data.latitud || null,
                 longitud: data.longitud || null,
+                prioridad: data.prioridad || 3, // Valor por defecto si no se proporciona
             })
 
         return responder(res, result)

@@ -942,6 +942,8 @@ const confirmarAsignacionJefe = async (datos: { jefe_id: number | string; jefeNo
   const folio = folioAAsignar.value
   if (foliosProcesando.value.has(folio)) return
 
+  datos.prioridad = Number(datos.prioridad)
+
   const prioridadTexto = datos.prioridad === 1 ? 'Muy Alta' : datos.prioridad === 2 ? 'Alta' : datos.prioridad === 3 ? 'Media' : datos.prioridad === 4 ? 'Baja' : datos.prioridad === 5 ? 'Muy Baja' : 'Desconocida'
 
   const result = await Swal.fire({

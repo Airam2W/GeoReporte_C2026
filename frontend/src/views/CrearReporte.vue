@@ -1107,6 +1107,7 @@ const enviarReporte = async () => {
       turnstileToken,
       latitud,
       longitud,
+      prioridad: 3,
     })
 
     if (insertReporteError) {
