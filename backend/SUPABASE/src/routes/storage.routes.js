@@ -13,7 +13,7 @@ const upload = multer({ storage: multer.memoryStorage() })
 // 1. SUBIDA DE FOTOS DE REPORTES (CIUDADANOS)
 // ==========================================
 // Usa el bucket 'fotos'. Está protegido por Cloudflare Turnstile para evitar bots.
-router.post('/storage/fotos/upload', verificarTurnstile, upload.single('file'), async (req, res) => {
+router.post('/storage/fotos/upload', upload.single('file'), verificarTurnstile, async (req, res) => {
   const { filePath } = req.body
   const file = req.file
 
@@ -51,13 +51,6 @@ router.post('/storage/fotos_avances/upload', verificarTokenJWT, validarAutorizac
   if (result.error) {
     return res.status(500).json({ data: null, error: result.error })
   }
-
-  // Registrar en el historial que el jefe subió una evidencia de avance
-  await registrarHistorial(req, {
-    accion: 'Subir Evidencia',
-    entidad: 'Avance',
-    detalles: `El jefe subió un archivo multimedia al sistema.`
-  })
 
   return res.status(200).json({ data: result.data, error: null })
 })

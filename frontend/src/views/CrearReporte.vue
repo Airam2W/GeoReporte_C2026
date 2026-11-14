@@ -1074,7 +1074,7 @@ const enviarReporte = async () => {
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `evidencias/${fileName}` // Se guardará dentro de una carpeta "evidencias"
 
-      const { data, error: uploadError } = await uploadFoto(filePath, file)
+      const { data, error: uploadError } = await uploadFoto(filePath, file,'fotos', turnstileToken)
 
       if (uploadError) throw new Error('No se pudo subir la imagen: ' + uploadError.message)
 
