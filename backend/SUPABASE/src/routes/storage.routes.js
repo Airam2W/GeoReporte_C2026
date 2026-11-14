@@ -72,4 +72,32 @@ router.post('/storage/:bucket/publicUrl', async (req, res) => {
   return res.status(200).json({ data, error: null })
 })
 
+
+// ==========================================
+// 4. ELIMINAR ARCHIVO (LIMPIEZA EN CASCADA)
+// ==========================================
+router.delete('/storage/:bucket/file', async (req, res) => {
+  const { bucket } = req.params
+  const { filePath } = req.body
+
+  if (!BUCKETS_PERMITIDOS.includes(bucket)) {
+    return res.status(400).json({ data: null, error: { message: 'Bucket no permitido' } })
+  }
+
+  if (!filePath) {
+    return res.status(400).json({ data: null, error: { message: 'No se especificó la ruta del archivo' } })
+  }
+
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .remove([filePath])
+
+  if (error) {
+    return res.status(500).json({ data: null, error })
+  }
+
+  return res.status(200).json({ data, error: null })
+})
+
+
 export default router

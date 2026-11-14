@@ -1,4 +1,4 @@
-export const DISTANCIA_DUPLICADO_METROS = 5
+export const DISTANCIA_DUPLICADO_METROS = 15
 export const ESTADOS_CERRADOS = [3, 4] // 3 = Rechazado, 4 = Finalizado: no cuentan como duplicado ni salen en el mapa
 export const LIMITES_CULIACAN = { minLat: 24.58, maxLat: 25.02, minLng: -107.6, maxLng: -107.1 }
 

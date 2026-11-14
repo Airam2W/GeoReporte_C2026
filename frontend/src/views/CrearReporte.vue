@@ -101,7 +101,7 @@
           <input type="text" :value="departamentos.find((d) => d.id === form.departamento_id)?.nombre || ''" disabled />
           <span v-if="errores.departamento_id" class="msg-error">{{
             errores.departamento_id
-          }}</span>
+            }}</span>
 
           <label>¿Qué problema quieres reportar?</label>
           <select name="problema" v-model="form.problema_id" :class="{ 'input-error': errores.problema_id }"
@@ -311,6 +311,7 @@ import {
   crearDetalleReporte,
   getPublicUrl,
   obtenerReportesMapa,
+  eliminarFotoBucket,
 } from '../services/supabaseController'
 import { validarAI } from '../services/geoAIController'
 import { enviarCorreoCreacionReporte } from '../services/gmailController'
@@ -1060,6 +1061,8 @@ const enviarReporte = async () => {
 
   enviando.value = true
 
+  let filePathSubido = ''
+
   try {
     // 0. Token de seguridad (se valida en el backend al crear el reporte)
     const turnstileToken = await obtenerTokenTurnstile()
@@ -1073,8 +1076,9 @@ const enviarReporte = async () => {
       // Generamos un nombre único para evitar que fotos con el mismo nombre se sobreescriban
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `evidencias/${fileName}` // Se guardará dentro de una carpeta "evidencias"
+      filePathSubido = filePath
 
-      const { data, error: uploadError } = await uploadFoto(filePath, file,'fotos')
+      const { data, error: uploadError } = await uploadFoto(filePath, file, 'fotos')
 
       if (uploadError) throw new Error('No se pudo subir la imagen: ' + uploadError.message)
 
@@ -1113,6 +1117,15 @@ const enviarReporte = async () => {
           : insertReporteError.message || 'Error desconocido'
 
       if (insertReporteError.code === 'REPORTE_DUPLICADO') {
+        // 🧹 LIMPIEZA EN CASCADA: Borramos la foto huérfana del bucket si ya se había subido
+        if (filePathSubido) {
+          try {
+            await eliminarFotoBucket(filePathSubido, 'fotos')
+          } catch (err) {
+            console.warn('No se pudo eliminar la foto huérfana:', err)
+          }
+        }
+
         Swal.fire({
           title: 'Reporte probablemente duplicado',
           text: mensaje,
@@ -1120,6 +1133,11 @@ const enviarReporte = async () => {
           confirmButtonColor: '#621132',
         })
         return // el finally restablece el botón
+      }
+
+      // Si fue cualquier otro error, también borramos la foto para no dejar basura
+      if (filePathSubido) {
+        await eliminarFotoBucket(filePathSubido, 'fotos').catch(() => { })
       }
 
       throw new Error('Error al guardar el reporte: ' + mensaje)
@@ -1672,6 +1690,7 @@ defineExpose({
   gap: 8px;
   margin-top: 8px;
 }
+
 .filtros-mapa select {
   flex: 1;
   min-width: 0;
@@ -1685,11 +1704,20 @@ defineExpose({
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   outline: none;
 }
-.filtros-mapa select:focus { border-color: #621132; }
-.filtros-mapa select:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.filtros-mapa select:focus {
+  border-color: #621132;
+}
+
+.filtros-mapa select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 @media (max-width: 380px) {
-  .filtros-mapa { flex-direction: column; }
+  .filtros-mapa {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1710,9 +1738,14 @@ defineExpose({
   overflow: hidden;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
 }
-.popup-reporte-wrap .leaflet-popup-content { margin: 0; }
 
-.popup-reporte { font-family: 'Segoe UI', system-ui, sans-serif; }
+.popup-reporte-wrap .leaflet-popup-content {
+  margin: 0;
+}
+
+.popup-reporte {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
 
 .popup-foto {
   position: relative;
@@ -1722,12 +1755,35 @@ defineExpose({
   border-bottom: 3px solid #d5c98a;
   overflow: hidden;
 }
-.popup-foto img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.popup-foto-texto { display: none; }
-.popup-foto--vacia { display: flex; align-items: center; justify-content: center; }
-.popup-foto--vacia .popup-foto-texto { display: block; color: #999; font-size: 0.8rem; font-style: italic; }
 
-.popup-info { padding: 10px 12px 12px; }
+.popup-foto img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.popup-foto-texto {
+  display: none;
+}
+
+.popup-foto--vacia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup-foto--vacia .popup-foto-texto {
+  display: block;
+  color: #999;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.popup-info {
+  padding: 10px 12px 12px;
+}
+
 .popup-depto {
   display: block;
   margin-bottom: 3px;
@@ -1737,5 +1793,11 @@ defineExpose({
   text-transform: uppercase;
   color: #621132;
 }
-.popup-problema { display: block; font-size: 0.92rem; line-height: 1.3; color: #222; }
+
+.popup-problema {
+  display: block;
+  font-size: 0.92rem;
+  line-height: 1.3;
+  color: #222;
+}
 </style>
