@@ -112,7 +112,7 @@ router.put(
     async (req, res) => {
         try {
             const { folio, data } = req.body
-            const { jefe_id, estado_id, fecha_inicio, prioridad } = data || {}
+            const { jefe_id, estado_id, fecha_inicio } = data || {}
 
             if (typeof folio !== 'string' || !folio.trim()) {
                 return res.status(400).json({
@@ -138,15 +138,9 @@ router.put(
                 })
             }
 
-            if (!Number.isSafeInteger(prioridad) || prioridad < 1 || prioridad > 5) {
-                return res.status(400).json({
-                    error: 'Prioridad no proporcionada o tipo inválido. Por favor, ingresa una prioridad válida.'
-                })
-            }
-
             const result = await supabase
                 .from('detalle_reporte')
-                .update({ jefe_id, estado_id, fecha_inicio, prioridad })
+                .update({ jefe_id, estado_id, fecha_inicio })
                 .eq('folio', folio)
                 .select()
                 .maybeSingle()
@@ -166,7 +160,7 @@ router.put(
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Poner en Proceso',
                 entidad: 'Reporte',
-                detalles: `Actualizó el estado del reporte con folio ${folio} a "en Proceso", con prioridad ${prioridad} y estableciendo la fecha de inicio a ${fecha_inicio}.`
+                detalles: `Actualizó el estado del reporte con folio ${folio} a "en Proceso" y estableciendo la fecha de inicio a ${fecha_inicio}.`
             })
 
             responder(res, result)
@@ -242,6 +236,64 @@ router.put(
             console.error('Error al actualizar la fecha de cierre del reporte:', error)
             return res.status(500).json({
                 error: 'Error interno al actualizar la fecha de cierre.'
+            })
+        }
+    }
+)
+
+// (actualizarPrioridadReporte)
+router.put(
+    '/reporte/prioridad',
+    verificarTokenJWT,
+    validarAutenticacion,
+    validarAutorizacion([3]),
+    async (req, res) => {
+        try {
+            const { folio, data } = req.body
+            const { prioridad } = data || {}
+
+            if (typeof folio !== 'string' || !folio.trim()) {
+                return res.status(400).json({
+                    error: 'Folio no proporcionado o tipo inválido. Por favor, ingresa un folio válido.'
+                })
+            }
+
+            if (typeof prioridad !== 'number' || prioridad < 1 || prioridad > 5) {
+                return res.status(400).json({
+                    error: 'Prioridad no proporcionada o tipo inválido. Por favor, ingresa una prioridad válida.'
+                })
+            }
+
+            const result = await supabase
+                .from('reportes')
+                .update({ prioridad })
+                .eq('folio', folio)
+                .select()
+                .maybeSingle()
+
+            if (result.error) {
+                return responder(res, result)
+            }
+
+            if (!result.data) {
+                return res.status(404).json({
+                    error: 'No se encontró el reporte solicitado.'
+                })
+            }
+
+            // Registrar en el historial del sistema
+            const correoUsuarioString = obtenerUsuario(req)
+            await registrarHistorial(correoUsuarioString, {
+                accion: 'Actualizar',
+                entidad: 'Reporte',
+                detalles: `Actualizó la prioridad del reporte con folio ${folio} a ${prioridad}.`
+            })
+
+            responder(res, result)
+        } catch (error) {
+            console.error('Error al actualizar la prioridad del reporte:', error)
+            return res.status(500).json({
+                error: 'Error interno al actualizar la prioridad.'
             })
         }
     }

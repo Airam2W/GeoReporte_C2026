@@ -557,6 +557,13 @@ export async function actualizarReporteADepartamentoExterno(folio: string, depar
   })
 }
 
+export async function actualizarPrioridadReporte(folio: string, data: any) {//NUEVO
+  return request(`/reporte/prioridad`, {
+    method: 'PUT',
+    body: JSON.stringify({ folio, data }),
+  })
+}
+
 // ================== STORAGE ==================
 
 export async function uploadFoto(filePath: string, file: File, bucket = 'fotos') {

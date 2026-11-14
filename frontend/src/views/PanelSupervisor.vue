@@ -186,6 +186,7 @@ import {
   actualizarEstadoReporteConFechaCierre,
   actualizarEstadoReporteQuitarSupervisor,
   actualizarEstadoReporteConJefeFechaInicio,
+  actualizarPrioridadReporte,
   obtenerEstadoIDPorNombre,
   crearHistorialReporteConFoto,
   crearHistorialReporte,
@@ -965,10 +966,15 @@ const confirmarAsignacionJefe = async (datos: { jefe_id: number | string; jefeNo
       jefe_id: datos.jefe_id,
       estado_id: 7,
       fecha_inicio: new Date().toISOString(),
-      prioridad: Number(datos.prioridad),
     })
 
-    if (error) {
+    const { error: errorPrioridad } = await actualizarPrioridadReporte(folio, {
+        folio: folio,
+        prioridad: Number(datos.prioridad),
+      })
+
+
+    if (error || errorPrioridad) {
       console.error('Error al asignar reporte:', error)
       Swal.fire({
         title: 'Error',
