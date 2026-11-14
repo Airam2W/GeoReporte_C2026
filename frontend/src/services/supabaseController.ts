@@ -559,14 +559,11 @@ export async function actualizarReporteADepartamentoExterno(folio: string, depar
 
 // ================== STORAGE ==================
 
-export async function uploadFoto(filePath: string, file: File, bucket = 'fotos', turnstileToken: string) {
+export async function uploadFoto(filePath: string, file: File, bucket = 'fotos') {
   const formData = new FormData()
   formData.append('filePath', filePath)
   formData.append('file', file)
-  formData.append('turnstileToken', turnstileToken)
   
-
-
   try {
     const token = localStorage.getItem('userToken')
 
