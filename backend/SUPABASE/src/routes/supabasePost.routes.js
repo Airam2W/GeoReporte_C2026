@@ -605,7 +605,7 @@ router.post('/reporte', verificarTurnstile, async (req, res) => {
 
 // (crearDetalleReporte)
 // Endpoint público: no requiere autenticación ni autorización.
-router.post('/detalleReporte', verificarTokenJWT, async (req, res) => {
+router.post('/detalleReporte', async (req, res) => {
     try {
         const data = req.body
 
