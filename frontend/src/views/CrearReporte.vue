@@ -695,7 +695,7 @@ onMounted(() => {
   cargarDepartamentos()
 
   if (!mapContainer.value) return
-  map.value = L.map(mapContainer.value, { zoomControl: false }).setView([24.8091, -107.394], 15)
+  map.value = L.map(mapContainer.value, { zoomControl: false, maxZoom: 19, minZoom: 10 }).setView([24.8091, -107.394], 17)
 
   map.value.on('moveend', () => {
     if (!volandoAUbicacion.value) queryZona.value = ''
