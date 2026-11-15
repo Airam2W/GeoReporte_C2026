@@ -1,5 +1,4 @@
 import os
-import requests
 from supabase import create_client, Client
 from ultralytics import YOLO
 
@@ -9,7 +8,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Mapeo exacto de tus modelos con sus IDs y nombres en tu estructura
+# Mapeo exacto de tus 7 modelos con sus IDs de departamento
 MODELOS = [
     {"id": 1, "nombre": "limpieza"},
     {"id": 2, "nombre": "parques"},
@@ -36,39 +35,72 @@ def procesar_modelos():
         onnx_path = os.path.join(MODELS_DIR, f"{nombre}.onnx")
 
         try:
-            # A. Descargar el archivo .pt actual desde Supabase Storage (o usar el del repo)
-            print(f"[{nombre}] Descargando pesos .pt desde Supabase Storage...")
+            # A. Descargar el archivo .pt actual desde Supabase Storage
+            print(f"[{nombre}] Descargando pesos .pt desde Supabase...")
             response = supabase.storage.from_("modelos_ia").download(f"{nombre}.pt")
             with open(pt_path, "wb") as f:
                 f.write(response)
 
-            # B. Consultar en Supabase las imágenes nuevas de este departamento
-            res = supabase.table("reportes").select("foto_url").eq("departamento_id", depto_id).not_.is_("foto_url", "null").execute()
+            # B. Consultar en Supabase las imágenes de este departamento
+            res = supabase.table("reportes") \
+                .select("foto_url") \
+                .eq("fotoDepartamentoID", depto_id) \
+                .not_.is_("foto_url", "null") \
+                .execute()
+            
             reportes = res.data
 
             if not reportes or len(reportes) == 0:
-                print(f"[{nombre}] No hay nuevas imágenes este mes. Saltando...")
+                print(f"[{nombre}] No hay nuevas imágenes para este departamento este mes. Saltando...")
                 continue
 
             print(f"[{nombre}] Se encontraron {len(reportes)} imágenes nuevas.")
 
-            # C. Cargar el modelo y hacer Fine-Tuning ligero en CPU
-            model = YOLO(pt_path)
-            # model.train(data=f"backend/AI/data_{nombre}.yaml", epochs=5, imgsz=640, device='cpu')
+            # C. Descargar físicamente las imágenes para el entrenamiento de YOLO
+            dataset_dir = f"backend/AI/datasets/{nombre}"
+            images_dir = f"{dataset_dir}/images"
+            os.makedirs(images_dir, exist_ok=True)
 
-            # D. Exportar el modelo actualizado a formato .onnx
-            # YOLO exportará el onnx en la misma ruta o directorio de trabajo
+            for idx, reporte in enumerate(reportes):
+                foto_path = reporte["foto_url"]
+                try:
+                    img_data = supabase.storage.from_("fotos").download(foto_path)
+                    
+                    with open(f"{images_dir}/img_{idx}.jpg", "wb") as img_file:
+                        img_file.write(img_data)
+                except Exception as img_err:
+                    print(f"No se pudo descargar la foto {foto_path}: {img_err}")
+
+            # C.1 Generar automáticamente el archivo data.yaml requerido por YOLO
+            yaml_path = f"{dataset_dir}/data.yaml"
+            abs_dataset_dir = os.path.abspath(dataset_dir)
+            
+            yaml_content = f"""path: {abs_dataset_dir}
+                            train: images
+                            val: images
+
+                            nc: 1
+                            names: ['{nombre}']
+                            """
+            with open(yaml_path, "w") as yf:
+                yf.write(yaml_content)
+
+            # D. Cargar el modelo en YOLO y hacer Fine-Tuning ligero en CPU
+            model = YOLO(pt_path)
+            model.train(data=yaml_path, epochs=5, imgsz=640, device='cpu')
+
+            # E. Exportar el modelo actualizado a formato .onnx
             model.export(format="onnx")
             print(f"[{nombre}] Nuevo archivo .onnx generado con éxito.")
 
-            # E. Subir los archivos actualizados de vuelta a Supabase Storage
+            # F. Subir los archivos actualizados de vuelta a Supabase Storage (`modelos_ia`)
             with open(pt_path, "rb") as f:
                 supabase.storage.from_("modelos_ia").update(f"{nombre}.pt", f)
             
             with open(onnx_path, "rb") as f:
                 supabase.storage.from_("modelos_ia").update(f"{nombre}.onnx", f)
 
-            print(f"[{nombre}] Modelos actualizados en Supabase Storage.")
+            print(f"[{nombre}] Modelos respaldados y actualizados en Supabase Storage.")
 
         except Exception as e:
             print(f"[ERROR] Falló el proceso para el modelo {nombre}: {str(e)}")
