@@ -145,6 +145,34 @@
   color: #374151;
 }
 
+.domicilio-tabla {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.btn-mapa {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: #ffffff;
+  color: #621132;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-mapa:hover {
+  background-color: #621132;
+  color: white;
+}
+
 
 /* Tabla */
 .tabla-contenedor {

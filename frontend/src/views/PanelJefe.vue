@@ -90,7 +90,14 @@
                 {{ truncarTexto(reporte.problemas?.nombre, 25) }}
               </td>
               <td data-label="Domicilio" :title="reporte.domicilio">
-                <span class="domicilio-texto">{{ truncarTexto(reporte.domicilio, 25) }}</span>
+                <div class="domicilio-tabla">
+                  <span class="domicilio-texto">{{ truncarTexto(reporte.domicilio, 25) }}</span>
+
+                  <button type="button" class="btn-mapa" title="Abrir en Google Maps" aria-label="Abrir en Google Maps"
+                    @click.stop="abrirGoogleMaps(reporte.domicilio)">
+                    <MapMarker class="btn-mapa" />
+                  </button>
+                </div>
               </td>
               <td class="acciones-celda">
                 <button class="btn-accion btn-pdf" title="Descargar PDF" @click="descargarPDF(reporte)">
@@ -163,6 +170,44 @@ import InfoCircle from '@primeicons/vue/info-circle';
 import Refresh from '@primeicons/vue/refresh';
 import FileCheck from '@primeicons/vue/file-check';
 import Hourglass from '@primeicons/vue/hourglass';
+
+import MapMarker from '@primeicons/vue/map-marker';
+
+const abrirGoogleMaps = (domicilio: string) => {
+  if (!domicilio) return
+
+  const destino = `${domicilio}, Culiacán, Sinaloa, México`
+
+  // Mostrar el domicilio con un marcador en Google Maps
+  const abrirSoloDestino = () => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destino)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  if (!navigator.geolocation) {
+    abrirSoloDestino()
+    return
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const origen = `${position.coords.latitude},${position.coords.longitude}`
+
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origen)}&destination=${encodeURIComponent(destino)}&travelmode=driving`
+
+      window.open(url, '_blank', 'noopener,noreferrer')
+    },
+    () => {
+      abrirSoloDestino()
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  )
+}
+
 
 
 const modalPdfVisible = ref(false)

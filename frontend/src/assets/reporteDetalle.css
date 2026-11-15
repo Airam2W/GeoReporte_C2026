@@ -299,6 +299,27 @@
   border: 1px solid #eee;
 }
 
+.btn-mapa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background-color: #ffffff;
+  color: #621132;
+  cursor: pointer;
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-mapa:hover {
+  background-color: #621132;
+  color: white;
+}
+
 @media (max-width: 768px) {
   .modal-grid {
     grid-template-columns: 1fr;

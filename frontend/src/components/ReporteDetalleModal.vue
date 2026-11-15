@@ -43,15 +43,30 @@
 
               <div class="info-item">
                 <label>Ubicación</label>
-                <p>{{ reporte.domicilio }}</p>
-                <p v-if="reporte.referencias" class="referencias">
-                  Ref: {{ reporte.referencias || 'No proporcionadas' }}
-                </p>
+
+                <div class="ubicacion-container"
+                  style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+                  <div>
+                    <p>{{ reporte.domicilio }}</p>
+
+                    <p v-if="reporte.referencias" class="referencias">
+                      Ref: {{ reporte.referencias || 'No proporcionadas' }}
+                    </p>
+                  </div>
+
+                  <button v-if="esAdmin || esSupervisor || esJefe"
+                  type="button" class="btn-mapa" aria-label="Abrir en Google Maps" title="Abrir en Google Maps"
+                    @click="abrirGoogleMaps(reporte.domicilio)">
+                    <MapMarker class="btn-mapa" />
+                  </button>
+                </div>
               </div>
 
               <div class="info-item" v-if="esAdmin || esSupervisor || esJefe">
                 <label>Prioridad</label>
-                <p>{{ reporte.prioridad === 1 ? 'Muy Alta' : reporte.prioridad === 2 ? 'Alta' : reporte.prioridad === 3 ? 'Media' : reporte.prioridad === 4 ? 'Baja' : reporte.prioridad === 5 ? 'Muy Baja' : 'No proporcionada' }}</p>
+                <p>{{ reporte.prioridad === 1 ? 'Muy Alta' : reporte.prioridad === 2 ? 'Alta' : reporte.prioridad === 3
+                  ? 'Media' : reporte.prioridad === 4 ? 'Baja' : reporte.prioridad === 5 ? 'Muy Baja'
+                    : 'No proporcionada' }}</p>
               </div>
 
               <div class="info-grupo-doble">
@@ -341,6 +356,43 @@ import {
   obtenerClaseEstado,
   traducirEstado,
 } from '../logic/reporteDetalleModal'
+
+import MapMarker from '@primeicons/vue/map-marker';
+
+const abrirGoogleMaps = (domicilio: string) => {
+  if (!domicilio) return
+
+  const destino = `${domicilio}, Culiacán, Sinaloa, México`
+
+  // Mostrar el domicilio con un marcador en Google Maps
+  const abrirSoloDestino = () => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destino)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  if (!navigator.geolocation) {
+    abrirSoloDestino()
+    return
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const origen = `${position.coords.latitude},${position.coords.longitude}`
+
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origen)}&destination=${encodeURIComponent(destino)}&travelmode=driving`
+
+      window.open(url, '_blank', 'noopener,noreferrer')
+    },
+    () => {
+      abrirSoloDestino()
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  )
+}
 
 const formatearFechaOpcional = (valor: string | null | undefined, vacio: string) =>
   valor ? formatearFechaLocal(valor) : vacio

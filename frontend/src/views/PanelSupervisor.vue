@@ -111,7 +111,16 @@
             <tr v-else v-for="reporte in reportesFiltrados" :key="reporte.folio" class="fila-datos">
               <td class="font-mono">#{{ reporte.folio.split('-')[4] || reporte.folio }}</td>
               <td class="font-bold">{{ truncarTexto(reporte.problemas?.nombre, 25) }}</td>
-              <td :title="reporte.domicilio">{{ truncarTexto(reporte.domicilio, 25) }}</td>
+              <td :title="reporte.domicilio">
+                <div class="domicilio-tabla">
+                  <span>{{ truncarTexto(reporte.domicilio, 25) }}</span>
+
+                  <button type="button" class="btn-mapa" title="Abrir en Google Maps" aria-label="Abrir en Google Maps"
+                    @click.stop="abrirGoogleMaps(reporte.domicilio)">
+                    <MapMarker class="btn-mapa" />
+                  </button>
+                </div>
+              </td>
               <td>{{ truncarTexto(reporte.jefe, 25) }}</td>
               <td class="acciones-celda">
                 <button class="btn-accion btn-pdf" title="Descargar PDF" @click="descargarPDF(reporte)">
@@ -135,6 +144,11 @@
                 <button v-if="reporte.estado === 'Pendiente de Finalización'" class="btn-accion btn-finalizar"
                   title="Finalizar Reporte" @click="abrirModalFinalizar(reporte)">
                   <FileCheck color="green" />
+                </button>
+
+                <button v-if="reporte.estado === 'Asignado'" class="btn-accion btn-prioridad"
+                  title="Modificar prioridad" @click="abrirModalPrioridad(reporte)">
+                  <Flag color="orange" />
                 </button>
               </td>
             </tr>
@@ -168,6 +182,10 @@
       :foto-url="reporteFotoAI?.foto_url || ''" :departamento-nombre="supervisor?.departamento || ''"
       :departamentos="departamentosFoto" :guardando="guardandoFotoAI" @close="cerrarModalFotoAI"
       @confirm="confirmarFotoAI" />
+
+    <CambiarPrioridadModal :visible="modalPrioridadVisible" :folio="reportePrioridad?.folio || ''"
+      :problema="reportePrioridad?.problemas?.nombre || ''" :prioridad-actual="reportePrioridad?.prioridad ?? null"
+      :guardando="guardandoPrioridad" @close="cerrarModalPrioridad" @confirm="confirmarPrioridad" />
   </div>
 </template>
 
@@ -203,6 +221,22 @@ import DescargarPdfModal from '../components/DescargarPdfModal.vue'
 import { enviarCorreoFinalizacionReporte, enviarCorreoReportePDF } from '../services/gmailController'
 import { obtenerTodosDepartamentosInternos, actualizarFotoDepartamentoReporte } from '../services/supabaseController'
 import RetroalimentacionFotoAIModal from '../components/RetroalimentacionFotoAIModal.vue'
+import CambiarPrioridadModal from '../components/CambiarPrioridadModal.vue'
+import Flag from '@primeicons/vue/flag'
+
+const modalPrioridadVisible = ref(false)
+const reportePrioridad = ref<any>(null)
+const guardandoPrioridad = ref(false)
+
+const PRIORIDADES_TEXTO: Record<number, string> = {
+  1: 'Muy Alta',
+  2: 'Alta',
+  3: 'Media',
+  4: 'Baja',
+  5: 'Muy Baja',
+}
+const textoPrioridad = (valor: number | string | null | undefined) =>
+  PRIORIDADES_TEXTO[Number(valor)] || 'Sin definir'
 
 // Iconos
 import DownloadIcon from '@primeicons/vue/download';
@@ -210,6 +244,44 @@ import InfoCircle from '@primeicons/vue/info-circle';
 import UserIcon from '@primeicons/vue/user';
 import ArrowUTurnUpLeft from '@primeicons/vue/arrow-u-turn-up-left';
 import FileCheck from '@primeicons/vue/file-check';
+
+import MapMarker from '@primeicons/vue/map-marker';
+
+const abrirGoogleMaps = (domicilio: string) => {
+  if (!domicilio) return
+
+  const destino = `${domicilio}, Culiacán, Sinaloa, México`
+
+  // Mostrar el domicilio con un marcador en Google Maps
+  const abrirSoloDestino = () => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destino)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  if (!navigator.geolocation) {
+    abrirSoloDestino()
+    return
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const origen = `${position.coords.latitude},${position.coords.longitude}`
+
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origen)}&destination=${encodeURIComponent(destino)}&travelmode=driving`
+
+      window.open(url, '_blank', 'noopener,noreferrer')
+    },
+    () => {
+      abrirSoloDestino()
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  )
+}
+
 
 const modalFotoAIVisible = ref(false)
 const reporteFotoAI = ref<any>(null)
@@ -603,6 +675,88 @@ const cerrarModalVer = () => {
   }, 300)
 }
 
+const abrirModalPrioridad = (reporte: any) => {
+  cerrarModalVer() // por si se llamó desde el modal de detalle
+  reportePrioridad.value = reporte
+  modalPrioridadVisible.value = true
+}
+
+const cerrarModalPrioridad = () => {
+  modalPrioridadVisible.value = false
+}
+
+const confirmarPrioridad = async (nuevaPrioridad: number) => {
+  const reporte = reportePrioridad.value
+  if (!reporte) return
+
+  const folio = reporte.folio
+  if (foliosProcesando.value.has(folio)) return
+
+  const anterior = textoPrioridad(reporte.prioridad)
+  const nueva = textoPrioridad(nuevaPrioridad)
+
+  const result = await Swal.fire({
+    title: '¿Modificar prioridad?',
+    html: `La prioridad del reporte <b>${folio}</b> cambiará de <b>${anterior}</b> a <b>${nueva}</b>.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#1a6b2f',
+    cancelButtonColor: '#888',
+    confirmButtonText: 'Sí, modificar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    customClass: { container: 'swal-difuminado' },
+  })
+
+  if (!result.isConfirmed) return
+
+  foliosProcesando.value.add(folio)
+  guardandoPrioridad.value = true
+
+  try {
+    const { error } = await actualizarPrioridadReporte(folio, {
+      folio: folio,
+      prioridad: nuevaPrioridad,
+    })
+
+    if (error) {
+      console.error('Error al modificar la prioridad:', error)
+      Swal.fire({
+        title: 'Error',
+        text: 'No se pudo modificar la prioridad del reporte.',
+        icon: 'error',
+        confirmButtonColor: '#1a6b2f',
+        customClass: { container: 'swal-difuminado' },
+      })
+      return
+    }
+
+    // Registro en el historial general (no bloquea la acción principal)
+    const { error: errorHistorialGeneral } = await agregarHistorial({
+      accion: 'Editar',
+      entidad: 'Reporte',
+      detalles: `Modificó la prioridad del reporte ${folio} de "${anterior}" a "${nueva}".`,
+    })
+    if (errorHistorialGeneral) {
+      console.error('Error al guardar en el historial:', errorHistorialGeneral)
+    }
+
+    cerrarModalPrioridad()
+    await cargarReportes()
+
+    Swal.fire({
+      title: '¡Prioridad actualizada!',
+      text: `El reporte ahora tiene prioridad ${nueva}.`,
+      icon: 'success',
+      confirmButtonColor: '#1a6b2f',
+      customClass: { container: 'swal-difuminado' },
+    })
+  } finally {
+    foliosProcesando.value.delete(folio)
+    guardandoPrioridad.value = false
+  }
+}
+
 // ---- Retroalimentación de foto (IA) ----
 
 // Si el reporte tiene foto y aún no tiene fotoDepartamentoID, pide la retroalimentación
@@ -973,9 +1127,9 @@ const confirmarAsignacionJefe = async (datos: { jefe_id: number | string; jefeNo
     })
 
     const { error: errorPrioridad } = await actualizarPrioridadReporte(folio, {
-        folio: folio,
-        prioridad: Number(datos.prioridad),
-      })
+      folio: folio,
+      prioridad: Number(datos.prioridad),
+    })
 
 
     if (error || errorPrioridad) {
