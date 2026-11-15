@@ -219,13 +219,19 @@
   margin: 4px 0;
 }
 
+.copied-msg {
+  color: green;
+  font-size: 0.9em;
+  margin-top: 5px;
+}
+
 @media (max-width: 768px) {
   .modal-grid {
     grid-template-columns: 1fr;
   }
   .info-grupo-doble {
     grid-template-columns: 1fr;
-    gap: 0px;
+    gap: 16px;
   }
   .columna-derecha {
     border-left: none;

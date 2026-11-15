@@ -7,9 +7,10 @@
         <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo" />
         <h1>GeoReporte | Panel de Control</h1>
       </div>
-      <div class="topbar-user" v-if="jefe">
+      <div class="topbar-user">
         <div class="user-info">
-          <span class="user-name">{{ jefe.nombre }}</span>
+          <span v-if="jefe" class="user-name">{{ jefe.nombre }}</span>
+          <span v-else class="skeleton sk-oscuro sk-nombre" aria-hidden="true"></span>
           <span class="user-dept">¡Bienvenido!</span>
         </div>
         <button class="btn-logout" @click="cerrarSesion" title="Cerrar Sesión">
@@ -24,9 +25,10 @@
 
     <main class="dashboard-content">
       <!-- Título y departamento -->
-      <header class="content-header" v-if="jefe">
+      <header class="content-header">
         <h2>Reportes Asignados</h2>
-        <p>{{ jefe.departamento }}</p>
+        <p v-if="jefe?.departamento">{{ jefe.departamento }}</p>
+        <span v-else-if="cargando" class="skeleton sk-depto" aria-hidden="true"></span>
       </header>
 
       <!-- Botones de estado -->
@@ -66,7 +68,7 @@
 
       <!-- Tabla (en móvil se convierte en tarjetas) -->
       <div class="tabla-contenedor">
-        <table class="tabla-reportes tabla-jefe">
+        <table class="tabla-reportes tabla-tarjetas">
           <thead>
             <tr>
               <th>FOLIO</th>
@@ -76,9 +78,23 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="cargando" class="fila-vacia">
-              <td colspan="4">Cargando reportes...</td>
-            </tr>
+            <template v-if="cargando">
+              <tr v-for="n in 6" :key="`sk-${n}`" class="fila-skeleton" aria-hidden="true">
+                <td data-label="Folio"><span class="skeleton sk-folio"></span></td>
+                <td data-label="Problema"><span class="skeleton sk-texto"></span></td>
+                <td data-label="Domicilio">
+                  <div class="domicilio-tabla">
+                    <span class="skeleton sk-texto sk-largo"></span>
+                    <span class="skeleton sk-icono"></span>
+                  </div>
+                </td>
+                <td>
+                  <div class="sk-acciones">
+                    <span v-for="b in botonesSkeleton" :key="b" class="skeleton sk-boton"></span>
+                  </div>
+                </td>
+              </tr>
+            </template>
             <tr v-else-if="reportesFiltrados.length === 0" class="fila-vacia">
               <td colspan="4">No se encontraron reportes con estos filtros.</td>
             </tr>
@@ -262,8 +278,14 @@ const conteoPorEstado = computed(() => {
   return conteo
 })
 
+const botonesPorEstado: Record<string, number> = {
+  'En Proceso': 4, // PDF, ver, avance, finalizar
+  'Pendiente de Finalización': 3, // PDF, ver, en espera
+}
+const botonesSkeleton = computed(() => botonesPorEstado[filtros.value.estado] ?? 2)
+
 onMounted(async () => {
-  mostrarCargando()
+  // mostrarCargando() // Desactivado: los skeletons ya indican que se está cargando
   try {
     // 1. Leemos únicamente el token
     const userToken = localStorage.getItem('userToken')
@@ -694,3 +716,5 @@ const cerrarSesion = async () => {
 <style src="../assets/estadosBotones.css"></style>
 <style src="../assets/panelSupervisor.css"></style>
 <style src="../assets/panelJefe.css"></style>
+<style src="../assets/skeletons.css"></style>
+<style src="../assets/tablaTarjetas.css"></style>

@@ -7,10 +7,12 @@
         <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo" />
         <h1>GeoReporte | Administrador Externo</h1>
       </div>
-      <div class="topbar-user" v-if="admin">
+      <div class="topbar-user">
         <div class="user-info">
-          <span class="user-name">{{ admin.nombre }}</span>
-          <span class="user-dept">{{ admin.departamento }}</span>
+          <span v-if="admin" class="user-name">{{ admin.nombre }}</span>
+          <span v-else class="skeleton sk-oscuro sk-nombre" aria-hidden="true"></span>
+          <span v-if="admin?.departamento" class="user-dept">{{ admin.departamento }}</span>
+          <span v-else class="skeleton sk-oscuro sk-dept-top" aria-hidden="true"></span>
         </div>
         <button class="btn-logout" @click="cerrarSesion" title="Cerrar Sesión">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
@@ -24,7 +26,7 @@
 
     <!-- Contenido Principal -->
     <main class="dashboard-content">
-      <header class="content-header" v-if="admin">
+      <header class="content-header">
         <h2>Reportes Turnados a su Dependencia</h2>
         <p>Consulte el detalle de los reportes recibidos y actualice su estado de atención.</p>
       </header>
@@ -66,7 +68,7 @@
 
       <!-- Tabla de Datos -->
       <div class="tabla-contenedor">
-        <table class="tabla-reportes">
+        <table class="tabla-reportes tabla-tarjetas">
           <thead>
             <tr>
               <th>FOLIO</th>
@@ -78,30 +80,51 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="cargando" class="fila-vacia">
-              <td colspan="6">Cargando reportes...</td>
-            </tr>
+            <template v-if="cargando">
+              <tr v-for="n in 6" :key="`sk-${n}`" class="fila-skeleton" aria-hidden="true">
+                <td data-label="Folio"><span class="skeleton sk-folio"></span></td>
+                <td data-label="Fecha turnado"><span class="skeleton sk-texto"></span></td>
+                <td data-label="Problemática reportada">
+                  <div class="ciudadano-info">
+                    <span class="skeleton sk-texto"></span>
+                    <span class="skeleton sk-texto sk-corto"></span>
+                  </div>
+                </td>
+                <td data-label="Domicilio">
+                  <div class="ciudadano-info">
+                    <span class="skeleton sk-texto"></span>
+                    <span class="skeleton sk-texto sk-corto"></span>
+                  </div>
+                </td>
+                <td data-label="Estado actual" class="text-center"><span class="skeleton sk-badge"></span></td>
+                <td>
+                  <div class="sk-acciones">
+                    <span v-for="b in botonesSkeleton" :key="b" class="skeleton sk-boton"></span>
+                  </div>
+                </td>
+              </tr>
+            </template>
             <tr v-else-if="reportesFiltrados.length === 0" class="fila-vacia">
               <td colspan="6">No se encontraron reportes con estos filtros.</td>
             </tr>
             <tr v-else v-for="reporte in reportesFiltrados" :key="reporte.folio" class="fila-datos">
-              <td class="font-bold" style="color: #1a6b2f">
+              <td data-label="Folio" class="font-bold" style="color: #1a6b2f">
                 #{{ reporte.folio.split('-')[4] || reporte.folio }}
               </td>
-              <td class="font-mono">{{ formatearFecha(reporte.detalle_reporte?.updated_at) }}</td>
-              <td>
+              <td data-label="Fecha turnado" class="font-mono">{{ formatearFecha(reporte.detalle_reporte?.updated_at) }}</td>
+              <td data-label="Problemática reportada">
                 <div class="ciudadano-info">
                   <span>{{ truncarTexto(reporte.problemas_externos?.nombreamigable, 25) }}</span>
                   <small>{{ truncarTexto(reporte.problemas_externos?.nombre, 25) }}</small>
                 </div>
               </td>
-              <td :title="reporte.domicilio">
+              <td data-label="Domicilio" :title="reporte.domicilio">
                 <div class="ciudadano-info">
                   <span>{{ truncarTexto(reporte.domicilio.split(',')[1], 25) }}</span>
                   <small>{{ truncarTexto(reporte.domicilio.split(',')[0], 25) }}</small>
                 </div>
               </td>
-              <td class="text-center">
+              <td data-label="Estado actual" class="text-center">
                 <span :class="[
                   'badge',
                   obtenerClaseEstado(
@@ -223,8 +246,15 @@ import { useCargando } from '../composable/useCargando'
 import { Times } from '@primeicons/vue'
 const { mostrarCargando, ocultarCargando } = useCargando()
 
+const botonesPorEstado: Record<string, number> = {
+  'Turnado': 4, // PDF, ver, rechazar, finalizar
+  'Finalizado': 3, // PDF, ver, devolver
+  'Rechazado': 3, // PDF, ver, devolver
+}
+const botonesSkeleton = computed(() => botonesPorEstado[filtros.value.estado] ?? 2)
+
 onMounted(async () => {
-  mostrarCargando() // Mostrar el indicador de carga al iniciar
+  // mostrarCargando() // Desactivado: los skeletons ya indican que se está cargando
   // 1. Leemos únicamente el token
   const userToken = localStorage.getItem('userToken')
 
@@ -668,3 +698,5 @@ defineExpose({
 
 <style src="../assets/estadosBotones.css"></style>
 <style src="../assets/panelAdministrador.css" />
+<style src="../assets/skeletons.css"></style>
+<style src="../assets/tablaTarjetas.css"></style>

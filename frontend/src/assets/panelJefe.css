@@ -84,47 +84,9 @@
 }
 
 
-/* Móvil: cada fila se convierte en una tarjeta */
+/* Móvil: el contador se compacta
+   (las tablas-tarjeta viven ahora en tablaTarjetas.css) */
 @media (max-width: 600px) {
-  .tabla-jefe thead { display: none; }
-  .tabla-jefe,
-  .tabla-jefe tbody,
-  .tabla-jefe tr,
-  .tabla-jefe td { display: block; width: 100%; }
-
-  .tabla-jefe tr.fila-datos {
-    padding: 12px 14px;
-    border-bottom: 8px solid #f4f7f6;
-  }
-
-  .tabla-jefe td {
-    padding: 4px 0;
-    border: none;
-  }
-
-  .tabla-jefe td[data-label]::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #888;
-  }
-
-  .tabla-jefe td.acciones-celda {
-    display: flex;
-    gap: 10px;
-    width: 100%;
-    padding-top: 10px;
-  }
-  .tabla-jefe td.acciones-celda .btn-accion {
-    flex: 1;
-    height: 40px;
-    margin: 0;
-  }
-
-  .tabla-jefe tr.fila-vacia td { text-align: center; padding: 24px 12px; }
-
   .contador-card { padding: 12px 14px; }
   .contador-numero { font-size: 1.5rem; }
 }

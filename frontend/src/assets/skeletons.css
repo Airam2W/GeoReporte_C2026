@@ -78,6 +78,22 @@
   height: 16px;
 }
 
+.skeleton.sk-badge {
+  width: 84px;
+  height: 22px;
+  border-radius: 999px;
+}
+
+.text-center > .skeleton.sk-badge {
+  margin-inline: auto;
+}
+
+.skeleton.sk-dept-top {
+  width: 150px;
+  height: 12px;
+  margin-left: auto;
+}
+
 .fila-skeleton .acciones-celda {
   display: flex;
   gap: 8px;

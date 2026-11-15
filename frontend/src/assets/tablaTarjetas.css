@@ -1,0 +1,93 @@
+/* ==========================================================================
+   Tablas → tarjetas en móvil   (CSS global, SIN "scoped")
+
+   Uso en cada vista:
+     <table class="tabla-reportes tabla-tarjetas"> ... <td data-label="Folio"> ...
+     <style src="../assets/tablaTarjetas.css"></style>   ← DESPUÉS del css del panel
+
+   Los selectores llevan ".tabla-contenedor .tabla-reportes.tabla-tarjetas" a
+   propósito: así ganan en especificidad a los estilos "scoped" de
+   panelAdministrador.css sin necesitar !important.
+   ========================================================================== */
+
+@media (max-width: 600px) {
+
+  /* 1. Se oculta el encabezado y se rompe la estructura de tabla */
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas thead {
+    display: none;
+  }
+
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas,
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas tbody,
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas tr,
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* 2. Cada fila (real o de skeleton) es una tarjeta separada por una franja */
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas tr.fila-datos,
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas tr.fila-skeleton {
+    padding: 12px 14px;
+    border-bottom: 8px solid #f4f7f6;
+  }
+
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas td {
+    padding: 4px 0;
+    border: none;
+    text-align: left;
+  }
+
+  /* 3. El nombre de la columna pasa a ser la etiqueta de cada dato */
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #888;
+  }
+
+  /* 4. Botones de acción: ocupan todo el ancho de la tarjeta.
+        Si hay muchos (ej. 6 en "Devuelto") saltan a una segunda línea. */
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas td.acciones-celda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    padding-top: 10px;
+  }
+
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas td.acciones-celda .btn-accion {
+    flex: 1 1 44px;
+    height: 40px;
+    margin: 0;
+  }
+
+  /* 5. Mensaje de "sin resultados" */
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas tr.fila-vacia td {
+    text-align: center;
+    padding: 24px 12px;
+  }
+
+  /* 6. Skeleton de botones: misma forma que los reales */
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas .sk-acciones {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: stretch;
+    padding-top: 10px;
+  }
+
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas .sk-acciones .sk-boton {
+    flex: 1 1 44px;
+    width: auto;
+    height: 40px;
+  }
+
+  /* La pastilla vuelve a alinearse a la izquierda dentro de la tarjeta */
+  .tabla-contenedor .tabla-reportes.tabla-tarjetas .skeleton.sk-badge {
+    margin-inline: 0;
+  }
+}

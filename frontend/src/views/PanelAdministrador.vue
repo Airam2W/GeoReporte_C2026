@@ -103,7 +103,7 @@
 
       <!-- Tabla de Datos -->
       <div class="tabla-contenedor">
-        <table class="tabla-reportes">
+        <table class="tabla-reportes tabla-tarjetas">
           <thead>
             <tr>
               <th>FOLIO</th>
@@ -118,22 +118,22 @@
           <tbody>
             <template v-if="cargando">
               <tr v-for="n in 6" :key="`sk-${n}`" class="fila-skeleton" aria-hidden="true">
-                <td><span class="skeleton sk-folio"></span></td>
-                <td><span class="skeleton sk-texto"></span></td>
-                <td>
+                <td data-label="Folio"><span class="skeleton sk-folio"></span></td>
+                <td data-label="Problema"><span class="skeleton sk-texto"></span></td>
+                <td data-label="Domicilio">
                   <div class="domicilio-tabla">
                     <span class="skeleton sk-texto sk-largo"></span>
                     <span class="skeleton sk-icono"></span>
                   </div>
                 </td>
-                <td>
+                <td data-label="Ciudadano">
                   <div class="ciudadano-info">
                     <span class="skeleton sk-texto"></span>
                     <span class="skeleton sk-texto sk-corto"></span>
                   </div>
                 </td>
-                <td v-if="esEnProceso"><span class="skeleton sk-texto"></span></td>
-                <td v-if="esEnProceso"><span class="skeleton sk-texto"></span></td>
+                <td data-label="Supervisor asignado" v-if="esEnProceso"><span class="skeleton sk-texto"></span></td>
+                <td data-label="Jefe asignado" v-if="esEnProceso"><span class="skeleton sk-texto"></span></td>
                 <td>
                   <div class="sk-acciones">
                     <span v-for="b in botonesSkeleton" :key="b" class="skeleton sk-boton"></span>
@@ -147,9 +147,9 @@
             </tr>
 
             <tr v-else v-for="reporte in reportesFiltrados" :key="reporte.folio" class="fila-datos">
-              <td class="font-mono">#{{ reporte.folio.split('-')[4] || reporte.folio }}</td>
-              <td class="font-bold">{{ truncarTexto(reporte.problemas?.nombre, 25) }}</td>
-              <td :title="reporte.domicilio">
+              <td data-label="Folio" class="font-mono">#{{ reporte.folio.split('-')[4] || reporte.folio }}</td>
+              <td data-label="Problema" class="font-bold">{{ truncarTexto(reporte.problemas?.nombre, 25) }}</td>
+              <td data-label="Domicilio" :title="reporte.domicilio">
                 <div class="domicilio-tabla">
                   <span>{{ truncarTexto(reporte.domicilio, 25) }}</span>
 
@@ -159,14 +159,14 @@
                   </button>
                 </div>
               </td>
-              <td>
+              <td data-label="Ciudadano">
                 <div class="ciudadano-info">
                   <span>{{ truncarTexto(reporte.nombre, 25) }}</span>
                   <small>{{ reporte.telefono }}</small>
                 </div>
               </td>
-              <td v-if="esEnProceso">{{ truncarTexto(reporte.supervisor, 25) }}</td>
-              <td v-if="esEnProceso">{{ truncarTexto(reporte.jefe, 25) }}</td>
+              <td data-label="Supervisor asignado" v-if="esEnProceso">{{ truncarTexto(reporte.supervisor, 25) }}</td>
+              <td data-label="Jefe asignado" v-if="esEnProceso">{{ truncarTexto(reporte.jefe, 25) }}</td>
               <td class="acciones-celda">
                 <button class="btn-accion btn-pdf" title="Descargar PDF" @click="descargarPDF(reporte)">
                   <DownloadIcon />
@@ -415,7 +415,6 @@ const { mostrarCargando, ocultarCargando } = useCargando()
 onMounted(async () => {
   // mostrarCargando() // Mostrar el indicador de carga al iniciar
   // 1. Leemos únicamente el token
-  await new Promise((resolve) => setTimeout(resolve, 500000)) // Simular un pequeño retraso para mostrar el indicador de carga
   const userToken = localStorage.getItem('userToken')
 
   if (!userToken) {
@@ -1211,3 +1210,4 @@ defineExpose({
 <style src="../assets/estadosBotones.css"></style>
 <style src="../assets/skeletons.css"></style>
 <style scoped src="../assets/panelAdministrador.css"></style>
+<style src="../assets/tablaTarjetas.css"></style>

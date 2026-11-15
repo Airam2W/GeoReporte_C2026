@@ -141,9 +141,10 @@ export const iniciarSesion = () => {
     try {
       const {data, error} = await obtenerUsuarioPorCorreoYContrasena({p_correo: email, p_contrasena: password})
       const mensajeBackend = error || 'Correo o contraseña incorrectos. Porfavor, verifica tus datos e intenta de nuevo.'
-
+      console.log(mensajeBackend)
       if (error || !data || data.length === 0) {
-        errorGlobal.textContent = mensajeBackend
+        console.table({error, data})
+        errorGlobal.textContent = mensajeBackend.message
         errorGlobal.style.display = 'block'
         emailInput.classList.add('input-error')
         passwordInput.classList.add('input-error')
