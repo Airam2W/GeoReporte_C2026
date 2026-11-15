@@ -3,7 +3,7 @@ import { redireccionarUsuario } from './redirectUser'
 export const menuAbierto = ref(false)
 export const menuRef = ref<HTMLElement | null>(null)
 import { obtenerUsuarioPorCorreoYContrasena } from '../services/supabaseController'
-import LogoGR from '../assets/Logo.png'
+import LogoGR from '../assets/logo.png'
 
 const ICONO_OJO_ABIERTO = `
   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
