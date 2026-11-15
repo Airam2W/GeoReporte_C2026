@@ -1,47 +1,295 @@
+
 name: Actualización Automática de Modelos IA
 
 on:
+  # Primer día de cada mes a las 00:00 de Sinaloa (UTC-7)
   schedule:
-    - cron: '0 0 1 * *' # Se ejecuta el primer día de cada mes a la medianoche UTC
-  workflow_dispatch:     # Permite dispararlo manualmente desde la pestaña "Actions" en GitHub
+    - cron: '0 7 1 * *'
 
-# Permisos requeridos para que GitHub Actions pueda hacer commit y push en tu repo
+  # Ejecución manual desde GitHub Actions
+  workflow_dispatch:
+
+# Permisos para realizar commit y push
 permissions:
   contents: write
 
+# Evitar ejecuciones simultáneas
+concurrency:
+  group: actualizar-modelos-ia
+  cancel-in-progress: false
+
 jobs:
   entrenar-y-actualizar:
+    name: Entrenamiento y actualización de modelos
     runs-on: ubuntu-latest
+    timeout-minutes: 360
 
     steps:
-      - name: Clonar Repositorio
-        uses: actions/checkout@v4
 
-      - name: Configurar Entorno de Python
+      # ==========================================
+      # 1. DESCARGAR REPOSITORIO
+      # ==========================================
+
+      - name: Obtener repositorio
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # ==========================================
+      # 2. CONFIGURAR PYTHON
+      # ==========================================
+
+      - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip'
 
-      - name: Instalar Dependencias
+      # ==========================================
+      # 3. ACTUALIZAR PIP
+      # ==========================================
+
+      - name: Actualizar pip
         run: |
           python -m pip install --upgrade pip
-          pip install ultralytics supabase requests
 
-      - name: Ejecutar Script de Actualización
+      # ==========================================
+      # 4. INSTALAR PYTORCH CPU
+      # ==========================================
+
+      - name: Instalar PyTorch
+        run: |
+          echo "Instalando PyTorch para CPU..."
+
+          pip install torch torchvision \
+            --index-url https://download.pytorch.org/whl/cpu
+
+          echo "Verificando instalación de PyTorch..."
+
+          python -c "import torch; print('PyTorch:', torch.__version__); print('CUDA disponible:', torch.cuda.is_available())"
+
+      # ==========================================
+      # 5. INSTALAR DEPENDENCIAS DE IA
+      # ==========================================
+
+      - name: Instalar dependencias
+        run: |
+          echo "Instalando dependencias del proyecto..."
+
+          pip install ultralytics
+          pip install supabase
+          pip install requests
+          pip install numpy
+          pip install onnx
+          pip install onnxruntime
+
+          echo "Verificando dependencias..."
+
+          python -c "
+          import numpy
+          import onnx
+          import onnxruntime
+          import torch
+          import ultralytics
+          import supabase
+
+          print('Todas las dependencias se instalaron correctamente.')
+          print('NumPy:', numpy.__version__)
+          print('ONNX:', onnx.__version__)
+          print('ONNX Runtime:', onnxruntime.__version__)
+          print('PyTorch:', torch.__version__)
+          print('Ultralytics:', ultralytics.__version__)
+          "
+
+      # ==========================================
+      # 6. VERIFICAR ESTRUCTURA DEL PROYECTO
+      # ==========================================
+
+      - name: Verificar estructura
+        run: |
+          echo "=========================================="
+          echo "VERIFICANDO ESTRUCTURA DEL PROYECTO"
+          echo "=========================================="
+
+          if [ ! -f "scripts/actualizar_modelos.py" ]; then
+            echo "ERROR: No existe scripts/actualizar_modelos.py"
+            exit 1
+          fi
+
+          if [ ! -d "backend/AI/models" ]; then
+            echo "ERROR: No existe backend/AI/models"
+            exit 1
+          fi
+
+          echo "Script encontrado."
+          echo "Directorio de modelos encontrado."
+
+          echo "Modelos existentes:"
+
+          ls -lh backend/AI/models/
+
+      # ==========================================
+      # 7. EJECUTAR ACTUALIZACIÓN DE MODELOS
+      # ==========================================
+
+      - name: Ejecutar entrenamiento y actualización
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          python scripts/actualizar_modelos.py
 
-      - name: Guardar y sincronizar cambios en el Repositorio
+          # Parámetros del entrenamiento
+          EPOCHS: 5
+          MIN_IMAGENES: 20
+          CONF_ETIQUETA: 0.5
+
+          # Mostrar los prints inmediatamente en GitHub Actions
+          PYTHONUNBUFFERED: 1
+
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Añadir los modelos actualizados en la ruta exacta
-          git add backend/AI/models/
-          
-          # Verificar si hay cambios reales para commitear
-          git diff --staged --quiet || (git commit -m "🤖 Actualización automática mensual de modelos YOLO y ONNX" && git push)
+          echo "=========================================="
+          echo "INICIANDO AUTOMATIZACIÓN DE MODELOS IA"
+          echo "=========================================="
+
+          echo "Fecha: $(TZ='America/Mazatlan' date '+%d/%m/%Y')"
+          echo "Hora: $(TZ='America/Mazatlan' date '+%H:%M:%S')"
+
+          echo "=========================================="
+          echo "Ejecutando actualizar_modelos.py"
+          echo "=========================================="
+
+          python -u scripts/actualizar_modelos.py
+
+          echo "=========================================="
+          echo "SCRIPT FINALIZADO CORRECTAMENTE"
+          echo "=========================================="
+
+      # ==========================================
+      # 8. VALIDAR LOS MODELOS ONNX
+      # ==========================================
+
+      - name: Validar modelos ONNX
+        run: |
+          echo "=========================================="
+          echo "VALIDANDO LOS MODELOS ONNX"
+          echo "=========================================="
+
+          python - <<'PY'
+          from pathlib import Path
+          import onnx
+
+          modelos = [
+              "alumbrado",
+              "baches",
+              "drenaje",
+              "limpieza",
+              "mercados",
+              "panteones",
+              "parques"
+          ]
+
+          carpeta = Path("backend/AI/models")
+
+          for nombre in modelos:
+              archivo = carpeta / f"{nombre}.onnx"
+
+              print(f"\nValidando: {archivo}")
+
+              if not archivo.exists():
+                  raise RuntimeError(
+                      f"No existe el modelo {archivo}"
+                  )
+
+              if archivo.stat().st_size == 0:
+                  raise RuntimeError(
+                      f"El modelo {archivo} está vacío"
+                  )
+
+              # Comprobar estructura interna del ONNX
+              onnx.checker.check_model(str(archivo))
+
+              print(
+                  f"OK: {nombre}.onnx "
+                  f"({archivo.stat().st_size / 1e6:.2f} MB)"
+              )
+
+          print("\nTodos los modelos ONNX son válidos.")
+          PY
+
+      # ==========================================
+      # 9. CONFIGURAR GIT
+      # ==========================================
+
+      - name: Configurar Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # ==========================================
+      # 10. COMMIT Y PUSH
+      # ==========================================
+
+      - name: Guardar modelos actualizados en GitHub
+        run: |
+          echo "=========================================="
+          echo "PREPARANDO COMMIT DE MODELOS"
+          echo "=========================================="
+
+          # Agregar únicamente los modelos ONNX
+          git add backend/AI/models/*.onnx
+
+          # Verificar que existan cambios
+          if git diff --cached --quiet; then
+            echo "No existen cambios en los modelos."
+            echo "No se realizará ningún commit."
+            exit 0
+          fi
+
+          # Fecha y hora de Sinaloa
+          FECHA=$(TZ="America/Mazatlan" date '+%d/%m/%Y')
+          HORA=$(TZ="America/Mazatlan" date '+%H:%M:%S')
+
+          MENSAJE="Actualización automática de modelos IA - ${FECHA} ${HORA} (Sinaloa)"
+
+          echo "Cambios detectados:"
+          git diff --cached --stat
+
+          echo "=========================================="
+          echo "REALIZANDO COMMIT"
+          echo "=========================================="
+
+          git commit -m "$MENSAJE"
+
+          echo "=========================================="
+          echo "ENVIANDO CAMBIOS A ORIGIN/MAIN"
+          echo "=========================================="
+
+          git push origin HEAD:main
+
+          echo "=========================================="
+          echo "COMMIT Y PUSH COMPLETADOS"
+          echo "=========================================="
+
+      # ==========================================
+      # 11. RESUMEN FINAL
+      # ==========================================
+
+      - name: Resumen de ejecución
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "RESUMEN DE AUTOMATIZACIÓN"
+          echo "=========================================="
+
+          echo "Fecha: $(TZ='America/Mazatlan' date '+%d/%m/%Y')"
+          echo "Hora: $(TZ='America/Mazatlan' date '+%H:%M:%S')"
+          echo "Estado del Job: ${{ job.status }}"
+
+          echo "Rama: main"
+
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "RESULTADO: Automatización completada."
+          else
+            echo "RESULTADO: La automatización presentó errores."
+          fi
+
+          echo "=========================================="
