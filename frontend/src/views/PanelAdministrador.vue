@@ -7,9 +7,10 @@
         <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo" />
         <h1>GeoReporte | Panel de Control</h1>
       </div>
-      <div class="topbar-user" v-if="admin">
+      <div class="topbar-user">
         <div class="user-info">
-          <span class="user-name">{{ admin.nombre }}</span>
+          <span v-if="admin" class="user-name">{{ admin.nombre }}</span>
+          <span v-else class="skeleton sk-oscuro sk-nombre" aria-hidden="true"></span>
           <span class="user-dept">¡Bienvenido!</span>
         </div>
         <button class="btn-logout" @click="cerrarSesion" title="Cerrar Sesión">
@@ -24,11 +25,11 @@
 
     <!-- Contenido Principal -->
     <main class="dashboard-content">
-      <header class="content-header" v-if="admin">
+      <header class="content-header">
         <div class="one-line-header">
           <h2>Reportes del Departamento</h2>
-          <!-- Cambiar por nombre del departamento -->
-          <p>{{ admin.departamento }}</p>
+          <p v-if="admin?.departamento">{{ admin.departamento }}</p>
+          <span v-else-if="cargando" class="skeleton sk-depto" aria-hidden="true"></span>
           <button class="btn-primario btn-large fix-right" @click="irACrearReporte">
             Crear Reporte
           </button>
@@ -98,22 +99,6 @@
             <option value="1">Posiblemente Incorrecto</option>
           </select>
         </div>
-
-        <!--<div class="filtro-grupo">
-          <select
-            name="estado"
-            id="estado"
-            v-model="filtros.estado"
-            :class="['badge', obtenerClaseEstado(filtros.estado.toLowerCase())]"
-          >
-            <option value="Pendiente" class="badge-azul" selected>Pendiente</option>
-            <option value="En Revisión" class="badge-amarillo">En Revisión</option>
-            <option value="Devuelto" class="badge-cafe">Devuelto</option>
-            <option value="Turnado" class="badge-purpura">Turnado</option>
-            <option value="Finalizado" class="badge-verde">Finalizado</option>
-            <option value="Rechazado" class="badge-rojo">Rechazado</option>
-          </select>
-        </div>-->
       </section>
 
       <!-- Tabla de Datos -->
@@ -131,12 +116,36 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="cargando" class="fila-vacia">
-              <td colspan="6">Cargando reportes...</td>
-            </tr>
+            <template v-if="cargando">
+              <tr v-for="n in 6" :key="`sk-${n}`" class="fila-skeleton" aria-hidden="true">
+                <td><span class="skeleton sk-folio"></span></td>
+                <td><span class="skeleton sk-texto"></span></td>
+                <td>
+                  <div class="domicilio-tabla">
+                    <span class="skeleton sk-texto sk-largo"></span>
+                    <span class="skeleton sk-icono"></span>
+                  </div>
+                </td>
+                <td>
+                  <div class="ciudadano-info">
+                    <span class="skeleton sk-texto"></span>
+                    <span class="skeleton sk-texto sk-corto"></span>
+                  </div>
+                </td>
+                <td v-if="esEnProceso"><span class="skeleton sk-texto"></span></td>
+                <td v-if="esEnProceso"><span class="skeleton sk-texto"></span></td>
+                <td>
+                  <div class="sk-acciones">
+                    <span v-for="b in botonesSkeleton" :key="b" class="skeleton sk-boton"></span>
+                  </div>
+                </td>
+              </tr>
+            </template>
+
             <tr v-else-if="reportesFiltrados.length === 0" class="fila-vacia">
-              <td colspan="6">No se encontraron reportes con estos filtros.</td>
+              <td :colspan="esEnProceso ? 7 : 5">No se encontraron reportes con estos filtros.</td>
             </tr>
+
             <tr v-else v-for="reporte in reportesFiltrados" :key="reporte.folio" class="fila-datos">
               <td class="font-mono">#{{ reporte.folio.split('-')[4] || reporte.folio }}</td>
               <td class="font-bold">{{ truncarTexto(reporte.problemas?.nombre, 25) }}</td>
@@ -258,7 +267,6 @@ import UserIcon from '@primeicons/vue/user';
 import Times from '@primeicons/vue/times'
 import ArrowUTurnUpLeft from '@primeicons/vue/arrow-u-turn-up-left';
 import ArrowRightArrowLeft from '@primeicons/vue/arrow-right-arrow-left';
-
 import MapMarker from '@primeicons/vue/map-marker';
 
 const abrirGoogleMaps = (domicilio: string) => {
@@ -359,6 +367,18 @@ const filtros = ref({
   validacionAI: '',
 })
 
+const botonesPorEstado: Record<string, number> = {
+  'Pendiente': 4,
+  'En Revisión': 2,
+  'En Proceso': 2,
+  'Devuelto': 6,
+  'Turnado': 3,
+  'Finalizado': 3,
+  'Rechazado': 3,
+}
+
+const botonesSkeleton = computed(() => botonesPorEstado[filtros.value.estado] ?? 2)
+
 // Al cambiar de supervisor, el jefe elegido ya no aplica
 watch(
   () => filtros.value.supervisor,
@@ -393,8 +413,9 @@ import { useCargando } from '../composable/useCargando'
 const { mostrarCargando, ocultarCargando } = useCargando()
 
 onMounted(async () => {
-  mostrarCargando() // Mostrar el indicador de carga al iniciar
+  // mostrarCargando() // Mostrar el indicador de carga al iniciar
   // 1. Leemos únicamente el token
+  await new Promise((resolve) => setTimeout(resolve, 500000)) // Simular un pequeño retraso para mostrar el indicador de carga
   const userToken = localStorage.getItem('userToken')
 
   if (!userToken) {
@@ -1188,4 +1209,5 @@ defineExpose({
 </script>
 
 <style src="../assets/estadosBotones.css"></style>
+<style src="../assets/skeletons.css"></style>
 <style scoped src="../assets/panelAdministrador.css"></style>
