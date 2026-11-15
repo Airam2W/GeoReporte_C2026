@@ -6,9 +6,10 @@
         <img src="../assets/logo.png" alt="Logo GeoReporte" class="logo" />
         <h1>GeoReporte | Dirección General</h1>
       </div>
-      <div class="topbar-user" v-if="director">
+      <div class="topbar-user">
         <div class="user-info">
-          <span class="user-name">{{ director.nombre }} </span>
+          <span v-if="director" class="user-name">{{ director.nombre }} </span>
+          <span v-else class="skeleton sk-oscuro sk-nombre" aria-hidden="true"></span>
           <span class="user-dept">¡Bienvenido Director!</span>
         </div>
         <button class="btn-logout" @click="cerrarSesion" title="Cerrar Sesión">
@@ -220,7 +221,7 @@
 
       <div class="tabla-contenedor">
         <!-- Tabla de Personal Administrativo -->
-        <table v-if="filtros.seccion === 'personal'" class="tabla-reportes">
+        <table v-if="filtros.seccion === 'personal'" class="tabla-reportes tabla-tarjetas">
           <thead>
             <tr>
               <th>NOMBRE</th>
@@ -232,27 +233,38 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="cargando" class="fila-vacia">
-              <td colspan="6">Cargando personal...</td>
-            </tr>
+            <template v-if="cargando">
+              <tr v-for="n in 6" :key="`sk-${n}`" class="fila-skeleton" aria-hidden="true">
+                <td data-label="Nombre"><span class="skeleton sk-texto sk-largo"></span></td>
+                <td data-label="Correo"><span class="skeleton sk-texto sk-largo"></span></td>
+                <td data-label="Rol"><span class="skeleton sk-badge"></span></td>
+                <td data-label="Departamento / superior"><span class="skeleton sk-badge"></span></td>
+                <td data-label="Estado"><span class="skeleton sk-badge"></span></td>
+                <td>
+                  <div class="sk-acciones">
+                    <span v-for="b in 2" :key="b" class="skeleton sk-boton"></span>
+                  </div>
+                </td>
+              </tr>
+            </template>
             <tr v-else-if="usuariosFiltrados.length === 0" class="fila-vacia">
               <td colspan="6">No se encontró personal con estos filtros.</td>
             </tr>
             <tr v-else v-for="user in usuariosFiltrados" :key="user.id" class="fila-datos">
-              <td class="font-bold">
+              <td data-label="Nombre" class="font-bold">
                 {{ truncarTexto(user.nombre + ' ' + user.apellido_p + ' ' + (user.apellido_m ? user.apellido_m : ''),
                   25) }}
               </td>
-              <td>{{ truncarTexto(user.correo, 25) }}</td>
-              <td>
+              <td data-label="Correo">{{ truncarTexto(user.correo, 25) }}</td>
+              <td data-label="Rol">
                 <span class="badge badge-gris">{{ user.tipousuario?.nombre || 'N/A' }}</span>
               </td>
-              <td>
+              <td data-label="Departamento / superior">
                 <span class="badge badge-gris">{{
                   truncarTexto(user.departamentoNombre || '-', 25)
                   }}</span>
               </td>
-              <td>
+              <td data-label="Estado">
                 <span :class="[
                   'badge',
                   user.estadoadministrativo === 'Alta' ? 'badge-verde' : 'badge-rojo',
@@ -273,7 +285,7 @@
         </table>
 
         <!-- Tabla de Departamentos -->
-        <table v-else-if="filtros.seccion === 'departamentos'" class="tabla-reportes">
+        <table v-else-if="filtros.seccion === 'departamentos'" class="tabla-reportes tabla-tarjetas">
           <thead>
             <tr>
               <th>NOMBRE</th>
@@ -284,21 +296,31 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="cargando" class="fila-vacia">
-              <td colspan="4">Cargando departamentos...</td>
-            </tr>
+            <template v-if="cargando">
+              <tr v-for="n in 6" :key="`sk-${n}`" class="fila-skeleton" aria-hidden="true">
+                <td data-label="Nombre"><span class="skeleton sk-texto sk-largo"></span></td>
+                <td data-label="Nombre amigable"><span class="skeleton sk-texto"></span></td>
+                <td data-label="Tipo"><span class="skeleton sk-badge"></span></td>
+                <td data-label="Estado"><span class="skeleton sk-badge"></span></td>
+                <td>
+                  <div class="sk-acciones">
+                    <span v-for="b in 3" :key="b" class="skeleton sk-boton"></span>
+                  </div>
+                </td>
+              </tr>
+            </template>
             <tr v-else-if="departamentosFiltrados.length === 0" class="fila-vacia">
               <td colspan="4">No se encontraron departamentos con estos filtros.</td>
             </tr>
             <tr v-else v-for="depto in departamentosFiltrados" :key="`${depto.tipo}-${depto.id}`" class="fila-datos">
-              <td class="font-bold">{{ truncarTexto(depto.nombre, 25) }}</td>
-              <td>{{ truncarTexto(depto.nombreamigable, 25) || 'Sin asignar' }}</td>
-              <td>
+              <td data-label="Nombre" class="font-bold">{{ truncarTexto(depto.nombre, 25) }}</td>
+              <td data-label="Nombre amigable">{{ truncarTexto(depto.nombreamigable, 25) || 'Sin asignar' }}</td>
+              <td data-label="Tipo">
                 <span :class="['badge', depto.tipo === 'Interno' ? 'badge-azul' : 'badge-gris']">
                   {{ depto.tipo }}
                 </span>
               </td>
-              <td>
+              <td data-label="Estado">
                 <span :class="['badge', depto.raw.estado === 'Alta' ? 'badge-verde' : 'badge-rojo']">
                   {{ depto.raw.estado || 'N/A' }}
                 </span>
@@ -322,7 +344,7 @@
           </tbody>
         </table>
 
-        <table v-else-if="filtros.seccion === 'problematicas'" class="tabla-reportes">
+        <table v-else-if="filtros.seccion === 'problematicas'" class="tabla-reportes tabla-tarjetas">
           <thead>
             <tr>
               <th>NOMBRE</th>
@@ -334,22 +356,33 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="cargando" class="fila-vacia">
-              <td colspan="5">Cargando problemáticas...</td>
-            </tr>
+            <template v-if="cargando">
+              <tr v-for="n in 6" :key="`sk-${n}`" class="fila-skeleton" aria-hidden="true">
+                <td data-label="Nombre"><span class="skeleton sk-texto sk-largo"></span></td>
+                <td data-label="Nombre amigable"><span class="skeleton sk-texto"></span></td>
+                <td data-label="Departamento"><span class="skeleton sk-texto"></span></td>
+                <td data-label="Tipo"><span class="skeleton sk-badge"></span></td>
+                <td data-label="Estado"><span class="skeleton sk-badge"></span></td>
+                <td>
+                  <div class="sk-acciones">
+                    <span v-for="b in 3" :key="b" class="skeleton sk-boton"></span>
+                  </div>
+                </td>
+              </tr>
+            </template>
             <tr v-else-if="problematicasFiltradas.length === 0" class="fila-vacia">
               <td colspan="5">No se encontraron problemáticas con estos filtros.</td>
             </tr>
             <tr v-else v-for="prob in problematicasFiltradas" :key="`${prob.tipo}-${prob.id}`" class="fila-datos">
-              <td class="font-bold">{{ truncarTexto(prob.nombre, 25) }}</td>
-              <td>{{ truncarTexto(prob.nombreamigable, 25) || 'Sin asignar' }}</td>
-              <td>{{ truncarTexto(prob.departamentoNombre, 25) }}</td>
-              <td>
+              <td data-label="Nombre" class="font-bold">{{ truncarTexto(prob.nombre, 25) }}</td>
+              <td data-label="Nombre amigable">{{ truncarTexto(prob.nombreamigable, 25) || 'Sin asignar' }}</td>
+              <td data-label="Departamento">{{ truncarTexto(prob.departamentoNombre, 25) }}</td>
+              <td data-label="Tipo">
                 <span :class="['badge', prob.tipo === 'Interno' ? 'badge-azul' : 'badge-gris']">
                   {{ prob.tipo }}
                 </span>
               </td>
-              <td>
+              <td data-label="Estado">
                 <span :class="['badge', prob.estado === 'Alta' ? 'badge-verde' : 'badge-rojo']">
                   {{ prob.estado }}
                 </span>
@@ -372,7 +405,7 @@
         </table>
 
         <!-- Tabla de Historial (solo lectura) -->
-        <table v-else class="tabla-reportes">
+        <table v-else class="tabla-reportes tabla-tarjetas">
           <thead>
             <tr>
               <th>FECHA</th>
@@ -383,18 +416,24 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="cargando" class="fila-vacia">
-              <td colspan="5">Cargando historial...</td>
-            </tr>
+            <template v-if="cargando">
+              <tr v-for="n in 6" :key="`sk-${n}`" class="fila-skeleton" aria-hidden="true">
+                <td data-label="Fecha"><span class="skeleton sk-folio"></span></td>
+                <td data-label="Responsable"><span class="skeleton sk-texto"></span></td>
+                <td data-label="Acción"><span class="skeleton sk-badge"></span></td>
+                <td data-label="Entidad"><span class="skeleton sk-badge"></span></td>
+                <td data-label="Detalles"><span class="skeleton sk-texto sk-largo"></span></td>
+              </tr>
+            </template>
             <tr v-else-if="historialData.length === 0" class="fila-vacia">
               <td colspan="5">No se encontraron eventos con estos filtros.</td>
             </tr>
             <tr v-else v-for="h in historialData" :key="h.id" class="fila-datos">
-              <td class="font-mono">{{ formatearFechaHistorial(h.fecha) }}</td>
-              <td>{{ truncarTexto(h.responsable, 30) }}</td>
-              <td><span class="badge badge-gris">{{ h.accion }}</span></td>
-              <td><span class="badge badge-azul">{{ h.entidad }}</span></td>
-              <td :title="h.detalles">{{ truncarTexto(h.detalles || '-', 60) }}</td>
+              <td data-label="Fecha" class="font-mono">{{ formatearFechaHistorial(h.fecha) }}</td>
+              <td data-label="Responsable">{{ truncarTexto(h.responsable, 30) }}</td>
+              <td data-label="Acción"><span class="badge badge-gris">{{ h.accion }}</span></td>
+              <td data-label="Entidad"><span class="badge badge-azul">{{ h.entidad }}</span></td>
+              <td data-label="Detalles" :title="h.detalles">{{ truncarTexto(h.detalles || '-', 60) }}</td>
             </tr>
           </tbody>
         </table>
@@ -549,7 +588,7 @@ import { useCargando } from '../composable/useCargando'
 const { mostrarCargando, ocultarCargando } = useCargando()
 
 onMounted(async () => {
-  mostrarCargando() // Mostrar el indicador de carga al iniciar
+  // mostrarCargando() // Desactivado: los skeletons ya indican que se está cargando
   // 1. Leemos únicamente el token de autenticación
   const userToken = localStorage.getItem('userToken')
 
@@ -1482,6 +1521,8 @@ const cerrarSesion = async () => {
 </script>
 
 <style src="../assets/panelAdministrador.css" />
+<style src="../assets/skeletons.css"></style>
+<style src="../assets/tablaTarjetas.css"></style>
 
 <style scoped>
 .tabs-secciones {

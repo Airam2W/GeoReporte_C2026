@@ -5,7 +5,8 @@
         <div class="modal-header">
           <div>
             <h3>Detalle del Reporte</h3>
-            <p class="folio-text">Folio: #{{ reporte?.folio }}</p>
+            <p class="folio-text clickable-text" @click="copiarFolio">Folio: #{{ reporte?.folio }}</p>
+            <span class="copied-msg" v-if="copiado">¡Folio copiado!</span>
           </div>
           <button class="btn-cerrar" @click="cerrar">✕</button>
         </div>
@@ -357,6 +358,9 @@ import {
   traducirEstado,
 } from '../logic/reporteDetalleModal'
 
+import { defineProps, defineEmits } from 'vue'
+import { ref } from 'vue'
+
 import MapMarker from '@primeicons/vue/map-marker';
 
 const abrirGoogleMaps = (domicilio: string) => {
@@ -450,6 +454,22 @@ const props = defineProps({
     default: false,
   },
 })
+
+const copiado = ref(false)
+
+const copiarFolio = async () => {
+  try {
+    await navigator.clipboard.writeText(props.reporte.folio)
+    copiado.value = true
+
+    // Ocultar mensaje después de 2 segundos
+    setTimeout(() => {
+      copiado.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Error al copiar el folio:', err)
+  }
+}
 </script>
 
 <style src="../assets/reporteDetalle.css" />

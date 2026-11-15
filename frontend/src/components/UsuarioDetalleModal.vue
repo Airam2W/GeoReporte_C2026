@@ -29,7 +29,8 @@
               <div class="info-grupo-doble">
                 <div class="info-item">
                   <label>Correo Electrónico</label>
-                  <p>{{ usuario.correo }}</p>
+                  <p @click="copiarCorreo" class="clickable-text">{{ usuario.correo }}</p>
+                  <span class="copied-msg" v-if="copiado">¡Correo copiado!</span>
                 </div>
                 <div class="info-item">
                   <label>Tipo de Usuario</label>
@@ -174,8 +175,11 @@
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue'
 import { formatearFechaLocal } from '@/logic/reporteDetalleModal'
+import { ref } from 'vue'
 
-defineProps({
+const copiado = ref(false)
+
+const props = defineProps({
   visible: { type: Boolean, default: false },
   usuario: { type: Object, default: null },
 })
@@ -184,6 +188,20 @@ const emit = defineEmits(['close', 'cambiarEstado'])
 
 const cerrar = () => {
   emit('close')
+}
+
+const copiarCorreo = async () => {
+  try {
+    await navigator.clipboard.writeText(props.usuario.correo)
+    copiado.value = true
+
+    // Ocultar mensaje después de 2 segundos
+    setTimeout(() => {
+      copiado.value = false
+    }, 2000)
+  } catch (err) {
+    console.error("Error al copiar el texto:", err)
+  }
 }
 </script>
 

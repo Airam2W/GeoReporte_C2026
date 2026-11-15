@@ -286,6 +286,10 @@ body {
   margin-bottom: 12px;
 }
 
+.clickable-text {
+  cursor: pointer;
+}
+
 /* Botones e Inputs Main */
 .block-btn {
   width: 100%;
