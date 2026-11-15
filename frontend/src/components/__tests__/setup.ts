@@ -1,8 +1,10 @@
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest'
 
-// Lista de todas las funciones exportadas por supabaseController.ts
-const { funcionesBackend } = vi.hoisted(() => ({
-  funcionesBackend: [
+const { funcionesBackend, respuestaVacia } = vi.hoisted(() => {
+  // Respuesta por defecto con la forma { data, error } que usa el backend
+  const respuestaVacia = () => Promise.resolve({ data: null, error: null })
+
+  const funcionesBackend = [
     // GET
     'obtenerTodosDepartamentosInternos', 'obtenerTodosDepartamentosExternos',
     'obtenerTodosProblemasInternos', 'obtenerTodosProblemasExternos',
@@ -19,6 +21,7 @@ const { funcionesBackend } = vi.hoisted(() => ({
     'obtenerDepartamentosOrdenadosPorId', 'obtenerProblemasPorDepartamentoID',
     'obtenerReportesPorDepartamentoExternoID', 'obtenerReportesPorDepartamentoInternoID',
     'obtenerReportesJefe', 'obtenerReportesSupervisor', 'obtenerJefesPorSupervisor',
+    'obtenerHistorial', 'obtenerReportesMapa',
     // PUT
     'actualizarEstadoReporte', 'actualizarEstadoReporteConJefeFechaInicio',
     'actualizarEstadoReporteConFechaCierre', 'actualizarEstadoReporteQuitarSupervisor',
@@ -29,49 +32,84 @@ const { funcionesBackend } = vi.hoisted(() => ({
     'actualizarEstadoDepartamentoExterno', 'actualizarEstadoUsuario',
     'actualizarFechaBajaUsuario', 'actualizarFechaAltaUsuario',
     'actualizarFotoDepartamentoReporte', 'actualizarReporteADepartamentoInterno',
-    'actualizarReporteADepartamentoExterno',
+    'actualizarReporteADepartamentoExterno', 'actualizarPrioridadReporte',
     // POST
     'obtenerUsuarioPorCorreoYContrasena', 'guardarUsuario', 'crearReporte',
     'crearDetalleReporte', 'crearHistorialReporte', 'crearHistorialReporteConFoto',
     'crearProblemaInterno', 'crearProblemaExterno',
-    'crearDepartamentoInterno', 'crearDepartamentoExterno',
+    'crearDepartamentoInterno', 'crearDepartamentoExterno', 'agregarHistorial',
     // DELETE
     'eliminarProblemaInterno', 'eliminarProblemaExterno',
     'eliminarDepartamentoInterno', 'eliminarDepartamentoExterno',
     // STORAGE
-    'uploadFoto', 'getPublicUrl',
-  ],
+    'uploadFoto', 'getPublicUrl', 'eliminarFotoBucket',
+  ]
+
+  return { funcionesBackend, respuestaVacia }
+})
+
+vi.mock('@/services/supabaseController', () => ({
+  API_URL: 'http://localhost:3000',
+  esperarUsuario: vi.fn(() => Promise.resolve('token-de-prueba')),
+  ...Object.fromEntries(funcionesBackend.map((n) => [n, vi.fn(respuestaVacia)])),
 }))
 
-// Mock global del mapa (déjalo igual que lo tenías)
-vi.mock('leaflet', () => ({
-  default: {
-    map: vi.fn(() => ({
-      setView: vi.fn().mockReturnThis(),
+vi.mock('@/services/geoAIController', () => ({
+  validarAI: vi.fn(() =>
+    Promise.resolve({ type: 0, success: true, error: null, data: { message: 'Imagen válida' } }),
+  ),
+}))
+
+vi.mock('leaflet', () => {
+  const crearMapa = (): any => {
+    const mapa: any = {
+      setView: vi.fn(() => mapa),
       on: vi.fn(),
       zoomIn: vi.fn(),
       zoomOut: vi.fn(),
       flyTo: vi.fn(),
       invalidateSize: vi.fn(),
-      getCenter: vi.fn(() => ({ lat: 24.8091, lng: -107.3940 })),
-    })),
-    tileLayer: vi.fn(() => ({
-      addTo: vi.fn(),
-    })),
-  },
-}));
+      closePopup: vi.fn(),
+      getCenter: vi.fn(() => ({ lat: 24.8091, lng: -107.394 })),
+    }
+    return mapa
+  }
+  const crearCapa = (): any => {
+    const capa: any = { addTo: vi.fn(() => capa), clearLayers: vi.fn() }
+    return capa
+  }
+  const crearMarcador = (): any => {
+    const marcador: any = { on: vi.fn(), addTo: vi.fn(() => marcador) }
+    return marcador
+  }
+  const crearPopup = (): any => {
+    const popup: any = {
+      setLatLng: vi.fn(() => popup),
+      setContent: vi.fn(() => popup),
+      openOn: vi.fn(() => popup),
+    }
+    return popup
+  }
+  return {
+    default: {
+      map: vi.fn(crearMapa),
+      tileLayer: vi.fn(() => ({ addTo: vi.fn() })),
+      layerGroup: vi.fn(crearCapa),
+      marker: vi.fn(crearMarcador),
+      divIcon: vi.fn(() => ({})),
+      popup: vi.fn(crearPopup),
+    },
+  }
+})
 
-// Mock global del backend
-vi.mock('@/services/supabaseController', () => ({
-  API_URL: 'http://localhost:3000',
-  esperarUsuario: vi.fn().mockResolvedValue('token-de-prueba'),
-  ...Object.fromEntries(funcionesBackend.map((nombre) => [nombre, vi.fn()])),
-}));
+// Restaura las respuestas por defecto antes de cada prueba, por si algún spec
+// llama a vi.resetAllMocks() o mockReset() y deja funciones sin implementación.
+beforeEach(async () => {
+  const supabase = await import('@/services/supabaseController')
+  for (const nombre of funcionesBackend) {
+    vi.mocked((supabase as any)[nombre]).mockImplementation(respuestaVacia)
+  }
+  vi.mocked(supabase.esperarUsuario).mockResolvedValue('token-de-prueba')
+})
 
-// Mock de la validación con IA de la foto (CrearReporte)
-vi.mock('@/services/geoAIController', () => ({
-  validarAI: vi.fn().mockResolvedValue({ type: 0, success: true, error: null, data: { message: 'Imagen válida' } }),
-}));
-
-// Mock de fetch global
-global.fetch = vi.fn();
+vi.stubGlobal('fetch', vi.fn())

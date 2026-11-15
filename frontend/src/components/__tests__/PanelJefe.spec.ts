@@ -5,7 +5,6 @@ import PanelJefe from '@/views/PanelJefe.vue'
 import EvidenciaReporteModal from '@/components/EvidenciaReporteModal.vue'
 import * as db from '@/services/supabaseController'
 import { redireccionarUsuario } from '@/logic/redirectUser'
-import './setup'
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
 
