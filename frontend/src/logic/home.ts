@@ -139,12 +139,17 @@ export const iniciarSesion = () => {
     submitBtn.textContent = 'Iniciando...'
 
     try {
-      const {data, error} = await obtenerUsuarioPorCorreoYContrasena({p_correo: email, p_contrasena: password})
-      const mensajeBackend = error || 'Correo o contraseña incorrectos. Porfavor, verifica tus datos e intenta de nuevo.'
+      const { data, error } = await obtenerUsuarioPorCorreoYContrasena({ p_correo: email, p_contrasena: password })
+
+      // El backend puede responder un string o un objeto { message }
+      const mensajeBackend = error
+        ? (typeof error === 'string' ? error : error.message || 'Error desconocido')
+        : 'Correo o contraseña incorrectos. Porfavor, verifica tus datos e intenta de nuevo.'
+
       console.log(mensajeBackend)
       if (error || !data || data.length === 0) {
-        console.table({error, data})
-        errorGlobal.textContent = mensajeBackend.message
+        console.table({ error, data })
+        errorGlobal.textContent = mensajeBackend
         errorGlobal.style.display = 'block'
         emailInput.classList.add('input-error')
         passwordInput.classList.add('input-error')

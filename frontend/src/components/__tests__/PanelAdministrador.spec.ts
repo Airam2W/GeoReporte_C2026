@@ -6,7 +6,6 @@ import RechazarReporteModal from '@/components/RechazarReporteModal.vue'
 import AsignarReporteModal from '@/components/AsignarReporteModal.vue'
 import * as db from '@/services/supabaseController'
 import { redireccionarUsuario } from '@/logic/redirectUser'
-import './setup'
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
 

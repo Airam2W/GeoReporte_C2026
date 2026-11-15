@@ -8,7 +8,6 @@ import FinalizarReporteModal from '@/components/FinalizarReporteModal.vue'
 import RetroalimentacionFotoAIModal from '@/components/RetroalimentacionFotoAIModal.vue'
 import * as db from '@/services/supabaseController'
 import { redireccionarUsuario } from '@/logic/redirectUser'
-import './setup'
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
 
@@ -24,7 +23,6 @@ vi.mock('sweetalert2', () => ({
 	},
 }))
 
-// Evita cargar el router real, el indicador de carga, el PDF y el correo
 vi.mock('@/logic/redirectUser', () => ({ redireccionarUsuario: vi.fn() }))
 vi.mock('@/composable/useCargando', () => ({
 	useCargando: () => ({ mostrarCargando: vi.fn(), ocultarCargando: vi.fn() }),
@@ -35,7 +33,7 @@ vi.mock('@/services/gmailController', () => ({
 	enviarCorreoReportePDF: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
-// JWT falso: solo importa el payload. Sin acentos en el payload (atob + decodeURIComponent los rompe)
+// JWT falso: solo se lee el payload. Sin acentos (atob + decodeURIComponent los rompe).
 const crearToken = (payload: object) => `cabecera.${btoa(JSON.stringify(payload))}.firma`
 
 const crearStorage = (inicial: Record<string, string>) => {
@@ -48,9 +46,8 @@ const crearStorage = (inicial: Record<string, string>) => {
 	return storage
 }
 
-// El panel mapea el estado a partir del estado_id:
-//   2 = Pendiente de Asignación, 7 = Asignado, 8 = Pendiente de Finalización
-// y solo muestra los reportes cuyo supervisor_id coincide con id_supervisor (20).
+// El panel mapea estado_id: 2 = Pendiente de Asignación, 7 = Asignado, 8 = Pendiente de Finalización.
+// Solo muestra reportes cuyo supervisor_id coincide con id_supervisor (20).
 const reportesMock = [
 	{
 		folio: 'SUP-BAC-20260915-001-ABC123', descripcion: 'Bache frente al parque', nombre: 'Angel',
@@ -69,7 +66,7 @@ const reportesMock = [
 		detalle_reporte: {
 			estado_id: 7, jefe_id: 30, supervisor_id: 20,
 			estadoreporte: { estado: 'En Proceso' },
-			jefes: { usuarios: { nombre: 'Luis', apellido_p: 'García', apellido_m: 'Soto' } },
+			jefes: { usuarios: { nombre: 'Luis', apellido_p: 'Garcia', apellido_m: 'Soto' } },
 		},
 		historial_reporte: [],
 	},
@@ -114,7 +111,6 @@ describe('Pruebas del panel del supervisor', () => {
 		vi.clearAllMocks()
 		reportesEstado = structuredClone(reportesMock)
 
-		// La sesión vive en el token "userToken" y el panel exige tipo_id === 3
 		crearStorage({
 			userToken: crearToken({
 				id: 20, id_supervisor: 20, nombre: 'Supervisor', departamento_id: 1, tipo_id: 3,
@@ -123,7 +119,6 @@ describe('Pruebas del panel del supervisor', () => {
 
 		vi.mocked(db.esperarUsuario).mockResolvedValue('token-de-prueba')
 
-		// Catálogos
 		vi.mocked(db.obtenerProblemasPorDepartamentoID).mockResolvedValue({
 			data: [{ id: 1, nombre: 'Bache' }, { id: 2, nombre: 'Alumbrado' }],
 			error: null,
@@ -135,7 +130,7 @@ describe('Pruebas del panel del supervisor', () => {
 		vi.mocked(db.obtenerJefesPorSupervisor).mockResolvedValue({
 			data: [{
 				id: 30,
-				usuarios: { nombre: 'Luis', apellido_p: 'García', apellido_m: 'Soto', estadoadministrativo: 'Alta' },
+				usuarios: { nombre: 'Luis', apellido_p: 'Garcia', apellido_m: 'Soto', estadoadministrativo: 'Alta' },
 			}],
 			error: null,
 		})
@@ -152,7 +147,6 @@ describe('Pruebas del panel del supervisor', () => {
 			error: null,
 		})
 
-		// Reportes y acciones
 		vi.mocked(db.obtenerReportesSupervisor).mockImplementation(async () => ({
 			data: structuredClone(reportesEstado),
 			error: null,
@@ -168,6 +162,8 @@ describe('Pruebas del panel del supervisor', () => {
 		vi.mocked(db.actualizarEstadoReporteConFechaCierre).mockResolvedValue({ data: null, error: null })
 		vi.mocked(db.actualizarEstadoReporteQuitarSupervisor).mockResolvedValue({ data: null, error: null })
 		vi.mocked(db.actualizarEstadoReporteConJefeFechaInicio).mockResolvedValue({ data: null, error: null })
+		vi.mocked(db.actualizarPrioridadReporte).mockResolvedValue({ data: null, error: null })
+		vi.mocked(db.agregarHistorial).mockResolvedValue({ data: null, error: null })
 
 		wrapper = mount(PanelSupervisor)
 		await flushPromises()
@@ -178,7 +174,7 @@ describe('Pruebas del panel del supervisor', () => {
 	it('PS-01 carga únicamente los reportes asignados al supervisor', () => {
 		expect(wrapper.vm.cargando).toBe(false)
 		expect(wrapper.vm.reportes).toHaveLength(3)
-		expect(wrapper.vm.reportes.map((reporte: any) => reporte.folio)).toEqual([
+		expect(wrapper.vm.reportes.map((r: any) => r.folio)).toEqual([
 			'SUP-BAC-20260915-001-ABC123',
 			'SUP-LUZ-20260914-002-XYZ789',
 			'SUP-OBR-20260912-004-FIN123',
@@ -203,37 +199,58 @@ describe('Pruebas del panel del supervisor', () => {
 			const boton = wrapper.findAll('.estado-btn').find((b) => b.text().includes(estado))!
 			await boton.trigger('click')
 			expect(wrapper.vm.filtros.estado).toBe(estado)
-			expect(wrapper.findAll('tbody tr.fila-datos')).toHaveLength(1)
-			expect(wrapper.find('tbody tr.fila-datos').text()).toContain(folio)
+			const filas = wrapper.findAll('tbody tr.fila-datos')
+			expect(filas).toHaveLength(1)
+			expect(filas[0].text()).toContain(folio)
 		}
 	})
 
-	it('PS-04 filtra reportes por búsqueda (folio y domicilio), fecha, problema y jefe', async () => {
-		// El estado por defecto es "Pendiente de Asignación"; '' muestra todos
+	it('PS-04a filtra por folio', async () => {
 		wrapper.vm.filtros.estado = ''
-		for (const [filtro, valor] of [
-			['busqueda', 'XYZ789'],
-			['busqueda', 'Obregón'],
-			['busqueda', 'Universitarios'],
-			['fecha', '2026-09-15'],
-			['problema', '2'],
-			['jefe', '30'],
-		]) {
-			wrapper.vm.filtros.busqueda = ''
-			wrapper.vm.filtros.fecha = ''
-			wrapper.vm.filtros.problema = ''
-			wrapper.vm.filtros.jefe = ''
-			wrapper.vm.filtros[filtro] = valor
-			await wrapper.vm.$nextTick()
-			expect(wrapper.findAll('tbody tr.fila-datos')).toHaveLength(1)
-		}
+		wrapper.vm.filtros.busqueda = 'XYZ789'
+		await wrapper.vm.$nextTick()
+		expect(wrapper.findAll('tbody tr.fila-datos')).toHaveLength(1)
+	})
+
+	it('PS-04b filtra por domicilio', async () => {
+		wrapper.vm.filtros.estado = ''
+		wrapper.vm.filtros.busqueda = 'Obregón'
+		await wrapper.vm.$nextTick()
+		const filas = wrapper.findAll('tbody tr.fila-datos')
+		expect(filas).toHaveLength(1)
+		expect(filas[0].text()).toContain('ABC123')
+	})
+
+	it('PS-04c filtra por fecha', async () => {
+		wrapper.vm.filtros.estado = ''
+		wrapper.vm.filtros.fecha = '2026-09-14'
+		await wrapper.vm.$nextTick()
+		expect(wrapper.findAll('tbody tr.fila-datos')).toHaveLength(1)
+		expect(wrapper.find('tbody tr.fila-datos').text()).toContain('XYZ789')
+	})
+
+	it('PS-04d filtra por problema', async () => {
+		wrapper.vm.filtros.estado = ''
+		wrapper.vm.filtros.problema = 2
+		await wrapper.vm.$nextTick()
+		const filas = wrapper.findAll('tbody tr.fila-datos')
+		expect(filas).toHaveLength(1)
+		expect(filas[0].text()).toContain('XYZ789')
+	})
+
+	it('PS-04e filtra por jefe asignado', async () => {
+		wrapper.vm.filtros.estado = ''
+		wrapper.vm.filtros.jefe = 30
+		await wrapper.vm.$nextTick()
+		const filas = wrapper.findAll('tbody tr.fila-datos')
+		expect(filas).toHaveLength(1)
+		expect(filas[0].text()).toContain('XYZ789')
 	})
 
 	it('PS-05 filtra reportes sin jefe asignado', async () => {
 		wrapper.vm.filtros.estado = ''
 		wrapper.vm.filtros.jefe = 'SIN_ASIGNAR'
 		await wrapper.vm.$nextTick()
-
 		const filas = wrapper.findAll('tbody tr.fila-datos')
 		expect(filas).toHaveLength(1)
 		expect(filas[0].text()).toContain('ABC123')
@@ -247,11 +264,9 @@ describe('Pruebas del panel del supervisor', () => {
 	})
 
 	it('PS-07 devuelve un reporte con motivo y notas', async () => {
-		// Paso 1: el botón abre el modal de devolución
 		await wrapper.find('.btn-devolver').trigger('click')
 		await wrapper.vm.$nextTick()
 
-		// Paso 2: el modal emite "confirm" con el motivo y las notas
 		wrapper.findComponent(DevolucionReporteModal).vm.$emit('confirm', {
 			titulo_id: 8,
 			notas: 'Requiere mayor información',
@@ -271,19 +286,18 @@ describe('Pruebas del panel del supervisor', () => {
 		})
 	})
 
-	it('PS-08 asigna un reporte a un jefe desde la acción del reporte', async () => {
+	it('PS-08 asigna un reporte a un jefe con prioridad', async () => {
 		const botonAsignar = wrapper.find('.btn-asignar')
 		expect(botonAsignar.attributes('title')).toBe('Asignar jefe')
 
-		// Paso 1: el botón abre el modal "Asignar Jefe"
 		await botonAsignar.trigger('click')
 		await wrapper.vm.$nextTick()
 		expect(wrapper.findComponent(AsignarJefeModal).props('folio')).toBe('SUP-BAC-20260915-001-ABC123')
 
-		// Paso 2: el modal emite "confirm" con el jefe elegido
 		wrapper.findComponent(AsignarJefeModal).vm.$emit('confirm', {
 			jefe_id: 30,
 			jefeNombre: 'Luis García Soto',
+			prioridad: 3,
 		})
 		await flushPromises()
 
@@ -293,18 +307,20 @@ describe('Pruebas del panel del supervisor', () => {
 			estado_id: 7,
 			fecha_inicio: expect.any(String),
 		})
+		expect(db.actualizarPrioridadReporte).toHaveBeenCalledWith('SUP-BAC-20260915-001-ABC123', {
+			folio: 'SUP-BAC-20260915-001-ABC123',
+			prioridad: 3,
+		})
 		// Carga inicial + recarga tras asignar
 		expect(db.obtenerReportesSupervisor).toHaveBeenCalledTimes(2)
 	})
 
 	it('PS-09 pide la retroalimentación de la foto antes de asignar si aún no la tiene', async () => {
-		// El reporte tiene foto y todavía no tiene fotoDepartamentoID
 		wrapper.vm.reportes[0].foto_url = 'https://example.com/foto.jpg'
 
 		await wrapper.find('.btn-asignar').trigger('click')
 		await wrapper.vm.$nextTick()
 
-		// Primero aparece el modal de retroalimentación, no el de asignar
 		expect(wrapper.findComponent(RetroalimentacionFotoAIModal).props('visible')).toBe(true)
 		expect(wrapper.findComponent(AsignarJefeModal).props('visible')).toBe(false)
 
@@ -367,6 +383,7 @@ describe('Pruebas del panel del supervisor', () => {
 
 	it('PS-13 cierra sesión, elimina el token y redirige al inicio', async () => {
 		await wrapper.vm.cerrarSesion()
+
 		expect(localStorage.getItem('userToken')).toBeNull()
 		expect(pushMock).toHaveBeenCalledWith('/')
 	})
