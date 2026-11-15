@@ -1,4 +1,5 @@
 import os
+import shutil
 from supabase import create_client, Client
 from ultralytics import YOLO
 
@@ -33,6 +34,9 @@ def procesar_modelos():
 
         pt_path = os.path.join(MODELS_DIR, f"{nombre}.pt")
         onnx_path = os.path.join(MODELS_DIR, f"{nombre}.onnx")
+        
+        # Carpeta temporal exclusiva para este modelo
+        dataset_dir = f"backend/AI/datasets/{nombre}"
 
         try:
             # A. Descargar el archivo .pt actual desde Supabase Storage
@@ -57,7 +61,6 @@ def procesar_modelos():
             print(f"[{nombre}] Se encontraron {len(reportes)} imágenes nuevas.")
 
             # C. Descargar físicamente las imágenes para el entrenamiento de YOLO
-            dataset_dir = f"backend/AI/datasets/{nombre}"
             images_dir = f"{dataset_dir}/images"
             os.makedirs(images_dir, exist_ok=True)
 
@@ -76,12 +79,12 @@ def procesar_modelos():
             abs_dataset_dir = os.path.abspath(dataset_dir)
             
             yaml_content = f"""path: {abs_dataset_dir}
-                            train: images
-                            val: images
+train: images
+val: images
 
-                            nc: 1
-                            names: ['{nombre}']
-                            """
+nc: 1
+names: ['{nombre}']
+"""
             with open(yaml_path, "w") as yf:
                 yf.write(yaml_content)
 
@@ -102,8 +105,22 @@ def procesar_modelos():
 
             print(f"[{nombre}] Modelos respaldados y actualizados en Supabase Storage.")
 
+            # H. Marcar las fotos como procesadas actualizando su fotoDepartamentoID a 0
+            supabase.table("reportes") \
+                .update({"fotoDepartamentoID": 0}) \
+                .eq("fotoDepartamentoID", depto_id) \
+                .execute()
+            
+            print(f"[{nombre}] Registros en la base de datos actualizados (IDs marcados como 0).")
+
         except Exception as e:
             print(f"[ERROR] Falló el proceso para el modelo {nombre}: {str(e)}")
+
+        finally:
+            # G. LIMPIEZA OBLIGATORIA: Borrar la carpeta temporal del dataset de este modelo
+            if os.path.exists(dataset_dir):
+                shutil.rmtree(dataset_dir)
+                print(f"[{nombre}] Carpeta temporal {dataset_dir} eliminada limpiamente.")
 
     print("\n¡Proceso mensual de actualización finalizado!")
 
