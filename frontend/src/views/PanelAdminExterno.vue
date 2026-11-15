@@ -51,19 +51,6 @@
           <input v-model="filtros.busqueda" type="text"
             placeholder="Buscar por folio, nombre, teléfono o dirección..." />
         </div>
-
-        <!--<div class="filtro-grupo">
-          <select
-            name="estado"
-            id="estado"
-            v-model="filtros.estado"
-            :class="['badge', obtenerClaseEstado(filtros.estado.toLowerCase())]"
-          >
-            <option value="Pendiente" class="badge-azul" selected>Pendiente</option>
-            <option value="Finalizado" class="badge-verde">Finalizado</option>
-            <option value="Rechazado" class="badge-rojo">Rechazado</option>
-          </select>
-        </div>-->
       </section>
 
       <!-- Tabla de Datos -->
@@ -91,9 +78,12 @@
                   </div>
                 </td>
                 <td data-label="Domicilio">
-                  <div class="ciudadano-info">
-                    <span class="skeleton sk-texto"></span>
-                    <span class="skeleton sk-texto sk-corto"></span>
+                  <div class="domicilio-tabla">
+                    <div class="ciudadano-info">
+                      <span class="skeleton sk-texto"></span>
+                      <span class="skeleton sk-texto sk-corto"></span>
+                    </div>
+                    <span class="skeleton sk-icono"></span>
                   </div>
                 </td>
                 <td data-label="Estado actual" class="text-center"><span class="skeleton sk-badge"></span></td>
@@ -119,9 +109,15 @@
                 </div>
               </td>
               <td data-label="Domicilio" :title="reporte.domicilio">
-                <div class="ciudadano-info">
-                  <span>{{ truncarTexto(reporte.domicilio.split(',')[1], 25) }}</span>
-                  <small>{{ truncarTexto(reporte.domicilio.split(',')[0], 25) }}</small>
+                <div class="domicilio-tabla">
+                  <div class="ciudadano-info">
+                    <span>{{ truncarTexto(reporte.domicilio.split(',')[1], 25) }}</span>
+                    <small>{{ truncarTexto(reporte.domicilio.split(',')[0], 25) }}</small>
+                  </div>
+                  <button type="button" class="btn-mapa" title="Abrir en Google Maps" aria-label="Abrir en Google Maps"
+                    @click.stop="abrirGoogleMaps(reporte.domicilio)">
+                    <MapMarker class="btn-mapa" />
+                  </button>
                 </div>
               </td>
               <td data-label="Estado actual" class="text-center">
@@ -198,14 +194,14 @@ import { truncarTexto } from '../logic/panelAdministrador'
 import { generarPdfReporte } from '../logic/reportePdf'
 import DescargarPdfModal from '../components/DescargarPdfModal.vue'
 import { enviarCorreoRechazoReporte, enviarCorreoFinalizacionReporte, enviarCorreoReportePDF } from '../services/gmailController'
+import { abrirGoogleMaps } from '../logic/googleMaps'
 
 // Iconos
 import DownloadIcon from '@primeicons/vue/download';
 import InfoCircle from '@primeicons/vue/info-circle';
-import UserIcon from '@primeicons/vue/user';
-import ArrowUTurnUpLeft from '@primeicons/vue/arrow-u-turn-up-left';
 import FileCheck from '@primeicons/vue/file-check';
 import Refresh from '@primeicons/vue/refresh';
+import MapMarker from '@primeicons/vue/map-marker';
 
 const modalPdfVisible = ref(false)
 const reportePdf = ref<any>(null)

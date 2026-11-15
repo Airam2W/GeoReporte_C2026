@@ -259,6 +259,7 @@ import RechazarReporteModal from '../components/RechazarReporteModal.vue'
 import { generarPdfReporte } from '../logic/reportePdf'
 import DescargarPdfModal from '../components/DescargarPdfModal.vue'
 import { enviarCorreoRechazoReporte, enviarCorreoTurnadoReporte, enviarCorreoReportePDF } from '../services/gmailController'
+import { abrirGoogleMaps } from '../logic/googleMaps'
 
 // Iconos
 import DownloadIcon from '@primeicons/vue/download';
@@ -268,42 +269,6 @@ import Times from '@primeicons/vue/times'
 import ArrowUTurnUpLeft from '@primeicons/vue/arrow-u-turn-up-left';
 import ArrowRightArrowLeft from '@primeicons/vue/arrow-right-arrow-left';
 import MapMarker from '@primeicons/vue/map-marker';
-
-const abrirGoogleMaps = (domicilio: string) => {
-  if (!domicilio) return
-
-  const destino = `${domicilio}, Culiacán, Sinaloa, México`
-
-  // Mostrar el domicilio con un marcador en Google Maps
-  const abrirSoloDestino = () => {
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destino)}`
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
-
-  if (!navigator.geolocation) {
-    abrirSoloDestino()
-    return
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const origen = `${position.coords.latitude},${position.coords.longitude}`
-
-      const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origen)}&destination=${encodeURIComponent(destino)}&travelmode=driving`
-
-      window.open(url, '_blank', 'noopener,noreferrer')
-    },
-    () => {
-      abrirSoloDestino()
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    }
-  )
-}
-
 
 const titulosTurnado = ref<any[]>([])
 
