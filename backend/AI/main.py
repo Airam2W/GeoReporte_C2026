@@ -255,6 +255,11 @@ def procesar_imagen_departamento(file_obj, depto: str):
 def root():
     return {"success": True, "message": "GeoReporte AI funcionando de manera óptima."}
 
+# Endpoint de salud para monitoreo externo (UptimeRobot, Render, etc.)
+@app.get("/health")
+def health_check():
+    return {"success": True, "message": "GeoReporte AI está saludable y operativo."}
+
 # Endpoint general dinámico para cualquiera de los 7 departamentos:
 # Ej: POST /validarAI/limpieza, /validarAI/parques, /validarAI/alumbrado, etc.
 @app.post("/validarAI/{departamento}")

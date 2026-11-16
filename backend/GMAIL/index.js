@@ -334,6 +334,14 @@ const datosBody = (req) => {
 
 // ----------------------- Endpoints -----------------------
 
+// Endpoint de salud para verificar que el servidor está funcionando correctamente. (UptimeRobot)
+app.get('/health', (req, res) => {
+  return res.status(200).json({
+    data: { status: 'ok' },
+    error: null,
+  })
+})
+
 // (enviarCorreoCreacionReporte)
 app.post('/enviar/correo/creacion-reporte', async (req, res) => {
   try {
