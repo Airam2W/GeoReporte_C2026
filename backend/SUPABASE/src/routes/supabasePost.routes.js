@@ -5,7 +5,6 @@ import { responder } from '../helpers/response.js'
 import jwt from 'jsonwebtoken'
 import { verificarTurnstile } from '../middleware/verificarTurnstile.js'
 import { registrarHistorial } from '../utils/registrarHistorial.js'
-import { obtenerUsuario } from '../utils/obtenerUsuario.js'
 import { estadoIDAAccion, estadoIDADetalle, categoriaHistorialIDAAccion, categoriaHistorialIDADetalle } from '../utils/convertirATexto.js'
 import { DISTANCIA_DUPLICADO_METROS, ESTADOS_CERRADOS, LIMITES_CULIACAN, aRadianes, distanciaMetros } from '../utils/mapa.js'
 
@@ -244,7 +243,6 @@ router.post('/usuarios/CorreoContrasena', manejarErrores(async (req, res) => {
 
     return res.status(200).json({
         data: {
-            usuario: usuarioRespuesta,
             token
         },
         error: null
@@ -380,8 +378,8 @@ router.post(
             })
 
             // Si todo es correcto, lo agregamos al historial del sistema
-            const correoUsuario = obtenerUsuario(req)
-            await registrarHistorial(correoUsuario, {
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
+            await registrarHistorial(correoUsuarioString, {
                 accion: 'Actualizar',
                 entidad: 'Usuario',
                 detalles: `Actualizo el usuario ${p_nombre} ${p_apellido_p}.`
@@ -716,10 +714,10 @@ router.post(
                 })
 
             // Si todo es correcto, lo agregamos al historial del sistema
-            const correoUsuario = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             const accion = categoriaHistorialIDAAccion(data.categoria_historial_id)
             const detalle = categoriaHistorialIDADetalle(data.categoria_historial_id)
-            await registrarHistorial(correoUsuario, {
+            await registrarHistorial(correoUsuarioString, {
                 accion: accion,
                 entidad: 'Reporte',
                 detalles: `Se actualizó el historial del reporte con folio ${folio} a ${detalle}.`
@@ -813,10 +811,10 @@ router.post(
                 })
 
             // Si todo es correcto, lo agregamos al historial del sistema
-            const correoUsuario = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             const accion = categoriaHistorialIDAAccion(data.categoria_historial_id)
             const detalle = categoriaHistorialIDADetalle(data.categoria_historial_id)
-            await registrarHistorial(correoUsuario, {
+            await registrarHistorial(correoUsuarioString, {
                 accion: accion,
                 entidad: 'Reporte',
                 detalles: `Se actualizó el historial del reporte con folio ${folio} y fotografía a ${detalle}.`
@@ -898,8 +896,8 @@ router.post(
                 })
 
             // Si todo es correcto, lo agregamos al historial del sistema
-            const correoUsuario = obtenerUsuario(req)
-            await registrarHistorial(correoUsuario, {
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
+            await registrarHistorial(correoUsuarioString, {
                 accion: 'Crear',
                 entidad: 'Problemática',
                 detalles: `Se creó una nueva problemática interna: ${nombre}.`
@@ -981,8 +979,8 @@ router.post(
                 })
 
             // Si todo es correcto, lo agregamos al historial del sistema
-            const correoUsuario = obtenerUsuario(req)
-            await registrarHistorial(correoUsuario, {
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
+            await registrarHistorial(correoUsuarioString, {
                 accion: 'Crear',
                 entidad: 'Problemática',
                 detalles: `Se creó una nueva problemática externa: ${nombre}.`
@@ -1055,8 +1053,8 @@ router.post(
                 })
 
             // Si todo es correcto, lo agregamos al historial del sistema
-            const correoUsuario = obtenerUsuario(req)
-            await registrarHistorial(correoUsuario, {
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
+            await registrarHistorial(correoUsuarioString, {
                 accion: 'Crear',
                 entidad: 'Departamento',
                 detalles: `Se creó un nuevo departamento interno: ${nombre}.`
@@ -1120,8 +1118,8 @@ router.post(
                 })
 
             // Si todo es correcto, lo agregamos al historial del sistema
-            const correoUsuario = obtenerUsuario(req)
-            await registrarHistorial(correoUsuario, {
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
+            await registrarHistorial(correoUsuarioString, {
                 accion: 'Crear',
                 entidad: 'Departamento',
                 detalles: `Se creó un nuevo departamento externo: ${departamento}.`

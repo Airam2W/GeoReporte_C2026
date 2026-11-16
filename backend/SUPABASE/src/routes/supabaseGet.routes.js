@@ -7,7 +7,6 @@ import {
     validarAutenticacion,
     validarAutorizacion
 } from '../middleware/auth.js'
-import { registrarHistorial } from '../utils/registrarHistorial.js'
 import { DISTANCIA_DUPLICADO_METROS, ESTADOS_CERRADOS, LIMITES_CULIACAN, aRadianes, distanciaMetros } from '../utils/mapa.js'
 
 const router = Router()
@@ -57,6 +56,14 @@ function estadoDelReporte(reporte) {
 // -----------------------------------------
 // ENDPOINTS PÚBLICOS
 // -----------------------------------------
+
+// Endpoint de salud para verificar que el servidor está funcionando correctamente. (UptimeRobot)
+router.get('/health', (req, res) => {
+    return res.status(200).json({
+        data: { status: 'ok' },
+        error: null
+    })
+})
 
 
 // (obtenerReportesMapa)

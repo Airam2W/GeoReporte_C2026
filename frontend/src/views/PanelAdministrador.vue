@@ -102,115 +102,127 @@
       </section>
 
       <!-- Tabla de Datos -->
-      <div class="tabla-contenedor">
-        <table class="tabla-reportes tabla-tarjetas">
-          <thead>
-            <tr>
-              <th>FOLIO</th>
-              <th>PROBLEMA</th>
-              <th>DOMICILIO</th>
-              <th>CIUDADANO</th>
-              <th v-if="esEnProceso">SUPERVISOR ASIGNADO</th>
-              <th v-if="esEnProceso">JEFE ASIGNADO</th>
-              <th class="text-center">ACCIONES</th>
-            </tr>
-          </thead>
-          <tbody>
-            <template v-if="cargando">
-              <tr v-for="n in 6" :key="`sk-${n}`" class="fila-skeleton" aria-hidden="true">
-                <td data-label="Folio"><span class="skeleton sk-folio"></span></td>
-                <td data-label="Problema"><span class="skeleton sk-texto"></span></td>
-                <td data-label="Domicilio">
-                  <div class="domicilio-tabla">
-                    <span class="skeleton sk-texto sk-largo"></span>
-                    <span class="skeleton sk-icono"></span>
-                  </div>
-                </td>
-                <td data-label="Ciudadano">
-                  <div class="ciudadano-info">
-                    <span class="skeleton sk-texto"></span>
-                    <span class="skeleton sk-texto sk-corto"></span>
-                  </div>
-                </td>
-                <td data-label="Supervisor asignado" v-if="esEnProceso"><span class="skeleton sk-texto"></span></td>
-                <td data-label="Jefe asignado" v-if="esEnProceso"><span class="skeleton sk-texto"></span></td>
-                <td>
-                  <div class="sk-acciones">
-                    <span v-for="b in botonesSkeleton" :key="b" class="skeleton sk-boton"></span>
-                  </div>
-                </td>
-              </tr>
-            </template>
+      <!-- Zona de trabajo: tabla | botones | detalle -->
+      <div class="ws-layout">
+        <!-- 1) Mini tabla paginada -->
+        <section class="ws-tabla-card">
+          <div class="ws-tabla-scroll">
+            <table class="ws-tabla">
+              <thead>
+                <tr>
+                  <th>FECHA</th>
+                  <th>FOLIO</th>
+                  <th>PROBLEMA</th>
+                  <th>DOMICILIO</th>
+                  <th>CIUDADANO</th>
+                  <th v-if="esEnProceso">SUPERVISOR</th>
+                  <th v-if="esEnProceso">JEFE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template v-if="cargando">
+                  <tr v-for="n in 8" :key="`sk-${n}`" class="fila-skeleton" aria-hidden="true">
+                    <td><span class="skeleton sk-texto sk-corto"></span></td>
+                    <td><span class="skeleton sk-folio"></span></td>
+                    <td><span class="skeleton sk-texto"></span></td>
+                    <td><span class="skeleton sk-texto sk-largo"></span></td>
+                    <td><span class="skeleton sk-texto"></span></td>
+                    <td v-if="esEnProceso"><span class="skeleton sk-texto"></span></td>
+                    <td v-if="esEnProceso"><span class="skeleton sk-texto"></span></td>
+                  </tr>
+                </template>
 
-            <tr v-else-if="reportesFiltrados.length === 0" class="fila-vacia">
-              <td :colspan="esEnProceso ? 7 : 5">No se encontraron reportes con estos filtros.</td>
-            </tr>
+                <tr v-else-if="reportesFiltrados.length === 0" class="ws-vacia">
+                  <td :colspan="esEnProceso ? 7 : 5">No se encontraron reportes con estos filtros.</td>
+                </tr>
 
-            <tr v-else v-for="reporte in reportesFiltrados" :key="reporte.folio" class="fila-datos">
-              <td data-label="Folio" class="font-mono">#{{ reporte.folio.split('-')[4] || reporte.folio }}</td>
-              <td data-label="Problema" class="font-bold">{{ truncarTexto(reporte.problemas?.nombre, 25) }}</td>
-              <td data-label="Domicilio" :title="reporte.domicilio">
-                <div class="domicilio-tabla">
-                  <span>{{ truncarTexto(reporte.domicilio, 25) }}</span>
+                <tr v-else v-for="reporte in reportesPagina" :key="reporte.folio" class="ws-fila"
+                  :class="{ seleccionada: reporteActivo?.folio === reporte.folio }" tabindex="0"
+                  @click="abrirModalVer(reporte)" @keydown.enter="abrirModalVer(reporte)">
+                  <td>
+                    {{ formatearFechaFila(reporte.created_at).fecha }}
+                    <small>{{ formatearFechaFila(reporte.created_at).hora }}</small>
+                  </td>
+                  <td class="ws-folio">#{{ reporte.folio.split('-')[4] || reporte.folio }}</td>
+                  <td class="ws-corta" :title="reporte.problemas?.nombre">{{ reporte.problemas?.nombre }}</td>
+                  <td class="ws-corta" :title="reporte.domicilio">{{ reporte.domicilio }}</td>
+                  <td class="ws-corta">
+                    {{ reporte.nombre }}
+                    <small>{{ reporte.telefono }}</small>
+                  </td>
+                  <td v-if="esEnProceso" class="ws-corta">{{ reporte.supervisor }}</td>
+                  <td v-if="esEnProceso" class="ws-corta">{{ reporte.jefe }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-                  <button type="button" class="btn-mapa" title="Abrir en Google Maps" aria-label="Abrir en Google Maps"
-                    @click.stop="abrirGoogleMaps(reporte.domicilio)">
-                    <MapMarker class="btn-mapa" />
-                  </button>
-                </div>
-              </td>
-              <td data-label="Ciudadano">
-                <div class="ciudadano-info">
-                  <span>{{ truncarTexto(reporte.nombre, 25) }}</span>
-                  <small>{{ reporte.telefono }}</small>
-                </div>
-              </td>
-              <td data-label="Supervisor asignado" v-if="esEnProceso">{{ truncarTexto(reporte.supervisor, 25) }}</td>
-              <td data-label="Jefe asignado" v-if="esEnProceso">{{ truncarTexto(reporte.jefe, 25) }}</td>
-              <td class="acciones-celda">
-                <button class="btn-accion btn-pdf" title="Descargar PDF" @click="descargarPDF(reporte)">
-                  <DownloadIcon />
-                </button>
-                <button class="btn-accion btn-ver" title="Ver detalle" @click="abrirModalVer(reporte)">
-                  <InfoCircle color="var(--texto-gris)" />
-                </button>
+          <footer class="ws-paginacion">
+            <div class="ws-pag-botones">
+              <button class="ws-pag-btn" :disabled="pagina === 1" @click="pagina = 1"
+                aria-label="Primera página">«</button>
+              <button class="ws-pag-btn" :disabled="pagina === 1" @click="pagina--"
+                aria-label="Página anterior">‹</button>
+              <button v-for="p in paginasVisibles" :key="p" class="ws-pag-btn" :class="{ activo: p === pagina }"
+                @click="pagina = p">{{ p }}</button>
+              <button class="ws-pag-btn" :disabled="pagina === totalPaginas" @click="pagina++"
+                aria-label="Página siguiente">›</button>
+              <button class="ws-pag-btn" :disabled="pagina === totalPaginas" @click="pagina = totalPaginas"
+                aria-label="Última página">»</button>
+            </div>
+            <div class="ws-pag-extra">
+              <label for="porPagina">Mostrar</label>
+              <select id="porPagina" v-model.number="porPagina">
+                <option :value="10">10</option>
+                <option :value="15">15</option>
+                <option :value="20">20</option>
+                <option :value="25">25</option>
+                <option :value="30">30</option>
+                <option :value="40">40</option>
+                <option :value="50">50</option>
+              </select>
+              <span>{{ rangoTexto }}</span>
+            </div>
+          </footer>
+        </section>
 
-                <button v-if="
-                  reporte.estado === 'Pendiente' ||
-                  reporte.estado === 'Turnado' ||
-                  reporte.estado === 'Devuelto'
-                " class="btn-accion btn-asignar" title="Asignar supervisor" @click="asignarReporte(reporte.folio)">
-                  <UserIcon color="var(--texto-oscuro)" />
-                </button>
+        <!-- 2) Botones de acción en vertical -->
+        <aside class="ws-rail" aria-label="Acciones del reporte">
+          <template v-if="reporteActivo">
+            <button type="button" class="ws-rail-btn ws-btn-pdf" title="Descargar PDF" aria-label="Descargar PDF"
+              @click="descargarPDF(reporteActivo)">
+              <DownloadIcon color="#fff" />
+            </button>
 
-                <button v-if="reporte.estado === 'Devuelto'" class="btn-accion btn-asignar" title="Turnar reporte"
-                  @click="turnarReporte(reporte.folio)">
-                  <ArrowRightArrowLeft color="var(--texto-oscuro)" />
-                </button>
+            <span v-if="puedeAsignar || puedeTurnar || puedeDevolver || puedeRechazar" class="ws-rail-sep"></span>
 
-                <button v-if="
-                  reporte.estado === 'Rechazado' ||
-                  reporte.estado === 'Finalizado' ||
-                  reporte.estado === 'Devuelto'
-                " class="btn-accion btn-devolver" title="Devolver a Pendiente"
-                  @click="devolverReporte(reporte.folio, 'Pendiente')">
-                  <ArrowUTurnUpLeft color="green" />
-                </button>
+            <button v-if="puedeAsignar" type="button" class="ws-rail-btn ws-btn-asignar" title="Asignar supervisor"
+              aria-label="Asignar supervisor" @click="asignarReporte(reporteActivo.folio)">
+              <UserIcon color="#fff" />
+            </button>
 
-                <button v-if="reporte.estado === 'Pendiente' || reporte.estado === 'Devuelto'"
-                  class="btn-accion btn-rechazar" title="Rechazar reporte" @click="rechazarReporte(reporte.folio)">
-                  <Times color="red" />
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+            <button v-if="puedeTurnar" type="button" class="ws-rail-btn ws-btn-turnar" title="Turnar reporte"
+              aria-label="Turnar reporte" @click="turnarReporte(reporteActivo.folio)">
+              <ArrowRightArrowLeft color="#fff" />
+            </button>
+
+            <button v-if="puedeDevolver" type="button" class="ws-rail-btn ws-btn-devolver" title="Devolver a Pendiente"
+              aria-label="Devolver a Pendiente" @click="devolverReporte(reporteActivo.folio, 'Pendiente')">
+              <ArrowUTurnUpLeft color="#fff" />
+            </button>
+
+            <button v-if="puedeRechazar" type="button" class="ws-rail-btn ws-btn-rechazar" title="Rechazar reporte"
+              aria-label="Rechazar reporte" @click="rechazarReporte(reporteActivo.folio)">
+              <Times color="#fff" />
+            </button>
+          </template>
+          <p v-else class="ws-rail-hint">Acciones</p>
+        </aside>
+
+        <!-- 3) Detalle del reporte (antes era modal) -->
+        <ReporteDetallePanel :reporte="reporteActivo" />
       </div>
     </main>
-
-    <ReporteDetalleModal :visible="modalVisible" :reporte="reporteActivo" :esAdmin="true" @close="cerrarModalVer"
-      @asignar="asignarReporte" @rechazar="rechazarReporte" @devolver="devolverReporte" @turnar="turnarReporte"
-      @descargar-pdf="descargarPDF" />
 
     <TurnarReporteModal :visible="modalTurnarVisible" :folio="folioATurnar" :titulos="titulosTurnado"
       :departamentos-internos="departamentosInternos" :departamentos-externos="departamentosExternos"
@@ -249,7 +261,7 @@ import {
   obtenerTodosJefes,
   agregarHistorial,
 } from '../services/supabaseController'
-import ReporteDetalleModal from '../components/ReporteDetalleModal.vue'
+import ReporteDetallePanel from '../components/ReporteDetallePanel.vue'
 import Swal from 'sweetalert2'
 import { truncarTexto, obtenerClaseEstado } from '../logic/panelAdministrador'
 import { redireccionarUsuario } from '../logic/redirectUser'
@@ -319,7 +331,6 @@ const conteoPorEstado = computed(() => {
 })
 
 // Estado del Modal de Ver Reporte
-const modalVisible = ref(false)
 const reporteActivo = ref<any>(null)
 
 const filtros = ref({
@@ -606,7 +617,6 @@ const descargarYEnviar = async (correo: string) => {
 // Paso 1: solo abre el modal
 const turnarReporte = (folio: string | undefined) => {
   if (!folio) return
-  cerrarModalVer() // por si se llamó desde el modal de detalle
   folioATurnar.value = folio
   modalTurnarVisible.value = true
 }
@@ -735,6 +745,11 @@ const cargarReportes = async () => {
 
   if (!error && data) {
     reportes.value = data.map((r: any) => {
+      // Mantener el panel de detalle sincronizado con los datos recién cargados
+      if (reporteActivo.value) {
+        reporteActivo.value =
+          reportes.value.find((r) => r.folio === reporteActivo.value.folio) ?? null
+      }
       // Puede venir como arreglo o como objeto único, según cómo esté definida la relación
       const historial = Array.isArray(r.historial_reporte)
         ? r.historial_reporte
@@ -856,10 +871,69 @@ const reportesFiltrados = computed(() => {
   })
 })
 
-// Lógica de Modales y Acciones
+// ===== Paginación =====
+const pagina = ref(1)
+const porPagina = ref(10)
+
+const totalPaginas = computed(() =>
+  Math.max(1, Math.ceil(reportesFiltrados.value.length / porPagina.value)),
+)
+
+const reportesPagina = computed(() => {
+  const inicio = (pagina.value - 1) * porPagina.value
+  return reportesFiltrados.value.slice(inicio, inicio + porPagina.value)
+})
+
+const rangoTexto = computed(() => {
+  const total = reportesFiltrados.value.length
+  if (!total) return '0 resultados'
+  const inicio = (pagina.value - 1) * porPagina.value + 1
+  return `${inicio} - ${Math.min(inicio + porPagina.value - 1, total)} de ${total} resultados`
+})
+
+// Ventana de hasta 5 números de página
+const paginasVisibles = computed(() => {
+  const total = totalPaginas.value
+  const ini = Math.max(1, Math.min(pagina.value - 2, total - 4))
+  const fin = Math.min(total, ini + 4)
+  const arr: number[] = []
+  for (let i = ini; i <= fin; i++) arr.push(i)
+  return arr
+})
+
+// Al cambiar filtros o tamaño de página, volver a la página 1
+watch(filtros, () => (pagina.value = 1), { deep: true })
+watch(porPagina, () => (pagina.value = 1))
+watch(totalPaginas, (t) => {
+  if (pagina.value > t) pagina.value = t
+})
+
+// Si el reporte seleccionado ya no está en la lista filtrada, se deselecciona
+watch(reportesFiltrados, (lista) => {
+  if (reporteActivo.value && !lista.some((r) => r.folio === reporteActivo.value.folio)) {
+    reporteActivo.value = null
+  }
+})
+
+// ===== Botones de la columna de acciones (mismas condiciones que tenía la tabla) =====
+const estadoActivo = computed(() => reporteActivo.value?.estado)
+const puedeAsignar = computed(() => ['Pendiente', 'Turnado', 'Devuelto'].includes(estadoActivo.value))
+const puedeTurnar = computed(() => estadoActivo.value === 'Devuelto')
+const puedeDevolver = computed(() => ['Rechazado', 'Finalizado', 'Devuelto'].includes(estadoActivo.value))
+const puedeRechazar = computed(() => ['Pendiente', 'Devuelto'].includes(estadoActivo.value))
+
+const formatearFechaFila = (iso: string | null) => {
+  if (!iso) return { fecha: '—', hora: '' }
+  const d = new Date(iso.endsWith('Z') ? iso : `${iso}Z`)
+  return {
+    fecha: d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    hora: d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+  }
+}
+
+// Ahora "abrir" = seleccionar el reporte para mostrarlo en el panel de la derecha
 const abrirModalVer = async (reporte: any) => {
   reporteActivo.value = reporte
-  modalVisible.value = true
 
   const { error: errorHistorialGeneral } = await agregarHistorial({
     accion: 'Ver',
@@ -868,22 +942,18 @@ const abrirModalVer = async (reporte: any) => {
   })
 
   if (errorHistorialGeneral) {
-    // No se hace return: la acción principal ya se completó
     console.error('Error al guardar en el historial:', errorHistorialGeneral)
   }
 }
 
+// "cerrar" = quitar la selección
 const cerrarModalVer = () => {
-  modalVisible.value = false
-  setTimeout(() => {
-    reporteActivo.value = null
-  }, 300)
+  reporteActivo.value = null
 }
 
 // Paso 1: solo abre el modal
 const rechazarReporte = (folio: string | undefined) => {
   if (!folio) return
-  cerrarModalVer() // por si se llamó desde el modal de detalle
   folioARechazar.value = folio
   modalRechazarVisible.value = true
 }
@@ -1035,7 +1105,6 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Pendi
         //const index = reportes.value.findIndex((r) => r.folio === folio)
         //if (index !== -1) reportes.value[index].estado = nuevoEstado
         await cargarReportes()
-        cerrarModalVer()
 
         Swal.fire({
           title: '¡Actualizado!',
@@ -1062,7 +1131,6 @@ const devolverReporte = async (folio: string, nuevoEstado: 'En Proceso' | 'Pendi
 // Paso 1: solo abre el modal
 const asignarReporte = (folio: string | undefined) => {
   if (!folio) return
-  cerrarModalVer() // por si se llamó desde el modal de detalle
   folioAAsignar.value = folio
   modalAsignarVisible.value = true
 }
@@ -1160,7 +1228,6 @@ defineExpose({
   problemasOpciones,
   filtros,
   reportesFiltrados,
-  modalVisible,
   reporteActivo,
   abrirModalVer,
   cerrarModalVer,
@@ -1176,3 +1243,4 @@ defineExpose({
 <style src="../assets/skeletons.css"></style>
 <style scoped src="../assets/panelAdministrador.css"></style>
 <style src="../assets/tablaTarjetas.css"></style>
+<style src="../assets/panelAdministradorWorkspace.css"></style>

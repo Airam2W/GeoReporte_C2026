@@ -262,7 +262,7 @@
               <td data-label="Departamento / superior">
                 <span class="badge badge-gris">{{
                   truncarTexto(user.departamentoNombre || '-', 25)
-                  }}</span>
+                }}</span>
               </td>
               <td data-label="Estado">
                 <span :class="[
@@ -438,6 +438,30 @@
           </tbody>
         </table>
       </div>
+      <!-- Paginación exclusiva del Historial -->
+      <div v-if="filtros.seccion === 'historial' && !cargando && historialTotal > 0" class="paginacion">
+        <span>
+          Mostrando
+          {{ (paginaHistorial - 1) * LIMITE_HISTORIAL + 1 }}
+          -
+          {{ Math.min(paginaHistorial * LIMITE_HISTORIAL, historialTotal) }}
+          de {{ historialTotal }} registros
+        </span>
+
+        <div class="paginacion-controles">
+          <button type="button" @click="cambiarPaginaHistorial(-1)" :disabled="paginaHistorial === 1">
+            Anterior
+          </button>
+
+          <span>
+            Página {{ paginaHistorial }} de {{ totalPaginasHistorial }}
+          </span>
+
+          <button type="button" @click="cambiarPaginaHistorial(1)" :disabled="paginaHistorial >= totalPaginasHistorial">
+            Siguiente
+          </button>
+        </div>
+      </div>
     </main>
 
     <UsuarioFormModal :visible="modalFormVisible" :usuarioAEditar="usuarioActivo" :roles="rolesOpciones"
@@ -509,7 +533,7 @@ import ProblematicaDetalleModal from '../components/ProblematicaDetalleModal.vue
 import { truncarTexto } from '../logic/panelAdministrador'
 import { accionesHistorial, entidadesHistorial } from '../logic/historial'
 
-const LIMITE_HISTORIAL = 25
+const LIMITE_HISTORIAL = 20
 const historialData = ref<any[]>([])
 const historialTotal = ref(0)
 const paginaHistorial = ref(1)
@@ -1603,6 +1627,28 @@ const cerrarSesion = async () => {
 .paginacion button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.paginacion-controles {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.paginacion-controles span {
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .paginacion-controles {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .paginacion-controles button {
+    width: auto;
+  }
 }
 
 @media (max-width: 600px) {

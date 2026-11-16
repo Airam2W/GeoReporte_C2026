@@ -24,32 +24,46 @@ export const verificarTokenJWT = async (req, res, next) => {
     }
 }
 
-// 2. Tu lógica de Autenticación ajustada para trabajar con el usuario del JWT
+// 2. Middleware que valida la autenticación y el estado del usuario
 export const validarAutenticacion = async (req, res, next) => {
     const user = req.user // Viene directamente del token verificado por el JWT
-
     const regexCorreo = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    
-    const correoExistente = async (correo) => {
-        const { data, error } = await supabase.from('usuarios').select('correo').eq('correo', correo).maybeSingle()
-        if (error) return false
-        return !!data
-    }
 
-    const altaExistente = async (correo) => {
-        const { data, error } = await supabase.from('usuarios').select('estadoadministrativo').eq('correo', correo).maybeSingle()
-        if (error) return false
-        return data && data.estadoadministrativo === 'Alta'
-    }
-
-    if (!user || typeof user !== 'object' || !user.correo || !regexCorreo.test(user.correo) ||
-        user.estado !== "Alta" || !(await correoExistente(user.correo)) || !(await altaExistente(user.correo))
+    // 1. Validación inicial: Token válido, estructura correcta, regex de correo 
+    // y doble validación del estado directamente en el token (user.estado)
+    if (
+        !user || 
+        typeof user !== 'object' || 
+        !user.correo || 
+        !regexCorreo.test(user.correo) || 
+        user.estado !== 'Alta'
     ) {
-        console.log('Usuario no autenticado o estado inválido en BD.')
-        return res.status(401).json({ ok: false, mensaje: 'No autorizado: Estado de usuario inválido.' })
+        console.log('Validación fallida: Token inválido, correo mal formateado o user.estado no es Alta.')
+        return res.status(401).json({ ok: false, mensaje: 'No autorizado: Sesión inválida o inactiva.' })
     }
 
-    next() // Todo bien, pasa al siguiente paso o ruta
+    try {
+        // 2. Segunda validación en tiempo real: Verificar existencia del correo 
+        // y que su estadoadministrativo en la Base de Datos sea 'Alta'
+        const { data, error } = await supabase
+            .from('usuarios')
+            .select('estadoadministrativo')
+            .eq('correo', user.correo)
+            .maybeSingle()
+
+        // Si hay error, si no devolvió registro (no existe el correo) o si el estado en BD no es Alta
+        if (error || !data || data.estadoadministrativo !== 'Alta') {
+            console.log('Validación fallida en BD: El correo no existe o su estadoadministrativo no es Alta.')
+            return res.status(401).json({ ok: false, mensaje: 'No autorizado: Usuario no activo en el sistema.' })
+        }
+
+        // ¡Todo correcto! Pasa a la siguiente ruta o controlador
+        next()
+        
+    } catch (err) {
+        console.error('Error interno al consultar Supabase en el middleware:', err)
+        return res.status(500).json({ ok: false, mensaje: 'Error interno del servidor al validar autenticación.' })
+    }
 }
 
 // 3. Tu lógica de Autorización por roles ajustada
