@@ -7,7 +7,6 @@ import {
     validarAutenticacion,
     validarAutorizacion
 } from '../middleware/auth.js'
-import { registrarHistorial } from '../utils/registrarHistorial.js'
 import { DISTANCIA_DUPLICADO_METROS, ESTADOS_CERRADOS, LIMITES_CULIACAN, aRadianes, distanciaMetros } from '../utils/mapa.js'
 
 const router = Router()

@@ -10,7 +10,6 @@ import {
     validarAutenticacion,
     validarAutorizacion
 } from '../middleware/auth.js'
-import { obtenerUsuario } from '../utils/obtenerUsuario.js'
 
 const router = Router()
 
@@ -91,7 +90,7 @@ router.delete(
             }
 
             // Si todo es correcto, lo agregamos al historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Eliminar',
                 entidad: 'Problemática',
@@ -173,7 +172,7 @@ router.delete(
             }
 
             // Si todo es correcto, lo agregamos al historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Eliminar',
                 entidad: 'Problemática',
@@ -255,7 +254,7 @@ router.delete(
             }
 
             // Si todo es correcto, lo agregamos al historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Eliminar',
                 entidad: 'Departamento',
@@ -337,7 +336,7 @@ router.delete(
             }
 
             // Si todo es correcto, lo agregamos al historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Eliminar',
                 entidad: 'Departamento',

@@ -9,7 +9,6 @@ import {
     validarAutorizacion
 } from '../middleware/auth.js'
 import { registrarHistorial } from '../utils/registrarHistorial.js'
-import { obtenerUsuario } from '../utils/obtenerUsuario.js'
 import { estadoIDAAccion, estadoIDADetalle } from '../utils/convertirATexto.js'
 
 const router = Router()
@@ -83,7 +82,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             const accion = estadoIDAAccion(estado_id)
             const detalle = estadoIDADetalle(estado_id)
             
@@ -156,7 +155,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Poner en Proceso',
                 entidad: 'Reporte',
@@ -220,7 +219,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             const accion = estadoIDAAccion(estado_id)
             const detalle = estadoIDADetalle(estado_id)
             const mensaje = estado_id === 4 ? `Actualizó el estado del reporte con folio ${folio} a ${detalle} y estableciendo la fecha de cierre a ${fecha_cierre}.` :
@@ -284,7 +283,7 @@ router.put(
             const prioridadTexto = prioridad === 1 ? 'Muy Alta' : prioridad === 2 ? 'Alta' : prioridad === 3 ? 'Media' : prioridad === 4 ? 'Baja' : prioridad === 5 ? 'Muy Baja' : 'Desconocida'
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Actualizar',
                 entidad: 'Reporte',
@@ -342,7 +341,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             const accion = estadoIDAAccion(estado_id)
             const detalle = estadoIDADetalle(estado_id)
             await registrarHistorial(correoUsuarioString, {
@@ -402,7 +401,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             const accion = estado === 'Alta' ? 'Alta' : 'Baja'
             await registrarHistorial(correoUsuarioString, {
                 accion: accion,
@@ -461,7 +460,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             const accion = estado === 'Alta' ? 'Alta' : 'Baja'
             await registrarHistorial(correoUsuarioString, {
                 accion: accion,
@@ -526,7 +525,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             const accion = estadoIDAAccion(estado_id)
             const detalle = estadoIDADetalle(estado_id)
             await registrarHistorial(correoUsuarioString, {
@@ -598,7 +597,7 @@ router.put(
                 })
             }
 
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
 
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Turnar',
@@ -674,7 +673,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Turnar',
                 entidad: 'Reporte',
@@ -745,7 +744,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Editar',
                 entidad: 'Problemática',
@@ -815,7 +814,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Editar',
                 entidad: 'Problemática',
@@ -879,7 +878,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Editar',
                 entidad: 'Departamento',
@@ -937,7 +936,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Editar',
                 entidad: 'Departamento Externo',
@@ -995,7 +994,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             const accion = estado === 'Alta' ? 'Alta' : 'Baja'
             await registrarHistorial(correoUsuarioString, {
                 accion: accion,
@@ -1054,7 +1053,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             const accion = estado === 'Alta' ? 'Alta' : 'Baja'
             await registrarHistorial(correoUsuarioString, {
                 accion: accion,
@@ -1113,7 +1112,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             const accion = estadoadministrativo === 'Alta' ? 'Alta' : 'Baja'
             await registrarHistorial(correoUsuarioString, {
                 accion: accion,
@@ -1172,7 +1171,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Baja',
                 entidad: 'Usuario',
@@ -1230,7 +1229,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Alta',
                 entidad: 'Usuario',
@@ -1293,7 +1292,7 @@ router.put(
             }
 
             // Registrar en el historial del sistema
-            const correoUsuarioString = obtenerUsuario(req)
+            const correoUsuarioString = String(req.user?.correo || 'Sin correo')
             await registrarHistorial(correoUsuarioString, {
                 accion: 'Retroalimentar',
                 entidad: 'Reporte',
