@@ -256,7 +256,7 @@ def root():
     return {"success": True, "message": "GeoReporte AI funcionando de manera óptima."}
 
 # Endpoint de salud para monitoreo externo (UptimeRobot, Render, etc.)
-@app.get("/health")
+@app.get("/health", head=True)
 def health_check():
     return {"success": True, "message": "GeoReporte AI está saludable y operativo."}
 

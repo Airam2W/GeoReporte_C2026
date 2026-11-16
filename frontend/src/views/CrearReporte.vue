@@ -33,7 +33,7 @@
       <div class="filtros-mapa">
         <select v-model="filtroDepartamento" aria-label="Filtrar reportes por departamento">
           <option value="">Todos los departamentos</option>
-          <option v-for="d in departamentos" :key="d.id" :value="d.id">{{ d.nombreamigable }}</option>
+          <option v-for="d in departamentos.filter((d) => d.estado === 'Alta')" :key="d.id" :value="d.id">{{ d.nombreamigable }}</option>
         </select>
 
         <select v-model="filtroProblema" :disabled="filtroDepartamento === ''"
@@ -41,7 +41,7 @@
           <option value="">
             {{ filtroDepartamento === '' ? 'Selecciona un departamento' : 'Todas las problemáticas' }}
           </option>
-          <option v-for="p in problemasFiltro" :key="p.id" :value="p.id">{{ p.nombreamigable }}</option>
+          <option v-for="p in problemasFiltro.filter((d) => d.estado === 'Alta')" :key="p.id" :value="p.id">{{ p.nombreamigable }}</option>
         </select>
       </div>
     </div>
@@ -68,8 +68,13 @@
       <div class="pin-sombra"></div>
     </figure>
 
-    <button v-show="!panelAbierto" class="btn-regresar" @click="irA('/')">↩</button>
-    <button v-show="!panelAbierto" class="btn-agregar" @click="abrirPanel">+</button>
+    <button v-show="!panelAbierto" class="btn-regresar" @click="irA('/')">
+      <Undo />
+    </button>
+
+    <button v-show="!panelAbierto" class="btn-agregar" @click="abrirPanel">
+      <Plus />
+    </button>
 
     <!-- Panel formulario / modo mapa -->
     <section v-if="panelAbierto" class="panel" :class="modoMapa ? 'panel--mapa' : 'panel--expandido'">
@@ -101,7 +106,7 @@
           <input type="text" :value="departamentos.find((d) => d.id === form.departamento_id)?.nombre || ''" disabled />
           <span v-if="errores.departamento_id" class="msg-error">{{
             errores.departamento_id
-            }}</span>
+          }}</span>
 
           <label>¿Qué problema quieres reportar?</label>
           <select name="problema" v-model="form.problema_id" :class="{ 'input-error': errores.problema_id }"
@@ -300,6 +305,8 @@ import 'leaflet/dist/leaflet.css'
 import Image from '@primeicons/vue/image';
 import Camera from '@primeicons/vue/camera';
 import Map from '@primeicons/vue/map';
+import Undo from '@primeicons/vue/undo';
+import Plus from '@primeicons/vue/plus';
 
 import Swal from 'sweetalert2';
 
