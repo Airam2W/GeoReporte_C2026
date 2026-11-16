@@ -255,8 +255,10 @@ def procesar_imagen_departamento(file_obj, depto: str):
 def root():
     return {"success": True, "message": "GeoReporte AI funcionando de manera óptima."}
 
+from fastapi import status
+
 # Endpoint de salud para monitoreo externo (UptimeRobot, Render, etc.)
-@app.get("/health", head=True)
+@app.api_route("/health", methods=["GET", "HEAD"], status_code=status.HTTP_200_OK)
 def health_check():
     return {"success": True, "message": "GeoReporte AI está saludable y operativo."}
 
