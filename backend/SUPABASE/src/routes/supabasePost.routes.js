@@ -244,7 +244,6 @@ router.post('/usuarios/CorreoContrasena', manejarErrores(async (req, res) => {
 
     return res.status(200).json({
         data: {
-            usuario: usuarioRespuesta,
             token
         },
         error: null
