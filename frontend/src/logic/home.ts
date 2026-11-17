@@ -146,7 +146,6 @@ export const iniciarSesion = () => {
         ? (typeof error === 'string' ? error : error.message || 'Error desconocido')
         : 'Correo o contraseña incorrectos. Porfavor, verifica tus datos e intenta de nuevo.'
 
-      console.log(mensajeBackend)
       if (error || !data || data.length === 0) {
         console.table({ error, data })
         errorGlobal.textContent = mensajeBackend
