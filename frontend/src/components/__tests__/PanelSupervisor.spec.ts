@@ -332,6 +332,81 @@ describe('Pruebas del panel del supervisor', () => {
 		expect(wrapper.findComponent(AsignarJefeModal).props('visible')).toBe(true)
 	})
 
+	it('PS-09a cancelar la retroalimentación no continúa con la asignación', async () => {
+		wrapper.vm.reportes[0].foto_url = 'https://example.com/foto.jpg'
+
+		await wrapper.find('.btn-asignar').trigger('click')
+		wrapper.findComponent(RetroalimentacionFotoAIModal).vm.$emit('close')
+		await flushPromises()
+
+		expect(wrapper.findComponent(RetroalimentacionFotoAIModal).props('visible')).toBe(false)
+		expect(wrapper.findComponent(AsignarJefeModal).props('visible')).toBe(false)
+		expect(db.actualizarFotoDepartamentoReporte).not.toHaveBeenCalled()
+		expect(db.actualizarEstadoReporteConJefeFechaInicio).not.toHaveBeenCalled()
+	})
+
+	it('PS-09b no continúa con la asignación si falla guardar la retroalimentación', async () => {
+		wrapper.vm.reportes[0].foto_url = 'https://example.com/foto.jpg'
+		vi.mocked(db.actualizarFotoDepartamentoReporte).mockResolvedValue({
+			data: null,
+			error: { message: 'fallo al guardar' },
+		})
+
+		await wrapper.find('.btn-asignar').trigger('click')
+		wrapper.findComponent(RetroalimentacionFotoAIModal).vm.$emit('confirm', -3)
+		await flushPromises()
+
+		expect(db.actualizarFotoDepartamentoReporte).toHaveBeenCalledWith(
+			'SUP-BAC-20260915-001-ABC123',
+			-3,
+		)
+		expect(Swal.fire).toHaveBeenCalledWith(
+			'Error',
+			'No se pudo guardar la retroalimentación de la imagen.',
+			'error',
+		)
+		expect(wrapper.findComponent(RetroalimentacionFotoAIModal).props('visible')).toBe(true)
+		expect(wrapper.findComponent(AsignarJefeModal).props('visible')).toBe(false)
+		expect(db.actualizarEstadoReporteConJefeFechaInicio).not.toHaveBeenCalled()
+	})
+
+	it('PS-09c guarda la retroalimentación antes de continuar con la devolución', async () => {
+		wrapper.vm.reportes[0].foto_url = 'https://example.com/foto.jpg'
+
+		await wrapper.find('.btn-devolver').trigger('click')
+		expect(wrapper.findComponent(RetroalimentacionFotoAIModal).props('visible')).toBe(true)
+		expect(wrapper.findComponent(DevolucionReporteModal).props('visible')).toBe(false)
+
+		wrapper.findComponent(RetroalimentacionFotoAIModal).vm.$emit('confirm', -2)
+		await flushPromises()
+
+		expect(db.actualizarFotoDepartamentoReporte).toHaveBeenCalledWith(
+			'SUP-BAC-20260915-001-ABC123',
+			-2,
+		)
+		expect(wrapper.findComponent(RetroalimentacionFotoAIModal).props('visible')).toBe(false)
+		expect(wrapper.findComponent(DevolucionReporteModal).props('visible')).toBe(true)
+		expect(wrapper.findComponent(DevolucionReporteModal).props('folio')).toBe(
+			'SUP-BAC-20260915-001-ABC123',
+		)
+
+		wrapper.findComponent(DevolucionReporteModal).vm.$emit('confirm', {
+			titulo_id: 8,
+			notas: 'Imagen sin relación con una problemática',
+		})
+		await flushPromises()
+
+		expect(db.crearHistorialReporte).toHaveBeenCalledWith('SUP-BAC-20260915-001-ABC123', {
+			categoria_historial_id: 1,
+			titulo_id: 8,
+			notas: 'Imagen sin relación con una problemática',
+		})
+		expect(db.actualizarEstadoReporteQuitarSupervisor).toHaveBeenCalledWith(
+			'SUP-BAC-20260915-001-ABC123',
+			{ estado_id: 6, supervisor_id: null },
+		)
+	})
+
 	it('PS-10 acepta la finalización de un reporte', async () => {
 		wrapper.vm.filtros.estado = 'Pendiente de Finalización'
 		await wrapper.vm.$nextTick()

@@ -193,7 +193,7 @@ describe('Pruebas del panel del administrador', () => {
 			wrapper.vm.filtros.problema = ''
 			wrapper.vm.filtros[filtro] = esperado
 			await wrapper.vm.$nextTick()
-			expect(wrapper.findAll('tbody tr.fila-datos')).toHaveLength(1)
+			expect(wrapper.findAll('tbody tr.ws-fila')).toHaveLength(1)
 		}
 	})
 
@@ -212,7 +212,7 @@ describe('Pruebas del panel del administrador', () => {
 			wrapper.vm.filtros.estado = estado
 			await wrapper.vm.$nextTick()
 
-			const filas = wrapper.findAll('tbody tr.fila-datos')
+			const filas = wrapper.findAll('tbody tr.ws-fila')
 
 			expect(filas).toHaveLength(1)
 			expect(filas[0].text()).toContain(folio)
@@ -223,15 +223,15 @@ describe('Pruebas del panel del administrador', () => {
 		wrapper.vm.filtros.estado = 'En Proceso'
 		await wrapper.vm.$nextTick()
 
-		expect(wrapper.text()).toContain('SUPERVISOR ASIGNADO')
-		expect(wrapper.text()).toContain('JEFE ASIGNADO')
-		const fila = wrapper.find('tbody tr.fila-datos')
+		expect(wrapper.find('thead').text()).toContain('SUPERVISOR')
+		expect(wrapper.find('thead').text()).toContain('JEFE')
+		const fila = wrapper.find('tbody tr.ws-fila')
 		expect(fila.text()).toContain('Ana García López')
 		expect(fila.text()).toContain('Luis Soto')
 	})
 
 	it('abre el detalle y navega a Crear Reporte', async () => {
-		await wrapper.find('.btn-ver').trigger('click')
+		await wrapper.find('tbody tr.ws-fila').trigger('click')
 		expect(wrapper.vm.reporteActivo.folio).toBe('ALU-BAC-20260915-001-ABC123')
 		await wrapper.find('.fix-right').trigger('click')
 		expect(pushMock).toHaveBeenCalledWith('/reporte')
@@ -279,7 +279,8 @@ describe('Pruebas del panel del administrador', () => {
 	it('devuelve un reporte finalizado a Pendiente', async () => {
 		wrapper.vm.filtros.estado = 'Finalizado'
 		await wrapper.vm.$nextTick()
-		await wrapper.find('.btn-devolver').trigger('click')
+		await wrapper.find('tbody tr.ws-fila').trigger('click')
+		await wrapper.find('.ws-btn-devolver').trigger('click')
 		await flushPromises()
 
 		expect(db.obtenerEstadoIDPorNombre).toHaveBeenCalledWith('Pendiente')
