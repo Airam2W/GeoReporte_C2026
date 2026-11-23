@@ -33,7 +33,8 @@
       <div class="filtros-mapa">
         <select v-model="filtroDepartamento" aria-label="Filtrar reportes por departamento">
           <option value="">Todos los departamentos</option>
-          <option v-for="d in departamentos.filter((d) => d.estado === 'Alta')" :key="d.id" :value="d.id">{{ d.nombreamigable }}</option>
+          <option v-for="d in departamentos.filter((d) => d.estado === 'Alta')" :key="d.id" :value="d.id">{{
+            d.nombreamigable }}</option>
         </select>
 
         <select v-model="filtroProblema" :disabled="filtroDepartamento === ''"
@@ -41,7 +42,8 @@
           <option value="">
             {{ filtroDepartamento === '' ? 'Selecciona un departamento' : 'Todas las problemáticas' }}
           </option>
-          <option v-for="p in problemasFiltro.filter((d) => d.estado === 'Alta')" :key="p.id" :value="p.id">{{ p.nombreamigable }}</option>
+          <option v-for="p in problemasFiltro.filter((d) => d.estado === 'Alta')" :key="p.id" :value="p.id">{{
+            p.nombreamigable }}</option>
         </select>
       </div>
     </div>
@@ -106,7 +108,7 @@
           <input type="text" :value="departamentos.find((d) => d.id === form.departamento_id)?.nombre || ''" disabled />
           <span v-if="errores.departamento_id" class="msg-error">{{
             errores.departamento_id
-          }}</span>
+            }}</span>
 
           <label>¿Qué problema quieres reportar?</label>
           <select name="problema" v-model="form.problema_id" :class="{ 'input-error': errores.problema_id }"
@@ -201,11 +203,67 @@
 
           </div>
 
+          <!-- Validación de fotografía con IA -->
+          <div v-if="procesandoAI" class="validacion-ai validacion-ai--procesando">
+            <span class="spinner"></span>
+
+            <div class="validacion-ai-contenido">
+              <strong>Analizando tu fotografía</strong>
+              <p>
+                Estamos verificando que la evidencia corresponda al departamento seleccionado.
+                Esto puede tardar unos momentos.
+              </p>
+            </div>
+          </div>
+
+          <!-- Resultado: Fotografía correcta -->
+          <div v-else-if="form.fotoTipoID === 0" class="validacion-ai validacion-ai--correcta" role="status">
+            <span class="validacion-ai-icono">
+              <CheckCircle />
+            </span>
+
+            <div class="validacion-ai-contenido">
+              <strong>¡Fotografía correcta!</strong>
+              <p>
+                Tu evidencia parece adecuada para el reporte.
+                Gracias por proporcionar una fotografía que ayudará a identificar el problema.
+              </p>
+            </div>
+          </div>
+
+          <!-- Resultado: Fotografía incorrecta -->
+          <div v-else-if="form.fotoTipoID === 1" class="validacion-ai validacion-ai--incorrecta" role="status">
+            <span class="validacion-ai-icono">
+              <ExclamationTriangle />
+            </span>
+
+            <div class="validacion-ai-contenido">
+              <strong>La fotografía podría no ser adecuada</strong>
+              <p>
+                No logramos identificar claramente el problema que deseas reportar.
+                Te recomendamos tomar otra fotografía donde se aprecie mejor la situación.
+              </p>
+            </div>
+          </div>
+
+          <!-- Resultado: Error de IA -->
+          <div v-else-if="form.fotoTipoID === 2" class="validacion-ai validacion-ai--error" role="alert">
+            <span class="validacion-ai-icono">
+              <TimesCircle />
+            </span>
+
+            <div class="validacion-ai-contenido">
+              <strong>No pudimos validar tu fotografía</strong>
+              <p>
+                Ocurrió un problema durante la validación automática.
+                Puedes intentar seleccionar la fotografía nuevamente.
+              </p>
+            </div>
+          </div>
+
           <span v-if="errores.foto" class="msg-error">
             {{ errores.foto }}
           </span>
-
-          <!--<span class="validacion-AI" disable></span>-->
 
           <div class="terminos-check" :class="{ 'terminos-error': errores.terminos }">
             <input id="aceptaTerminos" v-model="aceptaTerminos" type="checkbox" @change="errores.terminos = ''" />
@@ -220,8 +278,14 @@
           </div>
           <span v-if="errores.terminos" class="msg-error">{{ errores.terminos }}</span>
 
-          <button name="enviar" type="submit" class="btn-enviar" :disabled="enviando">
-            {{ enviando ? 'Enviando...' : 'Enviar Reporte' }}
+          <button name="enviar" type="submit" class="btn-enviar" :disabled="enviando || procesandoAI">
+            {{
+              procesandoAI
+                ? 'Validando fotografía...'
+                : enviando
+                  ? 'Enviando...'
+            : 'Enviar Reporte'
+            }}
           </button>
         </form>
 
@@ -307,6 +371,9 @@ import Camera from '@primeicons/vue/camera';
 import Map from '@primeicons/vue/map';
 import Undo from '@primeicons/vue/undo';
 import Plus from '@primeicons/vue/plus';
+import CheckCircle from '@primeicons/vue/check-circle';
+import ExclamationTriangle from '@primeicons/vue/exclamation-triangle';
+import TimesCircle from '@primeicons/vue/times-circle';
 
 import Swal from 'sweetalert2';
 
@@ -668,7 +735,9 @@ const onDepartamentoSeleccionado = async () => {
   errores.value.departamento_id = '' // Limpiar error visual si elige algo
   form.value.foto = null
   previewFoto.value = ''
-  //document.querySelector('.validacion-AI')?.replaceChildren() // Limpiar mensaje de validación AI
+  // Limpiar validación de IA
+  form.value.fotoTipoID = null
+  form.value.mensajeAI = null
 
 
   if (!form.value.departamento_id) return
@@ -861,35 +930,26 @@ const abrirPanel = () => {
 }
 
 const seleccionarFoto = async (e: Event) => {
-  const submitBtn = document.getElementsByName('enviar')[0] as HTMLButtonElement
-
-  if (submitBtn) {
-    submitBtn.disabled = true
-    submitBtn.textContent = 'Estamos validando tu evidencia, por favor espera...'
-  }
-
   const input = e.target as HTMLInputElement
 
-  if (input.files?.[0]) {
-    const archivo = input.files[0]
-    form.value.foto = archivo
-    errores.value.foto = ''
-    previewFoto.value = URL.createObjectURL(archivo)
-    procesandoAI.value = true
-    try {
-      const resultado = await validarConAi(archivo)
-      if (resultado === 2) {
-        submitBtn.disabled = false
-        submitBtn.textContent = 'Enviar Reporte'
-      }
-    } finally {
-      procesandoAI.value = false
-    }
-  }
+  if (!input.files?.[0]) return
 
-  if (submitBtn) {
-    submitBtn.disabled = false
-    submitBtn.textContent = 'Enviar Reporte'
+  const archivo = input.files[0]
+
+  form.value.foto = archivo
+  form.value.fotoTipoID = null
+  form.value.mensajeAI = ''
+
+  errores.value.foto = ''
+
+  previewFoto.value = URL.createObjectURL(archivo)
+
+  procesandoAI.value = true
+
+  try {
+    await validarConAi(archivo)
+  } finally {
+    procesandoAI.value = false
   }
 }
 
@@ -917,39 +977,39 @@ const obtenerSlugDepartamento = (id: string | number): string => {
 }
 
 const validarConAi = async (file: File) => {
-  //const spanValidacionAI = document.querySelector('.validacion-AI') as HTMLSpanElement
-
-  //if (spanValidacionAI) {
-  //  spanValidacionAI.textContent = `Validando tu foto con AI...`
-  //  spanValidacionAI.style.color = '#000000'
-  //}
-
   const departamentoId = form.value.departamento_id
   const departamentoSlug = obtenerSlugDepartamento(departamentoId)
-  const resultadoAI = await validarAI(file, departamentoSlug)
 
-  //if (spanValidacionAI) {
-  if (resultadoAI) {
-    // Guardar los datos de la IA en nuestro state del formulario
-    form.value.fotoTipoID = resultadoAI.type;
+  try {
+    const resultadoAI = await validarAI(file, departamentoSlug)
 
-    if (resultadoAI.type === 2) {
-      form.value.mensajeAI = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta';
-    } else {
-      form.value.mensajeAI = resultadoAI.data.message;
+    if (resultadoAI) {
+      form.value.fotoTipoID = resultadoAI.type
+
+      // Conservar el mensaje original de la IA para el registro del reporte
+      if (resultadoAI.type === 2) {
+        form.value.mensajeAI = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta'
+      } else {
+        form.value.mensajeAI = resultadoAI.data.message
+      }
+
+      return resultadoAI.type
     }
-    //spanValidacionAI.textContent = `${resultadoAI.data.message}`
-    //spanValidacionAI.style.color = resultadoAI.type === 0 ? '#008998' : '#FF0000'
-    return resultadoAI.type
 
-  } else {
-    form.value.fotoTipoID = 2; // 2 = Error según tu interfaz
-    form.value.mensajeAI = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta';
+    // La IA no devolvió un resultado válido
+    form.value.fotoTipoID = 2
+    form.value.mensajeAI = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta'
+
     return 2
-    //spanValidacionAI.textContent = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta'
-    //spanValidacionAI.style.color = '#FF0000'
+
+  } catch (error) {
+    console.error('Error al validar la fotografía con IA:', error)
+
+    form.value.fotoTipoID = 2
+    form.value.mensajeAI = 'Ocurrio un error al validar la imagen, es posiblemente incorrecta'
+
+    return 2
   }
-  //}
 }
 
 const limpiarFormulario = () => {
@@ -1807,5 +1867,105 @@ defineExpose({
   font-size: 0.92rem;
   line-height: 1.3;
   color: #222;
+}
+
+/* Contenedor general de validación IA */
+.validacion-ai {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  animation: aparecerValidacion 0.3s ease;
+}
+
+/* Contenido del mensaje */
+.validacion-ai-contenido {
+  flex: 1;
+  min-width: 0;
+}
+
+.validacion-ai-contenido strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.validacion-ai-contenido p {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Iconos */
+.validacion-ai-icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+/* Fotografía correcta */
+.validacion-ai--correcta {
+  background: #eaf7ee;
+  border-color: #b8e2c5;
+  color: #176b35;
+}
+
+/* Fotografía incorrecta */
+.validacion-ai--incorrecta {
+  background: #fff7e6;
+  border-color: #f2d69a;
+  color: #946200;
+}
+
+/* Error de IA */
+.validacion-ai--error {
+  background: #fff0f0;
+  border-color: #efc1c1;
+  color: #a52a2a;
+}
+
+/* Procesando */
+.validacion-ai--procesando {
+  background: #f1f5f9;
+  border-color: #d5dee8;
+  color: #334155;
+}
+
+/* Spinner */
+.validacion-ai .spinner {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border: 3px solid #cbd5e1;
+  border-top-color: #621132;
+  border-radius: 50%;
+  animation: girarSpinner 0.8s linear infinite;
+}
+
+/* Animaciones */
+@keyframes girarSpinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes aparecerValidacion {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

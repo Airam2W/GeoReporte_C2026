@@ -11,6 +11,29 @@ const MARGEN = 18
 const ANCHO = 210
 const ALTO = 297
 const ANCHO_UTIL = ANCHO - MARGEN * 2
+const LIMITE_PAGINA = ALTO - 22 // deja margen para el pie de página
+
+// Categorías de la tabla "categoria_historial"
+const NOMBRE_CATEGORIA: Record<number, string> = {
+  1: 'Devolución de reporte',
+  2: 'Rechazo de reporte',
+  3: 'Petición de finalización',
+  4: 'Avance del reporte',
+  5: 'Aceptación de finalización',
+  6: 'Denegación de finalización',
+  7: 'Turnado de reporte',
+}
+
+// Color de la barra lateral de cada movimiento (mismos tonos que las etiquetas de estado)
+const COLOR_CATEGORIA: Record<number, [number, number, number]> = {
+  1: [239, 108, 0],
+  2: [198, 40, 40],
+  3: [0, 121, 107],
+  4: [25, 118, 210],
+  5: [46, 125, 50],
+  6: [87, 24, 152],
+  7: [93, 64, 55],
+}
 
 interface OpcionesPdf {
   departamento?: string
@@ -18,12 +41,90 @@ interface OpcionesPdf {
   devolverBlob?: boolean // true = no descarga, regresa el archivo
 }
 
+interface Movimiento {
+  categoria: number
+  titulo: string
+  notas: string
+  foto: string
+  fecha: string
+  ts: number | null
+}
 
+// "timestamp without time zone" (created_at) llega sin zona y es UTC → se le agrega "Z".
+// "timestamptz" (historial_reporte.fecha) ya trae zona (Z, +00:00, -07:00...) → se respeta.
+const TIENE_ZONA = /[T ]\d{2}:\d{2}.*(Z|[+-]\d{2}(:?\d{2})?)$/
+const aFechaUtc = (valor: string) => {
+  const v = valor.trim().replace(' ', 'T')
+  return new Date(TIENE_ZONA.test(v) ? v : `${v}Z`)
+}
 
 const formatearFecha = (valor?: string) => {
   if (!valor) return 'No disponible'
-  const utc = valor.endsWith('Z') ? valor : `${valor}Z`
-  return new Date(utc).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' })
+  const fecha = aFechaUtc(valor)
+  if (isNaN(fecha.getTime())) return 'No disponible'
+  return fecha.toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' })
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const nombreUsuario = (u: any) =>
+  u ? [u.nombre, u.apellido_p, u.apellido_m].filter(Boolean).join(' ').trim() : ''
+
+// Obtiene los movimientos del historial del reporte, del más antiguo al más reciente.
+// Usa el historial crudo (historial_reporte) y, si el panel no lo trae, arma el
+// historial con las notas ya separadas por categoría.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const obtenerMovimientos = (reporte: any): Movimiento[] => {
+  const crudo = Array.isArray(reporte.historial_reporte)
+    ? reporte.historial_reporte
+    : reporte.historial_reporte
+      ? [reporte.historial_reporte]
+      : null
+
+  if (crudo) {
+    return (
+      crudo
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((h: any): Movimiento => {
+          const f = h.fecha ? aFechaUtc(h.fecha) : null
+          const ts = f && !isNaN(f.getTime()) ? f.getTime() : null
+          return {
+            categoria: Number(h.categoria_historial_id),
+            titulo: h.titulo?.nombre || '',
+            notas: h.notas || '',
+            foto: h.foto_url || '',
+            fecha: ts !== null ? formatearFecha(h.fecha) : 'Fecha no disponible',
+            ts,
+          }
+        })
+        .sort((a: Movimiento, b: Movimiento) => (a.ts ?? 0) - (b.ts ?? 0))
+    )
+  }
+
+  // Respaldo: notas ya formateadas por categoría
+  const porCategoria: [string, number][] = [
+    ['notas_devuelto', 1],
+    ['notas_rechazo', 2],
+    ['notas_finalizacion', 3],
+    ['notas_avances', 4],
+    ['notas_finales_finalizacion', 5],
+    ['notas_denegacion', 6],
+    ['notas_turnado', 7],
+  ]
+  const movimientos: Movimiento[] = []
+  for (const [clave, categoria] of porCategoria) {
+    const notas = Array.isArray(reporte[clave]) ? reporte[clave] : []
+    for (const n of notas) {
+      movimientos.push({
+        categoria,
+        titulo: n.titulo || '',
+        notas: n.notas || '',
+        foto: n.foto_url || '',
+        fecha: [n.fecha, n.hora].filter(Boolean).join(' · ') || 'Fecha no disponible',
+        ts: null,
+      })
+    }
+  }
+  return movimientos
 }
 
 // Carga la imagen y la convierte a JPEG (jsPDF no soporta webp)
@@ -60,7 +161,7 @@ export const generarPdfReporte = async (reporte: any, opciones: OpcionesPdf = {}
   let y = 0
 
   const asegurarEspacio = (alto: number) => {
-    if (y + alto > ALTO - 22) {
+    if (y + alto > LIMITE_PAGINA) {
       doc.addPage()
       y = MARGEN
     }
@@ -132,15 +233,30 @@ export const generarPdfReporte = async (reporte: any, opciones: OpcionesPdf = {}
     y += campo(etiqueta, valor) + 4
   }
 
+  // Datos que cambian según el rol que descarga (cada panel consulta distinto)
+  const esExterno = !reporte.problemas && !!reporte.problemas_externos
+  const problemaNombre =
+    reporte.problemas?.nombre || reporte.problemas_externos?.nombre || 'No disponible'
+  const estadoNombre =
+    reporte.estado || reporte.detalle_reporte?.estadoreporte?.estado || 'No disponible'
+  const supervisorNombre =
+    opciones.supervisor && opciones.supervisor !== 'No disponible'
+      ? opciones.supervisor
+      : nombreUsuario(reporte.detalle_reporte?.supervisores?.usuarios) || 'No disponible'
+  const jefeNombre =
+    reporte.jefe && reporte.jefe !== 'SIN ASIGNAR'
+      ? reporte.jefe
+      : nombreUsuario(reporte.detalle_reporte?.jefes?.usuarios) || 'SIN ASIGNAR'
+
   // ---------- Datos generales ----------
   seccion('Datos generales')
   filaDoble(
     'Fecha de creación', formatearFecha(reporte.created_at),
-    'Estado de atención', reporte.estado || 'No disponible',
+    'Estado de atención', estadoNombre,
   )
   filaDoble(
     'Departamento', opciones.departamento || 'No disponible',
-    'Problemática', reporte.problemas?.nombre || 'No disponible',
+    'Problemática', problemaNombre,
   )
 
   // ---------- Detalle ----------
@@ -149,12 +265,14 @@ export const generarPdfReporte = async (reporte: any, opciones: OpcionesPdf = {}
   campoSimple('Ubicación', reporte.domicilio)
   campoSimple('Referencias', reporte.referencias)
 
-  // ---------- Atención ----------
-  seccion('Atención y seguimiento')
-  filaDoble(
-    'Supervisor responsable', opciones.supervisor || 'No disponible',
-    'Jefe asignado', reporte.jefe || 'SIN ASIGNAR',
-  )
+  // ---------- Atención (los departamentos externos no tienen supervisor ni jefe) ----------
+  if (!esExterno) {
+    seccion('Atención y seguimiento')
+    filaDoble(
+      'Supervisor responsable', supervisorNombre,
+      'Jefe asignado', jefeNombre,
+    )
+  }
 
   // ---------- Evidencia fotográfica ----------
   seccion('Evidencia fotográfica')
@@ -191,6 +309,113 @@ export const generarPdfReporte = async (reporte: any, opciones: OpcionesPdf = {}
       y,
     )
     y += 8
+  }
+
+  // ---------- Historial del reporte ----------
+  const movimientos = obtenerMovimientos(reporte)
+  // Las fotos de los movimientos (avances, finalización...) se cargan en paralelo
+  const fotosMovimientos = await Promise.all(
+    movimientos.map((m) => (m.foto ? cargarImagen(m.foto) : Promise.resolve(null))),
+  )
+
+  const dibujarMovimiento = (
+    m: Movimiento,
+    img: { data: string; w: number; h: number } | null,
+  ) => {
+    const color = COLOR_CATEGORIA[m.categoria] ?? TINTO
+    const xTexto = MARGEN + 5
+    const anchoTexto = ANCHO_UTIL - 5
+
+    asegurarEspacio(22) // que el encabezado del movimiento no quede huérfano
+    let yBarra = y
+
+    // La barra lateral se dibuja por tramos si el movimiento salta de página
+    const cerrarBarra = () => {
+      doc.setFillColor(...color)
+      doc.rect(MARGEN, yBarra, 1.6, Math.max(y - yBarra, 1), 'F')
+    }
+    const saltoSiNoCabe = (alto: number) => {
+      if (y + alto > LIMITE_PAGINA) {
+        cerrarBarra()
+        doc.addPage()
+        y = MARGEN
+        yBarra = y
+      }
+    }
+
+    // Categoría + título
+    const nombreCategoria = NOMBRE_CATEGORIA[m.categoria] ?? 'Movimiento'
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    const lineasTitulo = doc.splitTextToSize(
+      m.titulo ? `${nombreCategoria} · ${m.titulo}` : nombreCategoria,
+      anchoTexto,
+    ) as string[]
+    doc.setTextColor(...color)
+    for (const linea of lineasTitulo) {
+      saltoSiNoCabe(5)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(...color)
+      doc.text(linea, xTexto, y + 3.5)
+      y += 5
+    }
+
+    // Fecha
+    saltoSiNoCabe(5)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...GRIS_LABEL)
+    doc.text(m.fecha, xTexto, y + 3)
+    y += 5.5
+
+    // Notas
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10)
+    const lineasNotas = doc.splitTextToSize(m.notas || 'Sin notas registradas.', anchoTexto) as string[]
+    for (const linea of lineasNotas) {
+      saltoSiNoCabe(5)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      doc.setTextColor(...GRIS_TEXTO)
+      doc.text(linea, xTexto, y + 3.5)
+      y += 5
+    }
+
+    // Foto del movimiento (si tiene)
+    if (img) {
+      const ratio = Math.min(anchoTexto / img.w, 55 / img.h)
+      const w = img.w * ratio
+      const h = img.h * ratio
+      saltoSiNoCabe(h + 5)
+      doc.setDrawColor(...GRIS_LINEA)
+      doc.setLineWidth(0.3)
+      doc.rect(xTexto - 1, y + 1, w + 2, h + 2)
+      doc.addImage(img.data, 'JPEG', xTexto, y + 2, w, h)
+      y += h + 5
+    } else if (m.foto) {
+      saltoSiNoCabe(5)
+      doc.setFont('helvetica', 'italic')
+      doc.setFontSize(8.5)
+      doc.setTextColor(...GRIS_LABEL)
+      doc.text('No fue posible cargar la imagen de este movimiento.', xTexto, y + 3)
+      y += 5
+    }
+
+    cerrarBarra()
+    y += 5 // separación entre movimientos
+  }
+
+  seccion(`Historial del reporte${movimientos.length ? ` (${movimientos.length})` : ''}`)
+
+  if (!movimientos.length) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(10)
+    doc.setTextColor(...GRIS_LABEL)
+    doc.text('Este reporte aún no tiene movimientos en su historial.', MARGEN, y)
+    y += 8
+  } else {
+    movimientos.forEach((m, i) => dibujarMovimiento(m, fotosMovimientos[i] ?? null))
   }
 
   // ---------- Pie de página en todas las hojas ----------

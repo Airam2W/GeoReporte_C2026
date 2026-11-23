@@ -981,7 +981,7 @@ router.get(
                 'created_at',
                 'problemas(id,nombre, nombreamigable)',
                 'departamentos(id,nombre, nombreamigable)',
-                'detalle_reporte(estado_id,fecha_inicio,fecha_cierre,estadoreporte(estado),jefe_id,supervisor_id,supervisores(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
+                'detalle_reporte(estado_id,fecha_inicio,fecha_cierre,estadoreporte(estado),jefe_id,supervisor_id,supervisores(usuario_id,usuarios(nombre,apellido_p,apellido_m)),jefes(usuario_id,usuarios(nombre,apellido_p,apellido_m)))',
                 'historial_reporte(categoria_historial_id,notas,fecha,foto_url,titulo(nombre))'
             ].join(','))
             .eq('departamento_id', valor)

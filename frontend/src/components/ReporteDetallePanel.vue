@@ -3,11 +3,19 @@
     <header class="rdp-head">
       <div class="rdp-head-info">
         <h3>Detalle del Reporte</h3>
-        <p v-if="reporte" class="folio-text clickable-text" title="Copiar folio" @click="copiarFolio">
-          Folio: #{{ reporte.folio }}
-        </p>
-        <p v-else class="folio-text">Sin reporte seleccionado</p>
-        <span class="copied-msg" v-if="copiado">¡Folio copiado!</span>
+
+        <div v-if="reporte" class="folio-linea">
+          <p class="folio-text clickable-text" title="Copiar folio" @click="copiarFolio">
+            Folio: <span class="folio-valor">#{{ reporte.folio }}</span>
+          </p>
+
+          <button type="button" class="btn-copiar-mini" :class="{ 'is-copiado': copiado }" @click="copiarFolio"
+            :title="copiado ? '¡Folio copiado!' : 'Copiar folio al portapapeles'">
+            <component :is="copiado ? Check : Copy" class="icono-mini" />
+            <span>{{ copiado ? 'Copiado' : 'Copiar' }}</span>
+          </button>
+        </div>
+        <p v-else class="folio-text folio-vacio">Sin reporte seleccionado</p>
       </div>
       <span v-if="reporte" :class="['badge', obtenerClaseEstado(reporte.estado.toLowerCase())]">
         {{ reporte.estado }}
@@ -28,19 +36,24 @@
     <div v-else class="rdp-body">
       <!-- Evidencia -->
       <div class="rdp-foto">
-        <a v-if="reporte.foto_url" :href="reporte.foto_url" target="_blank" rel="noopener" title="Abrir imagen completa">
+        <a v-if="reporte.foto_url" :href="reporte.foto_url" target="_blank" rel="noopener"
+          title="Abrir imagen completa">
           <img :src="reporte.foto_url" alt="Evidencia" />
         </a>
         <div v-else class="sin-foto">Sin imagen</div>
       </div>
 
-      <div class="info-item" v-if="reporte.mensajeAI">
-        <label>Validación de la IA</label>
-        <div class="descripcion-box" :style="{
-          color: reporte.fotoTipoID === 0 ? '#1a6b2f' : '#c62828',
-          backgroundColor: reporte.fotoTipoID === 0 ? '#e8f5e9' : '#ffebee',
-          borderColor: reporte.fotoTipoID === 0 ? '#81c784' : '#ef9a9a'
-        }">
+      <div class="info-item ia-card" v-if="reporte.mensajeAI"
+        :class="reporte.fotoTipoID === 0 ? 'ia-card--ok' : 'ia-card--alerta'">
+        <div class="ia-header">
+          <label>Validación de la IA</label>
+          <span class="ia-tag">
+            <component :is="reporte.fotoTipoID === 0 ? Check : AlertTriangle" class="ia-icono" />
+            {{ reporte.fotoTipoID === 0 ? 'Coincidencia validada' : 'Revisar observación' }}
+          </span>
+        </div>
+
+        <div class="ia-mensaje-box">
           {{ reporte.mensajeAI }}
         </div>
       </div>
@@ -194,6 +207,8 @@ import { ref, computed } from 'vue'
 import { formatearFechaLocal, obtenerClaseEstado } from '../logic/reporteDetalleModal'
 import { abrirGoogleMaps } from '../logic/googleMaps'
 import MapMarker from '@primeicons/vue/map-marker'
+import Copy from '@primeicons/vue/copy'
+import Check from '@primeicons/vue/check'
 
 const props = defineProps({
   reporte: { type: Object, default: null },
@@ -249,11 +264,13 @@ const copiarFolio = async () => {
   border-bottom: 1px solid #eee;
   background: #faf8f0;
 }
+
 .rdp-head h3 {
   margin: 0;
   font-size: 1.05rem;
   color: #621132;
 }
+
 .rdp-head .folio-text {
   margin: 2px 0 0;
   font-size: 0.82rem;
@@ -261,7 +278,7 @@ const copiarFolio = async () => {
   word-break: break-all;
 }
 
-.rdp-body > * {
+.rdp-body>* {
   flex-shrink: 0;
 }
 
@@ -286,6 +303,7 @@ const copiarFolio = async () => {
   text-align: center;
   color: #9a9a9a;
 }
+
 .rdp-vacio p {
   margin: 0;
   max-width: 240px;
@@ -298,15 +316,18 @@ const copiarFolio = async () => {
   background: #f1f1f1;
   border: 1px solid #e3e0d4;
 }
+
 .rdp-foto a {
   display: block;
 }
+
 .rdp-foto img {
   display: block;
   width: 100%;
   height: 230px;
   object-fit: cover;
 }
+
 .rdp-foto .sin-foto {
   padding: 40px 0;
   text-align: center;
@@ -325,10 +346,161 @@ const copiarFolio = async () => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px 16px;
 }
+
 .rdp-corto {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.rdp-head-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rdp-head-info h3 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.folio-linea {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.folio-text {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
+.folio-valor {
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.folio-vacio {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.btn-copiar-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background-color: #ffffff;
+  color: #374151;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.btn-copiar-mini:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.btn-copiar-mini.is-copiado {
+  background-color: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.icono-mini {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+
+.ia-card {
+  margin-top: 0.5rem;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  border-left-width: 5px;
+}
+
+.ia-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.ia-header label {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ia-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.ia-icono {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.ia-mensaje-box {
+  font-size: 0.94rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* Validado (fotoTipoID === 0) */
+.ia-card--ok {
+  background-color: #eef8f0;
+  border-color: #b7e1c0;
+  border-left-color: #1f7a38;
+}
+
+.ia-card--ok label,
+.ia-card--ok .ia-mensaje-box {
+  color: #155724;
+}
+
+.ia-card--ok .ia-tag {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+/* Alerta / discrepancia */
+.ia-card--alerta {
+  background-color: #fff2f2;
+  border-color: #f5c2c7;
+  border-left-color: #c62828;
+}
+
+.ia-card--alerta label,
+.ia-card--alerta .ia-mensaje-box {
+  color: #842029;
+}
+
+.ia-card--alerta .ia-tag {
+  background-color: #f8d7da;
+  color: #842029;
 }
 
 @media (max-width: 1100px) {

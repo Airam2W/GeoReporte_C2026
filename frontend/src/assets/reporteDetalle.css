@@ -320,6 +320,46 @@
   color: white;
 }
 
+.detalle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.detalle-info h3 {
+  margin: 0 0 0.35rem 0;
+}
+
+.folio-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.estado-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 600px) {
+  .detalle-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .estado-actual-box {
+    align-items: flex-start;
+  }
+}
+
 @media (max-width: 768px) {
   .modal-grid {
     grid-template-columns: 1fr;

@@ -3,10 +3,29 @@
     <div v-if="visible" class="modal-overlay">
       <div class="modal-card">
         <div class="modal-header">
-          <div>
-            <h3>Detalle del Reporte</h3>
-            <p class="folio-text clickable-text" @click="copiarFolio">Folio: #{{ reporte?.folio }}</p>
-            <span class="copied-msg" v-if="copiado">¡Folio copiado!</span>
+          <div class="detalle-header">
+            <div class="detalle-info">
+              <h3>Detalle del Reporte</h3>
+
+              <div class="folio-row">
+                <p class="folio-text" @click="copiarFolio" title="Clic para copiar folio">
+                  Folio: <strong>#{{ reporte?.folio }}</strong>
+                </p>
+
+                <button type="button" class="btn-copiar-folio" :class="{ 'is-copiado': copiado }" @click="copiarFolio"
+                  :title="copiado ? '¡Folio copiado!' : 'Copiar folio al portapapeles'">
+                  <component :is="copiado ? Check : Copy" class="icono-copiar" />
+                  <span>{{ copiado ? 'Copiado' : 'Copiar' }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="estado-actual-box" v-if="!esAdmin && !esAdminEx && !esSupervisor && !esJefe && reporte?.estado">
+              <span class="estado-label">Estado Actual</span>
+              <span :class="['badge badge-grande', obtenerClaseEstado(reporte.estado.toLowerCase())]">
+                {{ traducirEstado(reporte.estado) }}
+              </span>
+            </div>
           </div>
           <button class="btn-cerrar" @click="cerrar">✕</button>
         </div>
@@ -55,8 +74,8 @@
                     </p>
                   </div>
 
-                  <button v-if="esAdmin || esSupervisor || esJefe"
-                  type="button" class="btn-mapa" aria-label="Abrir en Google Maps" title="Abrir en Google Maps"
+                  <button v-if="esAdmin || esSupervisor || esJefe" type="button" class="btn-mapa"
+                    aria-label="Abrir en Google Maps" title="Abrir en Google Maps"
                     @click="abrirGoogleMaps(reporte.domicilio)">
                     <MapMarker class="btn-mapa" />
                   </button>
@@ -237,13 +256,17 @@
                 <div v-else class="sin-foto">Sin imagen</div>
               </div>
 
-              <div class="info-item" v-if="reporte.mensajeAI && (esSupervisor || esAdmin)">
-                <label>Validación de la IA</label>
-                <div class="descripcion-box" :style="{
-                  color: reporte.fotoTipoID === 0 ? '#1a6b2f' : '#c62828',
-                  backgroundColor: reporte.fotoTipoID === 0 ? '#e8f5e9' : '#ffebee',
-                  borderColor: reporte.fotoTipoID === 0 ? '#81c784' : '#ef9a9a'
-                }">
+              <div class="info-item ia-card" v-if="reporte.mensajeAI && (esSupervisor || esAdmin)"
+                :class="reporte.fotoTipoID === 0 ? 'ia-card--ok' : 'ia-card--alerta'">
+                <div class="ia-header">
+                  <label>Validación de la IA</label>
+                  <span class="ia-tag">
+                    <i :class="reporte.fotoTipoID === 0 ? 'pi pi-check-circle' : 'pi pi-exclamation-triangle'"></i>
+                    {{ reporte.fotoTipoID === 0 ? 'Coincidencia validada' : 'Revisar observación' }}
+                  </span>
+                </div>
+
+                <div class="ia-mensaje-box">
                   {{ reporte.mensajeAI }}
                 </div>
               </div>
@@ -255,13 +278,6 @@
                   obtenerClaseEstado(reporte.estado.toLowerCase()),
                 ]">
                   {{ reporte.estado }}
-                </span>
-              </div>
-
-              <div class="estado-actual-box" v-if="!esAdmin && !esAdminEx && !esSupervisor && !esJefe">
-                <label>Estado Actual</label>
-                <span :class="['badge badge-grande', obtenerClaseEstado(reporte.estado.toLowerCase())]">
-                  {{ traducirEstado(reporte.estado) }}
                 </span>
               </div>
             </div>
@@ -362,6 +378,8 @@ import { defineProps, defineEmits } from 'vue'
 import { ref } from 'vue'
 
 import MapMarker from '@primeicons/vue/map-marker';
+import Copy from '@primeicons/vue/copy'
+import Check from '@primeicons/vue/check'
 
 const abrirGoogleMaps = (domicilio: string) => {
   if (!domicilio) return
@@ -473,3 +491,140 @@ const copiarFolio = async () => {
 </script>
 
 <style src="../assets/reporteDetalle.css" />
+
+<style scoped>
+
+.btn-copiar-folio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background-color: #f9fafb;
+  color: #374151;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-copiar-folio:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.btn-copiar-folio.is-copiado {
+  background-color: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.icono-copiar {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.info-item label {
+  display: block;
+  font-size: 0.8rem;
+  color: #777;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.info-item p {
+  margin: 0;
+  font-size: 1rem;
+  color: #222;
+}
+
+.info-item .destacado {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #621132;
+}
+
+.descripcion-box {
+  background: #f9f9f9;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #444;
+}
+
+/* Bloque destacado para la validación de la IA */
+.ia-card {
+  margin-top: 0.5rem;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  border-left-width: 5px;
+}
+
+.ia-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.ia-header label {
+  margin-bottom: 0;
+}
+
+.ia-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.ia-mensaje-box {
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* Estado válido (fotoTipoID === 0) */
+.ia-card--ok {
+  background-color: #eef8f0;
+  border-color: #b7e1c0;
+  border-left-color: #1f7a38;
+}
+
+.ia-card--ok label,
+.ia-card--ok .ia-mensaje-box {
+  color: #155724;
+}
+
+.ia-card--ok .ia-tag {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+/* Estado de alerta / discrepancia */
+.ia-card--alerta {
+  background-color: #fff2f2;
+  border-color: #f5c2c7;
+  border-left-color: #c62828;
+}
+
+.ia-card--alerta label,
+.ia-card--alerta .ia-mensaje-box {
+  color: #842029;
+}
+
+.ia-card--alerta .ia-tag {
+  background-color: #f8d7da;
+  color: #842029;
+}
+</style>
